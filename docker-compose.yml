@@ -4,9 +4,9 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - skylog_data:/app/skylog.db
+      - .skylog_data:/app/data
     environment:
-      - SKYLOG_DB_PATH=/app/skylog.db
+      - SKYLOG_DB_PATH=/app/data/skylog.db
 
 volumes:
   skylog_data:
