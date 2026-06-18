@@ -1,0 +1,74 @@
+"""Pydantic schemas for SkyLog flight data."""
+
+from datetime import date
+from typing import Optional
+from pydantic import BaseModel, Field
+
+
+class FlightCreate(BaseModel):
+    """Schema for creating a new flight entry."""
+    date: date
+    aircraft_type: str = Field(..., min_length=1, max_length=50)
+    aircraft_reg: str = Field(..., min_length=1, max_length=20)
+    departure: str = Field(..., min_length=1, max_length=10)
+    arrival: str = Field(..., min_length=1, max_length=10)
+    departure_time: Optional[str] = None
+    arrival_time: Optional[str] = None
+    total_time: float = Field(..., gt=0)
+    night_time: Optional[float] = Field(default=0, ge=0)
+    pilot_in_command: str = Field(..., min_length=1, max_length=100)
+    remarks: Optional[str] = None
+    landings_day: Optional[int] = Field(default=0, ge=0)
+    landings_night: Optional[int] = Field(default=0, ge=0)
+    cross_country: Optional[bool] = Field(default=False)
+
+
+class FlightUpdate(BaseModel):
+    """Schema for updating an existing flight entry (all fields optional)."""
+    date: Optional[date] = None
+    aircraft_type: Optional[str] = Field(default=None, min_length=1, max_length=50)
+    aircraft_reg: Optional[str] = Field(default=None, min_length=1, max_length=20)
+    departure: Optional[str] = Field(default=None, min_length=1, max_length=10)
+    arrival: Optional[str] = Field(default=None, min_length=1, max_length=10)
+    departure_time: Optional[str] = None
+    arrival_time: Optional[str] = None
+    total_time: Optional[float] = Field(default=None, gt=0)
+    night_time: Optional[float] = Field(default=None, ge=0)
+    pilot_in_command: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    remarks: Optional[str] = None
+    landings_day: Optional[int] = Field(default=None, ge=0)
+    landings_night: Optional[int] = Field(default=None, ge=0)
+    cross_country: Optional[bool] = None
+
+
+class FlightResponse(BaseModel):
+    """Schema for returning flight data."""
+    id: int
+    date: str
+    aircraft_type: str
+    aircraft_reg: str
+    departure: str
+    arrival: str
+    departure_time: Optional[str] = None
+    arrival_time: Optional[str] = None
+    total_time: float
+    night_time: float = 0
+    pilot_in_command: str
+    remarks: Optional[str] = None
+    landings_day: int = 0
+    landings_night: int = 0
+    cross_country: bool = False
+    created_at: str
+
+    class Config:
+        from_attributes = True
+
+
+class DashboardStats(BaseModel):
+    """Schema for dashboard statistics."""
+    total_flights: int
+    total_hours: float
+    total_night_hours: float
+    hours_last_30_days: float
+    total_landings: int
+    unique_aircraft: int
