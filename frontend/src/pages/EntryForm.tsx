@@ -92,13 +92,6 @@ export default function EntryForm() {
         arrival_time: form.arrival_time || null,
         total_time: parseFloat(form.total_time),
         night_time: parseFloat(form.night_time) || 0,
-        pilot_in_command: form.pilot_in_command.trim(),
-        remarks: form.remarks.trim() || null,
-        landings_day: parseInt(form.landings_day) || 0,
-        landings_night: parseInt(form.landings_night) || 0,
-        cross_country: form.cross_country,
-      });
-
       setMessage({ type: "success", text: "Flight logged successfully!" });
       setForm(initialForm());
       setErrors({});

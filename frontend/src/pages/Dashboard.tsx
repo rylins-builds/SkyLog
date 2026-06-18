@@ -77,15 +77,17 @@ export default function Dashboard() {
   return (
     <div className="p-4 sm:p-8 max-w-4xl mx-auto animate-fade-in">
       <h1 className="text-3xl font-bold text-gray-900 mb-6">Dashboard</h1>
-
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        <StatCard label="Total Flights" value={stats.total_flights} icon="📊" />
-        <StatCard label="Total Hours" value={`${stats.total_hours.toFixed(1)}h`} icon="⏱️" />
-        <StatCard label="Night Hours" value={`${stats.total_night_hours.toFixed(1)}h`} icon="🌙" />
-        <StatCard label="Hours (Last 30 Days)" value={`${stats.hours_last_30_days.toFixed(1)}h`} icon="📅" />
-        <StatCard label="Total Landings" value={stats.total_landings} icon="🛬" />
-        <StatCard label="Unique Aircraft" value={stats.unique_aircraft} icon="🛩️" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <StatCard label="Total Flights" value={stats.total_flights} />
+        <StatCard label="Total Hours" value={`${stats.total_hours.toFixed(1)}h`} />
+        <StatCard label="PIC Hours" value={`${stats.total_pic_hours.toFixed(1)}h`} />
+        <StatCard label="SIC Hours" value={`${stats.total_sic_hours.toFixed(1)}h`} />
+        <StatCard label="Night Hours" value={`${stats.total_night_hours.toFixed(1)}h`} />
+        <StatCard label="Instrument Hours" value={`${stats.total_instrument_hours.toFixed(1)}h`} />
+        <StatCard label="Hours (Last 30 Days)" value={`${stats.hours_last_30_days.toFixed(1)}h`} />
+        <StatCard label="Total Landings" value={stats.total_landings} />
+        <StatCard label="Instrument Approaches" value={stats.total_approaches} />
+        <StatCard label="Unique Aircraft" value={stats.unique_aircraft} />
       </div>
 
       {/* Recent Flights Section */}
