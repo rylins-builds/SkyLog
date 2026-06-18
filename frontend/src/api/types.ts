@@ -11,6 +11,13 @@ export interface Flight {
   arrival_time: string | null;
   total_time: number;
   night_time: number;
+  pic_time: number;
+  sic_time: number;
+  dual_received: number;
+  dual_given: number;
+  actual_instrument: number;
+  sim_instrument: number;
+  approaches: number;
   pilot_in_command: string;
   remarks: string | null;
   landings_day: number;
@@ -29,6 +36,13 @@ export interface FlightCreate {
   arrival_time?: string | null;
   total_time: number;
   night_time?: number;
+  pic_time?: number;
+  sic_time?: number;
+  dual_received?: number;
+  dual_given?: number;
+  actual_instrument?: number;
+  sim_instrument?: number;
+  approaches?: number;
   pilot_in_command: string;
   remarks?: string | null;
   landings_day?: number;
@@ -40,7 +54,11 @@ export interface DashboardStats {
   total_flights: number;
   total_hours: number;
   total_night_hours: number;
+  total_pic_hours: number;
+  total_sic_hours: number;
+  total_instrument_hours: number;
   hours_last_30_days: number;
   total_landings: number;
+  total_approaches: number;
   unique_aircraft: number;
 }

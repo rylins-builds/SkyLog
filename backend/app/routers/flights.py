@@ -22,6 +22,13 @@ def row_to_flight_response(row) -> dict:
         "arrival_time": row["arrival_time"],
         "total_time": row["total_time"],
         "night_time": row["night_time"],
+        "pic_time": row["pic_time"],
+        "sic_time": row["sic_time"],
+        "dual_received": row["dual_received"],
+        "dual_given": row["dual_given"],
+        "actual_instrument": row["actual_instrument"],
+        "sim_instrument": row["sim_instrument"],
+        "approaches": row["approaches"],
         "pilot_in_command": row["pilot_in_command"],
         "remarks": row["remarks"],
         "landings_day": row["landings_day"],
@@ -68,8 +75,10 @@ async def create_flight(flight: FlightCreate):
             """INSERT INTO flights 
                (date, aircraft_type, aircraft_reg, departure, arrival, 
                 departure_time, arrival_time, total_time, night_time,
+                pic_time, sic_time, dual_received, dual_given,
+                actual_instrument, sim_instrument, approaches,
                 pilot_in_command, remarks, landings_day, landings_night, cross_country)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 flight.date.isoformat(),
                 flight.aircraft_type,
@@ -80,6 +89,13 @@ async def create_flight(flight: FlightCreate):
                 flight.arrival_time,
                 flight.total_time,
                 flight.night_time or 0,
+                flight.pic_time or 0,
+                flight.sic_time or 0,
+                flight.dual_received or 0,
+                flight.dual_given or 0,
+                flight.actual_instrument or 0,
+                flight.sim_instrument or 0,
+                flight.approaches or 0,
                 flight.pilot_in_command,
                 flight.remarks,
                 flight.landings_day or 0,
@@ -129,6 +145,20 @@ async def update_flight(flight_id: int, flight: FlightUpdate):
             updates["total_time"] = flight.total_time
         if flight.night_time is not None:
             updates["night_time"] = flight.night_time
+        if flight.pic_time is not None:
+            updates["pic_time"] = flight.pic_time
+        if flight.sic_time is not None:
+            updates["sic_time"] = flight.sic_time
+        if flight.dual_received is not None:
+            updates["dual_received"] = flight.dual_received
+        if flight.dual_given is not None:
+            updates["dual_given"] = flight.dual_given
+        if flight.actual_instrument is not None:
+            updates["actual_instrument"] = flight.actual_instrument
+        if flight.sim_instrument is not None:
+            updates["sim_instrument"] = flight.sim_instrument
+        if flight.approaches is not None:
+            updates["approaches"] = flight.approaches
         if flight.pilot_in_command is not None:
             updates["pilot_in_command"] = flight.pilot_in_command
         if flight.remarks is not None:
@@ -192,6 +222,18 @@ async def get_dashboard_stats():
             "SELECT COALESCE(SUM(night_time), 0) FROM flights"
         ).fetchone()[0]
 
+        total_pic_hours = conn.execute(
+            "SELECT COALESCE(SUM(pic_time), 0) FROM flights"
+        ).fetchone()[0]
+
+        total_sic_hours = conn.execute(
+            "SELECT COALESCE(SUM(sic_time), 0) FROM flights"
+        ).fetchone()[0]
+
+        total_instrument_hours = conn.execute(
+            "SELECT COALESCE(SUM(actual_instrument + sim_instrument), 0) FROM flights"
+        ).fetchone()[0]
+
         hours_last_30_days = conn.execute(
             """SELECT COALESCE(SUM(total_time), 0) FROM flights 
                WHERE date >= date('now', '-30 days')"""
@@ -199,6 +241,10 @@ async def get_dashboard_stats():
 
         total_landings = conn.execute(
             "SELECT COALESCE(SUM(landings_day + landings_night), 0) FROM flights"
+        ).fetchone()[0]
+
+        total_approaches = conn.execute(
+            "SELECT COALESCE(SUM(approaches), 0) FROM flights"
         ).fetchone()[0]
 
         unique_aircraft = conn.execute(
@@ -209,8 +255,12 @@ async def get_dashboard_stats():
             total_flights=total_flights,
             total_hours=round(total_hours, 2),
             total_night_hours=round(total_night_hours, 2),
+            total_pic_hours=round(total_pic_hours, 2),
+            total_sic_hours=round(total_sic_hours, 2),
+            total_instrument_hours=round(total_instrument_hours, 2),
             hours_last_30_days=round(hours_last_30_days, 2),
             total_landings=total_landings,
+            total_approaches=total_approaches,
             unique_aircraft=unique_aircraft,
         )
     finally:

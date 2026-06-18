@@ -29,29 +29,41 @@ export default function Logbook() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse text-sm">
             <thead>
               <tr className="border-b-2 border-gray-200 bg-gray-50">
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600">Date</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600">Aircraft</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600">From</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600">To</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600">Duration</th>
-                <th className="px-4 py-3 text-sm font-semibold text-gray-600">PIC</th>
+                <th className="px-3 py-3 font-semibold text-gray-600">Date</th>
+                <th className="px-3 py-3 font-semibold text-gray-600">Aircraft</th>
+                <th className="px-3 py-3 font-semibold text-gray-600">Route</th>
+                <th className="px-3 py-3 font-semibold text-gray-600">Total</th>
+                <th className="px-3 py-3 font-semibold text-gray-600">PIC</th>
+                <th className="px-3 py-3 font-semibold text-gray-600">SIC</th>
+                <th className="px-3 py-3 font-semibold text-gray-600">Night</th>
+                <th className="px-3 py-3 font-semibold text-gray-600">Inst</th>
+                <th className="px-3 py-3 font-semibold text-gray-600">Appr</th>
+                <th className="px-3 py-3 font-semibold text-gray-600">PIC Name</th>
               </tr>
             </thead>
             <tbody>
               {flights.map((flight) => (
                 <tr key={flight.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-900">{flight.date}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3 text-gray-900 whitespace-nowrap">{flight.date}</td>
+                  <td className="px-3 py-3">
                     <span className="text-gray-900">{flight.aircraft_type}</span>
                     <span className="text-gray-500 ml-1">({flight.aircraft_reg})</span>
                   </td>
-                  <td className="px-4 py-3 text-gray-900">{flight.departure}</td>
-                  <td className="px-4 py-3 text-gray-900">{flight.arrival}</td>
-                  <td className="px-4 py-3 text-gray-900">{flight.total_time.toFixed(1)}h</td>
-                  <td className="px-4 py-3 text-gray-900">{flight.pilot_in_command}</td>
+                  <td className="px-3 py-3 text-gray-900 whitespace-nowrap">
+                    {flight.departure} &rarr; {flight.arrival}
+                  </td>
+                  <td className="px-3 py-3 text-gray-900 whitespace-nowrap">{flight.total_time.toFixed(1)}h</td>
+                  <td className="px-3 py-3 text-gray-900 whitespace-nowrap">{flight.pic_time.toFixed(1)}h</td>
+                  <td className="px-3 py-3 text-gray-900 whitespace-nowrap">{flight.sic_time.toFixed(1)}h</td>
+                  <td className="px-3 py-3 text-gray-900 whitespace-nowrap">{flight.night_time.toFixed(1)}h</td>
+                  <td className="px-3 py-3 text-gray-900 whitespace-nowrap">
+                    {(flight.actual_instrument + flight.sim_instrument).toFixed(1)}h
+                  </td>
+                  <td className="px-3 py-3 text-gray-900 whitespace-nowrap">{flight.approaches}</td>
+                  <td className="px-3 py-3 text-gray-900">{flight.pilot_in_command}</td>
                 </tr>
               ))}
             </tbody>
