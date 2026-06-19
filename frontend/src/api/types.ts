@@ -22,6 +22,9 @@ export interface Flight {
   instructor_time: number;
   xcountry_time: number;
   night_time: number;
+  act_instrument_time: number;
+  sim_instrument_time: number;
+  sim_time: number;
   pilot_in_command: string;
   remarks: string | null;
   takeoffs_day: number;
@@ -53,6 +56,9 @@ export interface FlightCreate {
   instructor_time: number;
   xcountry_time: number;
   night_time?: number;
+  act_instrument_time: number;
+  sim_instrument_time: number;
+  sim_time: number;
   pilot_in_command: string;
   remarks?: string | null;
   takeoffs_day: number;
