@@ -10,6 +10,12 @@ export interface Flight {
   departure_time: string | null;
   arrival_time: string | null;
   total_time: number;
+  sel_time: number;
+  ses_time: number;
+  mel_time: number;
+  mes_time: number;
+  helicopter_time: number;
+  glider_time: number;
   pic_time: number;
   sic_time: number;
   dual_time: number;
@@ -35,6 +41,12 @@ export interface FlightCreate {
   departure_time?: string | null;
   arrival_time?: string | null;
   total_time: number;
+  sel_time: number;
+  ses_time: number;
+  mel_time: number;
+  mes_time: number;
+  helicopter_time: number;
+  glider_time: number;
   pic_time: number;
   sic_time: number;
   dual_time: number;
