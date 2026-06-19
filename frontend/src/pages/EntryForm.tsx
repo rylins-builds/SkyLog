@@ -263,10 +263,10 @@ export default function EntryForm() {
             onChange={handleChange}
           />
           <Field
-            label="Arrival Time"
+            label="Arrival Time (Zulu)"
             name="arrival_time"
             type="time"
-            placeholder="DD:HH:MM (e.g. 13:02:30)"
+            pattern="\d{2}:\d{2}:\d{2}"
             value={form.arrival_time}
             onChange={handleChange}
           />
