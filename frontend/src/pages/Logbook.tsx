@@ -171,6 +171,11 @@ export default function Logbook() {
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.departure}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.arrival}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.total_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.pic_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.sic_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.dual_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.instructor_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.xcountry_time.toFixed(1)}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.pilot_in_command}</td>
                       <td className="px-4 py-3 row-actions whitespace-nowrap">
                         <div className="flex items-center gap-1">
