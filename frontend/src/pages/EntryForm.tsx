@@ -233,7 +233,7 @@ export default function EntryForm() {
             value={form.aircraft_reg}
             onChange={handleChange}
             required
-            placeholder="e.g. N123AB"
+            placeholder="e.g. N2860Q"
             error={errors.aircraft_reg}
           />
           <Field
@@ -242,7 +242,7 @@ export default function EntryForm() {
             value={form.departure}
             onChange={handleChange}
             required
-            placeholder="e.g. KLAX"
+            placeholder="e.g. KLAW"
             error={errors.departure}
           />
           <Field
@@ -251,13 +251,14 @@ export default function EntryForm() {
             value={form.arrival}
             onChange={handleChange}
             required
-            placeholder="e.g. KCRQ"
+            placeholder="e.g. KMIB"
             error={errors.arrival}
           />
           <Field
-            label="Departure Time"
+            label="Departure Time (Zulu)"
             name="departure_time"
             type="time"
+            placeholder="DD:HH:MM (e.g. 12:30:23)"
             value={form.departure_time}
             onChange={handleChange}
           />
@@ -265,6 +266,7 @@ export default function EntryForm() {
             label="Arrival Time"
             name="arrival_time"
             type="time"
+            placeholder="DD:HH:MM (e.g. 13:02:30)"
             value={form.arrival_time}
             onChange={handleChange}
           />
