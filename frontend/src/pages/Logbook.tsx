@@ -138,11 +138,22 @@ export default function Logbook() {
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">From</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">To</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Duration</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Single Engine Land</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Single Engine Sea</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Multi Engine Land</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Single Engine Sea</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Helicopter</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">GLider</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">PIC</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">SIC</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Dual Received</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Instructor</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 w-16">Actions</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Cross Country</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Night</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Actual Instrument</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Hooded Instrument</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Flight Simulator</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Single Engine Sea</th>
                   </tr>
                 </thead>
                 <tbody>
