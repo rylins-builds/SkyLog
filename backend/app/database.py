@@ -29,29 +29,22 @@ def init_db() -> None:
     try:
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS flights (
-                id                INTEGER PRIMARY KEY AUTOINCREMENT,
-                date              TEXT    NOT NULL,
-                aircraft_type     TEXT    NOT NULL,
-                aircraft_reg      TEXT    NOT NULL,
-                departure         TEXT    NOT NULL,
-                arrival           TEXT    NOT NULL,
-                departure_time    TEXT,
-                arrival_time      TEXT,
-                total_time        REAL    NOT NULL CHECK(total_time > 0),
-                night_time        REAL    DEFAULT 0 CHECK(night_time >= 0),
-                pic_time          REAL    DEFAULT 0 CHECK(pic_time >= 0),
-                sic_time          REAL    DEFAULT 0 CHECK(sic_time >= 0),
-                dual_received     REAL    DEFAULT 0 CHECK(dual_received >= 0),
-                dual_given        REAL    DEFAULT 0 CHECK(dual_given >= 0),
-                actual_instrument REAL    DEFAULT 0 CHECK(actual_instrument >= 0),
-                sim_instrument    REAL    DEFAULT 0 CHECK(sim_instrument >= 0),
-                approaches        INTEGER DEFAULT 0 CHECK(approaches >= 0),
-                pilot_in_command  TEXT    NOT NULL,
-                remarks           TEXT,
-                landings_day      INTEGER DEFAULT 0 CHECK(landings_day >= 0),
-                landings_night    INTEGER DEFAULT 0 CHECK(landings_night >= 0),
-                cross_country     INTEGER DEFAULT 0,
-                created_at        TEXT    DEFAULT (datetime('now'))
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                date            TEXT    NOT NULL,
+                aircraft_type   TEXT    NOT NULL,
+                aircraft_reg    TEXT    NOT NULL,
+                departure       TEXT    NOT NULL,
+                arrival         TEXT    NOT NULL,
+                departure_time  TEXT,
+                arrival_time    TEXT,
+                total_time      REAL    NOT NULL CHECK(total_time > 0),
+                night_time      REAL    DEFAULT 0 CHECK(night_time >= 0),
+                pilot_in_command TEXT   NOT NULL,
+                remarks         TEXT,
+                landings_day    INTEGER DEFAULT 0 CHECK(landings_day >= 0),
+                landings_night  INTEGER DEFAULT 0 CHECK(landings_night >= 0),
+                cross_country   INTEGER DEFAULT 0,
+                created_at      TEXT    DEFAULT (datetime('now'))
             );
         """)
         conn.commit()
