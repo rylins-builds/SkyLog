@@ -10,6 +10,12 @@ interface FormState {
   departure_time: string;
   arrival_time: string;
   total_time: string;
+  sel_time: string;
+  ses_time: string;
+  mel_time: string;
+  mes_time: string;
+  helicopter_time: string;
+  glider_time: string;
   pic_time: string;
   sic_time: string;
   dual_time: string;
@@ -34,6 +40,12 @@ const initialForm = (): FormState => ({
   departure_time: "",
   arrival_time: "",
   total_time: "",
+  sel_time: "0",
+  ses_time: "0",
+  mel_time: "0",
+  mes_time: "0",
+  helicopter_time: "0",
+  glider_time: "0",
   pic_time: "0",
   sic_time: "0",
   dual_time: "0",
@@ -81,6 +93,12 @@ export default function EntryForm() {
     if (!form.arrival.trim()) errs.arrival = "Required";
     if (!form.pilot_in_command.trim()) errs.pilot_in_command = "Required";
     if (!form.total_time || parseFloat(form.total_time) <= 0) errs.total_time = "Must be > 0";
+    if (form.sel_time && parseFloat(form.sel_time) < 0) errs.sel_time = "Cannot be negative";
+    if (form.ses_time && parseFloat(form.ses_time) < 0) errs.ses_time = "Cannot be negative";
+    if (form.mel_time && parseFloat(form.mel_time) < 0) errs.mel_time = "Cannot be negative";
+    if (form.mes_time && parseFloat(form.mes_time) < 0) errs.mes_time = "Cannot be negative";
+    if (form.helicopter_time && parseFloat(form.helicopter_time) < 0) errs.helicopter_time = "Cannot be negative";
+    if (form.glider_time && parseFloat(form.glider_time) < 0) errs.glider_time = "Cannot be negative";
     if (form.pic_time && parseFloat(form.pic_time) < 0) errs.pic_time = "Cannot be negative";
     if (form.sic_time && parseFloat(form.sic_time) < 0) errs.sic_time = "Cannot be negative";
     if (form.dual_time && parseFloat(form.dual_time) < 0) errs.dual_time = "Cannot be negative";
@@ -110,6 +128,12 @@ export default function EntryForm() {
         departure_time: form.departure_time || null,
         arrival_time: form.arrival_time || null,
         total_time: parseFloat(form.total_time),
+        sel_time: parseFloat(form.sel_time),
+        ses_time: parseFloat(form.ses_time),
+        mel_time: parseFloat(form.mel_time),
+        mes_time: parseFloat(form.mes_time),
+        helicopter_time: parseFloat(form.helicopter_time),
+        glider_time: parseFloat(form.glider_time),
         pic_time: parseFloat(form.pic_time),
         sic_time: parseFloat(form.sic_time),
         dual_time: parseFloat(form.dual_time),
@@ -243,6 +267,72 @@ export default function EntryForm() {
             required
             placeholder="e.g. 2.3"
             error={errors.total_time}
+          />
+          <Field
+            label="Single Engine Land Time (hours)"
+            name="sel_time"
+            type="number"
+            step="0.1"
+            min="0"
+            value={form.sel_time}
+            onChange={handleChange}
+            placeholder="e.g. 0.5"
+            error={errors.sel_time}
+          />
+          <Field
+            label="Single Engine Sea Time (hours)"
+            name="ses_time"
+            type="number"
+            step="0.1"
+            min="0"
+            value={form.ses_time}
+            onChange={handleChange}
+            placeholder="e.g. 0.5"
+            error={errors.ses_time}
+          />
+          <Field
+            label="Multi Engine Land Time (hours)"
+            name="mel_time"
+            type="number"
+            step="0.1"
+            min="0"
+            value={form.mel_time}
+            onChange={handleChange}
+            placeholder="e.g. 0.5"
+            error={errors.mel_time}
+          />
+          <Field
+            label="Multi Engine Sea Time (hours)"
+            name="mes_time"
+            type="number"
+            step="0.1"
+            min="0"
+            value={form.mes_time}
+            onChange={handleChange}
+            placeholder="e.g. 0.5"
+            error={errors.mes_time}
+          />
+          <Field
+            label="Helicopter Time (hours)"
+            name="helicopter_time"
+            type="number"
+            step="0.1"
+            min="0"
+            value={form.helicopter_time}
+            onChange={handleChange}
+            placeholder="e.g. 0.5"
+            error={errors.helicopter_time}
+          />
+          <Field
+            label="Glider Time (hours)"
+            name="glider_time"
+            type="number"
+            step="0.1"
+            min="0"
+            value={form.glider_time}
+            onChange={handleChange}
+            placeholder="e.g. 0.5"
+            error={errors.glider_time}
           />
           <Field
             label="PIC Time (hours)"
