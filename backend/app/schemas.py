@@ -15,12 +15,19 @@ class FlightCreate(BaseModel):
     departure_time: Optional[str] = None
     arrival_time: Optional[str] = None
     total_time: float = Field(..., gt=0)
+    sel_time: float = Field(..., gt=0)
+    ses_time: float = Field(..., gt=0)
+    mel_time: float = Field(..., gt=0)
+    mes_time: float = Field(..., gt=0)
     pic_time: float = Field(..., gt=0)
     sic_time: float = Field(..., gt=0)
     dual_time: float = Field(..., gt=0)
     instructor_time: float = Field(..., gt=0)
     xcountry_time: float = Field(..., gt=0)
     night_time: Optional[float] = Field(default=0, ge=0)
+    act_instrument_time: float = Field(..., gt=0)
+    sim_instrumnent_time: float = Field(..., gt=0)
+    sim_time: float = Field(..., gt=0)
     pilot_in_command: str = Field(..., min_length=1, max_length=100)
     remarks: Optional[str] = None
     takeoffs_day: Optional[int] = Field(default=0, ge=0)
@@ -40,12 +47,19 @@ class FlightUpdate(BaseModel):
     departure_time: Optional[str] = None
     arrival_time: Optional[str] = None
     total_time: Optional[float] = Field(default=None, gt=0)
+    sel_time: float = Field(default=None, gt=0)
+    ses_time: float = Field(default=None, gt=0)
+    mel_time: float = Field(default=None, gt=0)
+    mes_time: float = Field(default=None, gt=0)
     pic_time: Optional[float] = Field(default=None, gt=0)
     sic_time: Optional[float] = Field(default=None, gt=0)
     dual_time: Optional[float] = Field(default=None, gt=0)
     instructor_time: Optional[float] = Field(default=None, gt=0)
     xcountry_time: Optional[float] = Field(default=None, gt=0)
     night_time: Optional[float] = Field(default=None, ge=0)
+    act_instrument_time: float = Field(default=None, gt=0)
+    sim_instrumnent_time: float = Field(default=None, gt=0)
+    sim_time: float = Field(default=None, gt=0)
     pilot_in_command: Optional[str] = Field(default=None, min_length=1, max_length=100)
     remarks: Optional[str] = None
     takeoffs_day: Optional[int] = Field(default=None, ge=0)
@@ -66,12 +80,19 @@ class FlightResponse(BaseModel):
     departure_time: Optional[str] = None
     arrival_time: Optional[str] = None
     total_time: float
+    sel_time: float
+    ses_time: float
+    mel_time: float
+    mes_time: float
     pic_time: float
     sic_time: float
     dual_time: float
     instructor_time: float
     xcountry_time: float
     night_time: float = 0
+    act_instrument_time: float
+    sim_instrumnent_time: float
+    sim_time: float
     pilot_in_command: str
     remarks: Optional[str] = None
     takeoffs_day: int = 0
