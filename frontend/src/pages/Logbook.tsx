@@ -134,7 +134,8 @@ export default function Logbook() {
                 <thead>
                   <tr className="border-b-2 border-gray-200 bg-gray-50">
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Date</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Aircraft</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Aircraft Type</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Aircraft Registration</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">From</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">To</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Duration</th>
@@ -153,7 +154,7 @@ export default function Logbook() {
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Actual Instrument</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Hooded Instrument</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Flight Simulator</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Single Engine Sea</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Remarks</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -164,19 +165,27 @@ export default function Logbook() {
                       style={{ animationDelay: `${idx * 30}ms` }}
                     >
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.date}</td>
-                      <td className="px-4 py-3 text-sm whitespace-nowrap">
-                        <span className="text-gray-900 font-medium">{flight.aircraft_type}</span>
-                        <span className="text-gray-400 ml-1 text-xs">({flight.aircraft_reg})</span>
-                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.aircraft_type}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.aircraft_reg}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.departure}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.arrival}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.total_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.sel_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.ses_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.mel_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.mes_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.helicopter_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.glider_time.toFixed(1)}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.pic_time.toFixed(1)}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.sic_time.toFixed(1)}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.dual_time.toFixed(1)}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.instructor_time.toFixed(1)}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.xcountry_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.pilot_in_command}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.night_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.act_instrument_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.sim_instrument_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.sim_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.remarks}</td>
                       <td className="px-4 py-3 row-actions whitespace-nowrap">
                         <div className="flex items-center gap-1">
                           <button
