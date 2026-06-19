@@ -81,6 +81,11 @@ export default function EntryForm() {
     if (!form.arrival.trim()) errs.arrival = "Required";
     if (!form.pilot_in_command.trim()) errs.pilot_in_command = "Required";
     if (!form.total_time || parseFloat(form.total_time) <= 0) errs.total_time = "Must be > 0";
+    if (form.pic_time && parseFloat(form.pic_time) < 0) errs.pic_time = "Cannot be negative";
+    if (form.sic_time && parseFloat(form.sic_time) < 0) errs.sic_time = "Cannot be negative";
+    if (form.dual_time && parseFloat(form.dual_time) < 0) errs.dual_time = "Cannot be negative";
+    if (form.instructor_time && parseFloat(form.instructor_time) < 0) errs.instructor_time = "Cannot be negative";
+    if (form.xcountry_time && parseFloat(form.xcountry_time) < 0) errs.xcountry_time = "Cannot be negative";
     if (form.night_time && parseFloat(form.night_time) < 0) errs.night_time = "Cannot be negative";
     if (form.night_time && form.total_time && parseFloat(form.night_time) > parseFloat(form.total_time)) {
       errs.night_time = "Cannot exceed total time";
