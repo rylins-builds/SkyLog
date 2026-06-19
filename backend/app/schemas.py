@@ -28,7 +28,7 @@ class FlightCreate(BaseModel):
     xcountry_time: float = Field(..., gt=0)
     night_time: Optional[float] = Field(default=0, ge=0)
     act_instrument_time: float = Field(..., gt=0)
-    sim_instrumnent_time: float = Field(..., gt=0)
+    sim_instrument_time: float = Field(..., gt=0)
     sim_time: float = Field(..., gt=0)
     pilot_in_command: str = Field(..., min_length=1, max_length=100)
     remarks: Optional[str] = None
@@ -62,7 +62,7 @@ class FlightUpdate(BaseModel):
     xcountry_time: Optional[float] = Field(default=None, gt=0)
     night_time: Optional[float] = Field(default=None, ge=0)
     act_instrument_time: float = Field(default=None, gt=0)
-    sim_instrumnent_time: float = Field(default=None, gt=0)
+    sim_instrument_time: float = Field(default=None, gt=0)
     sim_time: float = Field(default=None, gt=0)
     pilot_in_command: Optional[str] = Field(default=None, min_length=1, max_length=100)
     remarks: Optional[str] = None
@@ -97,7 +97,7 @@ class FlightResponse(BaseModel):
     xcountry_time: float
     night_time: float = 0
     act_instrument_time: float
-    sim_instrumnent_time: float
+    sim_instrument_time: float
     sim_time: float
     pilot_in_command: str
     remarks: Optional[str] = None
