@@ -75,7 +75,7 @@ async def create_flight(flight: FlightCreate):
             """INSERT INTO flights 
                (date, aircraft_type, aircraft_reg, departure, arrival, 
                 departure_time, arrival_time, total_time, pic_time, sic_time, dual_time, 
-                instructor_time, xcountrty_time, night_time, pilot_in_command, remarks, 
+                instructor_time, xcountry_time, night_time, pilot_in_command, remarks, 
                 takeoffs_day, takeoffs_night, landings_day, landings_night, cross_country)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
