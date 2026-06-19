@@ -21,12 +21,21 @@ def row_to_flight_response(row) -> dict:
         "departure_time": row["departure_time"],
         "arrival_time": row["arrival_time"],
         "total_time": row["total_time"],
+        "sel_time": row["sel_time"],
+        "ses_time": row["ses_time"],
+        "mel_time": row["mel_time"],
+        "mes_time": row["mes_time"],
+        "helicopter_time": row["helicopter_time"],
+        "glider_time": row["glider_time"],
         "pic_time": row["pic_time"],
         "sic_time": row["sic_time"],
         "dual_time": row["dual_time"],
         "instructor_time": row["instructor_time"],
         "xcountry_time": row["xcountry_time"],
         "night_time": row["night_time"],
+        "act_instrument_time": row["act_instrument_time"],
+        "sim_instrument_time": row["sim_instrument_time"],
+        "sim_time": row["sim_time"],
         "pilot_in_command": row["pilot_in_command"],
         "remarks": row["remarks"],
         "takeoffs_day": row["takeoffs_day"],
@@ -74,10 +83,12 @@ async def create_flight(flight: FlightCreate):
         cursor = conn.execute(
             """INSERT INTO flights 
                (date, aircraft_type, aircraft_reg, departure, arrival, 
-                departure_time, arrival_time, total_time, pic_time, sic_time, dual_time, 
-                instructor_time, xcountry_time, night_time, pilot_in_command, remarks, 
-                takeoffs_day, takeoffs_night, landings_day, landings_night, cross_country)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                departure_time, arrival_time, total_time, sel_time, ses_time, mel_time, mes_time, 
+                helicopter_time, glider_time, pic_time, sic_time, dual_time, instructor_time, 
+                xcountry_time, night_time, act_instrument_time, sim_instrument_time, sim_time, 
+                pilot_in_command, remarks, takeoffs_day, takeoffs_night, landings_day, 
+                landings_night, cross_country)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 flight.date.isoformat(),
                 flight.aircraft_type,
@@ -87,12 +98,21 @@ async def create_flight(flight: FlightCreate):
                 flight.departure_time,
                 flight.arrival_time,
                 flight.total_time,
+                flight.sel_time,
+                flight.ses_time,
+                flight.mel_time,
+                flight.mes_time,
+                flight.helicopter_time,
+                flight.glider_time,
                 flight.pic_time,
                 flight.sic_time,
                 flight.dual_time,
                 flight.instructor_time,
                 flight.xcountry_time,
                 flight.night_time or 0,
+                flight.act_instrument_time,
+                flight.sim_instrument_time,
+                flight.sim_time,
                 flight.pilot_in_command,
                 flight.remarks,
                 flight.takeoffs_day or 0,
@@ -142,6 +162,18 @@ async def update_flight(flight_id: int, flight: FlightUpdate):
             updates["arrival_time"] = flight.arrival_time
         if flight.total_time is not None:
             updates["total_time"] = flight.total_time
+        if flight.sel_time is not None:
+            updates["sel_time"] = flight.sel_time
+        if flight.ses_time is not None:
+            updates["ses_time"] = flight.ses_time
+        if flight.mel_time is not None:
+            updates["mel_time"] = flight.mel_time
+        if flight.mes_time is not None:
+            updates["mes_time"] = flight.mes_time
+        if flight.helicopter_time is not None:
+            updates["helicopter_time"] = flight.helicopter_time
+        if flight.glider_time is not None:
+            updates["glider_time"] = flight.glider_time
         if flight.pic_time is not None:
             updates["pic_time"] = flight.pic_time
         if flight.sic_time is not None:
@@ -154,6 +186,12 @@ async def update_flight(flight_id: int, flight: FlightUpdate):
             updates["xcountry_time"] = flight.xcountry_time
         if flight.night_time is not None:
             updates["night_time"] = flight.night_time
+        if flight.act_instrument_time is not None:
+            updates["act_instrument_time"] = flight.act_instrument_time
+        if flight.sim_instrument_time is not None:
+            updates["sim_instrument_time"] = flight.sim_instrument_time
+        if flight.sim_time is not None:
+            updates["sim_time"] = flight.sim_time
         if flight.pilot_in_command is not None:
             updates["pilot_in_command"] = flight.pilot_in_command
         if flight.remarks is not None:
