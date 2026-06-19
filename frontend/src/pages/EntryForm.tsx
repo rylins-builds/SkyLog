@@ -558,7 +558,7 @@ function Field({
         step={step}
         min={min}
         placeholder={placeholder}
-        className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400 max-w-full ${
+        className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400 ${
           error
             ? "border-red-400 focus:ring-red-500"
             : "border-gray-300 focus:ring-blue-500"
