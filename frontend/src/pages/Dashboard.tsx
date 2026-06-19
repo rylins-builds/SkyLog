@@ -119,12 +119,10 @@ export default function Dashboard() {
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
                     <td className="px-6 py-3 text-sm text-gray-900">{flight.date}</td>
-                    <td className="px-6 py-3 text-sm">
-                      <span className="text-gray-900">{flight.aircraft_type}</span>
-                      <span className="text-gray-500 ml-1 text-xs">({flight.aircraft_reg})</span>
-                    </td>
+                    <td className="px-6 py-3 text-sm text-gray-900">{flight.aircraft_type}</td>
+                    <td className="px-6 py-3 text-sm text-gray-900">{flight.aircraft_reg}</td>
                     <td className="px-6 py-3 text-sm text-gray-900">{flight.departure} → {flight.arrival}</td>
-                    <td className="px-6 py-3 text-sm text-gray-900">{flight.total_time.toFixed(1)}h</td>
+                    <td className="px-6 py-3 text-sm text-gray-900">{flight.total_time.toFixed(1)}</td>
                     <td className="px-6 py-3 text-sm text-gray-900">{flight.pilot_in_command}</td>
                   </tr>
                 ))}
