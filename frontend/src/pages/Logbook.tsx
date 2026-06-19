@@ -101,17 +101,6 @@ export default function Logbook() {
               className="pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48 sm:w-56"
             />
           </div>
-
-          {/* Add flight button */}
-          <button
-            onClick={() => window.dispatchEvent(new CustomEvent("navigate", { detail: "add" }))}
-            className="inline-flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors btn-primary whitespace-nowrap"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            New Flight
-          </button>
         </div>
       </div>
 
