@@ -139,6 +139,9 @@ export default function Logbook() {
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">To</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Duration</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">PIC</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">SIC</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Dual Received</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Instructor</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600 w-16">Actions</th>
                   </tr>
                 </thead>
