@@ -108,6 +108,7 @@ export default function Dashboard() {
                   <th className="px-6 py-3 text-sm font-semibold text-gray-600">Aircraft</th>
                   <th className="px-6 py-3 text-sm font-semibold text-gray-600">From → To</th>
                   <th className="px-6 py-3 text-sm font-semibold text-gray-600">Duration</th>
+                  <th className="px-6 py-3 text-sm font-semibold text-gray-600">Total</th>
                   <th className="px-6 py-3 text-sm font-semibold text-gray-600">PIC</th>
                   <th className="px-6 py-3 text-sm font-semibold text-gray-600">SIC</th>
                 </tr>
@@ -123,6 +124,7 @@ export default function Dashboard() {
                     <td className="px-6 py-3 text-sm text-gray-900">{flight.aircraft_type}</td>
                     <td className="px-6 py-3 text-sm text-gray-900">{flight.aircraft_reg}</td>
                     <td className="px-6 py-3 text-sm text-gray-900">{flight.departure} → {flight.arrival}</td>
+                    <td className="px-6 py-3 text-sm text-gray-900">{flight.total_time.toFixed(1)}</td>
                     <td className="px-6 py-3 text-sm text-gray-900">{flight.pic_time}</td>
                     <td className="px-6 py-3 text-sm text-gray-900">{flight.sic_time}</td>
                   </tr>
