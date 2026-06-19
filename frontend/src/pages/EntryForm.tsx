@@ -10,9 +10,16 @@ interface FormState {
   departure_time: string;
   arrival_time: string;
   total_time: string;
+  pic_time: string;
+  sic_time: string;
+  dual_time: string;
+  instructor_time: string;
+  xcountry_time: string;
   night_time: string;
   pilot_in_command: string;
   remarks: string;
+  takeoffs_day: string;
+  takeoffs_night: string;
   landings_day: string;
   landings_night: string;
   cross_country: boolean;
@@ -27,9 +34,16 @@ const initialForm = (): FormState => ({
   departure_time: "",
   arrival_time: "",
   total_time: "",
+  pic_time: "0",
+  sic_time: "0",
+  dual_time: "0",
+  instructor_time: "0",
+  xcountry_time: "0",
   night_time: "0",
   pilot_in_command: "",
   remarks: "",
+  takeoffs_day: "0",
+  takeoffs_night: "0",
   landings_day: "0",
   landings_night: "0",
   cross_country: false,
@@ -91,9 +105,16 @@ export default function EntryForm() {
         departure_time: form.departure_time || null,
         arrival_time: form.arrival_time || null,
         total_time: parseFloat(form.total_time),
+        pic_time: parseFloat(form.pic_time),
+        sic_time: parseFloat(form.sic_time),
+        dual_time: parseFloat(form.dual_time),
+        instructor_time: parseFloat(form.instructor_time),
+        xcountry_time: parseFloat(form.xcountry_time),
         night_time: parseFloat(form.night_time) || 0,
         pilot_in_command: form.pilot_in_command.trim(),
         remarks: form.remarks.trim() || null,
+        takeoffs_day: parseInt(form.takeoffs_day) || 0,
+        takeoffs_night: parseInt(form.takeoffs_night) || 0,
         landings_day: parseInt(form.landings_day) || 0,
         landings_night: parseInt(form.landings_night) || 0,
         cross_country: form.cross_country,
@@ -215,8 +236,63 @@ export default function EntryForm() {
             value={form.total_time}
             onChange={handleChange}
             required
-            placeholder="e.g. 1.5"
+            placeholder="e.g. 2.3"
             error={errors.total_time}
+          />
+          <Field
+            label="PIC Time (hours)"
+            name="pic_time"
+            type="number"
+            step="0.1"
+            min="0"
+            value={form.pic_time}
+            onChange={handleChange}
+            placeholder="e.g. 0.5"
+            error={errors.pic_time}
+          />
+          <Field
+            label="SIC Time (hours)"
+            name="sic_time"
+            type="number"
+            step="0.1"
+            min="0"
+            value={form.sic_time}
+            onChange={handleChange}
+            placeholder="e.g. 0.5"
+            error={errors.sic_time}
+          />
+          <Field
+            label="Dual Time (hours)"
+            name="dual_time"
+            type="number"
+            step="0.1"
+            min="0"
+            value={form.dual_time}
+            onChange={handleChange}
+            placeholder="e.g. 0.5"
+            error={errors.dual_time}
+          />
+          <Field
+            label="Instructor Time (hours)"
+            name="instructor_time"
+            type="number"
+            step="0.1"
+            min="0"
+            value={form.instructor_time}
+            onChange={handleChange}
+            placeholder="e.g. 0.5"
+            error={errors.instructor_time}
+          />
+          <Field
+            label="Cross Country Time (hours)"
+            name="xcountry_time"
+            type="number"
+            step="0.1"
+            min="0"
+            value={form.xcountry_time}
+            onChange={handleChange}
+            placeholder="e.g. 0.5"
+            error={errors.xcountry_time}
           />
           <Field
             label="Night Time (hours)"
@@ -228,6 +304,22 @@ export default function EntryForm() {
             onChange={handleChange}
             placeholder="e.g. 0.5"
             error={errors.night_time}
+          />
+          <Field
+            label="Day Takeoffs"
+            name="takeoffs_day"
+            type="number"
+            min="0"
+            value={form.takeoffs_day}
+            onChange={handleChange}
+          />
+          <Field
+            label="Night Takeoffs"
+            name="takeoffs_night"
+            type="number"
+            min="0"
+            value={form.takeoffs_night}
+            onChange={handleChange}
           />
           <Field
             label="Day Landings"
