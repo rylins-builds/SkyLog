@@ -258,7 +258,7 @@ export default function EntryForm() {
             label="Departure Time (Zulu)"
             name="departure_time"
             type="time"
-            placeholder="DD:HH:MM (e.g. 12:30:23)"
+            /*placeholder="DD:HH:MM (e.g. 12:30:23)"*/
             value={form.departure_time}
             onChange={handleChange}
           />
@@ -266,7 +266,7 @@ export default function EntryForm() {
             label="Arrival Time (Zulu)"
             name="arrival_time"
             type="time"
-            pattern="\d{2}:\d{2}"
+            /*pattern="\d{2}:\d{2}"*/
             value={form.arrival_time}
             onChange={handleChange}
           />
