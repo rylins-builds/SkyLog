@@ -288,7 +288,7 @@ export default function EntryForm() {
             min="0"
             value={form.sel_time}
             onChange={handleChange}
-            placeholder="e.g. 0.5"
+            placeholder="0"
             error={errors.sel_time}
           />
           <Field
@@ -299,7 +299,7 @@ export default function EntryForm() {
             min="0"
             value={form.ses_time}
             onChange={handleChange}
-            placeholder="e.g. 0.5"
+            placeholder="0"
             error={errors.ses_time}
           />
           <Field
@@ -310,7 +310,7 @@ export default function EntryForm() {
             min="0"
             value={form.mel_time}
             onChange={handleChange}
-            placeholder="e.g. 0.5"
+            placeholder="0"
             error={errors.mel_time}
           />
           <Field
@@ -321,7 +321,7 @@ export default function EntryForm() {
             min="0"
             value={form.mes_time}
             onChange={handleChange}
-            placeholder="e.g. 0.5"
+            placeholder="0"
             error={errors.mes_time}
           />
           <Field
@@ -332,7 +332,7 @@ export default function EntryForm() {
             min="0"
             value={form.helicopter_time}
             onChange={handleChange}
-            placeholder="e.g. 0.5"
+            placeholder="0"
             error={errors.helicopter_time}
           />
           <Field
@@ -343,7 +343,7 @@ export default function EntryForm() {
             min="0"
             value={form.glider_time}
             onChange={handleChange}
-            placeholder="e.g. 0.5"
+            placeholder="0"
             error={errors.glider_time}
           />
           <Field
@@ -354,7 +354,7 @@ export default function EntryForm() {
             min="0"
             value={form.pic_time}
             onChange={handleChange}
-            placeholder="e.g. 0.5"
+            placeholder="0"
             error={errors.pic_time}
           />
           <Field
@@ -365,7 +365,7 @@ export default function EntryForm() {
             min="0"
             value={form.sic_time}
             onChange={handleChange}
-            placeholder="e.g. 0.5"
+            placeholder="0"
             error={errors.sic_time}
           />
           <Field
@@ -376,7 +376,7 @@ export default function EntryForm() {
             min="0"
             value={form.dual_time}
             onChange={handleChange}
-            placeholder="e.g. 0.5"
+            placeholder="0"
             error={errors.dual_time}
           />
           <Field
@@ -387,7 +387,7 @@ export default function EntryForm() {
             min="0"
             value={form.instructor_time}
             onChange={handleChange}
-            placeholder="e.g. 0.5"
+            placeholder="0"
             error={errors.instructor_time}
           />
           <Field
@@ -398,7 +398,7 @@ export default function EntryForm() {
             min="0"
             value={form.xcountry_time}
             onChange={handleChange}
-            placeholder="e.g. 0.5"
+            placeholder="0"
             error={errors.xcountry_time}
           />
           <Field
@@ -409,7 +409,7 @@ export default function EntryForm() {
             min="0"
             value={form.night_time}
             onChange={handleChange}
-            placeholder="e.g. 0.5"
+            placeholder="0"
             error={errors.night_time}
           />
           <Field
@@ -420,7 +420,7 @@ export default function EntryForm() {
             min="0"
             value={form.act_instrument_time}
             onChange={handleChange}
-            placeholder="e.g. 0.5"
+            placeholder="0"
             error={errors.act_instrument_time}
           />
           <Field
@@ -431,7 +431,7 @@ export default function EntryForm() {
             min="0"
             value={form.sim_instrument_time}
             onChange={handleChange}
-            placeholder="e.g. 0.5"
+            placeholder="0"
             error={errors.sim_instrument_time}
           />
           <Field
@@ -442,7 +442,7 @@ export default function EntryForm() {
             min="0"
             value={form.sim_time}
             onChange={handleChange}
-            placeholder="e.g. 0.5"
+            placeholder="0"
             error={errors.sim_time}
           />
           <Field
@@ -477,21 +477,6 @@ export default function EntryForm() {
             value={form.landings_night}
             onChange={handleChange}
           />
-        </div>
-
-        {/* Cross Country Checkbox */}
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            name="cross_country"
-            id="cross_country"
-            checked={form.cross_country}
-            onChange={handleChange}
-            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          <label htmlFor="cross_country" className="text-sm text-gray-700 select-none">
-            Cross Country
-          </label>
         </div>
 
         {/* Remarks */}
