@@ -107,7 +107,7 @@ export default function EntryForm() {
 
   return (
     <div className="p-4 sm:p-8 max-w-2xl mx-auto animate-fade-in">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Log New Flight</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">Log a New Flight</h1>
 
       {/* Alert */}
       {message && (
