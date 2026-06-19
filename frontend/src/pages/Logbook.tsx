@@ -130,7 +130,7 @@ export default function Logbook() {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
+              <table className="w-full text-center">
                 <thead>
                   <tr className="border-b-2 border-gray-200 bg-gray-50">
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Date</th>
