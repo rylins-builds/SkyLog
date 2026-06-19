@@ -99,24 +99,32 @@ export default function EntryForm() {
     if (!form.arrival.trim()) errs.arrival = "Required";
     if (!form.pilot_in_command.trim()) errs.pilot_in_command = "Required";
     if (!form.total_time || parseFloat(form.total_time) <= 0) errs.total_time = "Must be > 0";
-    /*if (!form.sel_time && parseFloat(form.sel_time) < 0) errs.sel_time = "Cannot be negative";
-    if (!form.ses_time && parseFloat(form.ses_time) < 0) errs.ses_time = "Cannot be negative";
-    if (!form.mel_time && parseFloat(form.mel_time) < 0) errs.mel_time = "Cannot be negative";
-    if (!form.mes_time && parseFloat(form.mes_time) < 0) errs.mes_time = "Cannot be negative";
-    if (!form.helicopter_time && parseFloat(form.helicopter_time) < 0) errs.helicopter_time = "Cannot be negative";
-    if (!form.glider_time && parseFloat(form.glider_time) < 0) errs.glider_time = "Cannot be negative";
-    if (!form.pic_time && parseFloat(form.pic_time) < 0) errs.pic_time = "Cannot be negative";
-    if (!form.sic_time && parseFloat(form.sic_time) < 0) errs.sic_time = "Cannot be negative";
-    if (!form.dual_time && parseFloat(form.dual_time) < 0) errs.dual_time = "Cannot be negative";
-    if (!form.instructor_time && parseFloat(form.instructor_time) < 0) errs.instructor_time = "Cannot be negative";
-    if (!form.xcountry_time && parseFloat(form.xcountry_time) < 0) errs.xcountry_time = "Cannot be negative";*/
-    if (form.night_time && parseFloat(form.night_time) < 0) errs.night_time = "Cannot be negative";
+    
+    // Check numeric fields - only validate if they have a value
+    const numericFields = [
+      "sel_time", "ses_time", "mel_time", "mes_time", "helicopter_time",
+      "glider_time", "pic_time", "sic_time", "dual_time", "instructor_time",
+      "xcountry_time", "act_instrument_time", "sim_instrument_time"
+    ];
+    
+    for (const field of numericFields) {
+      const value = form[field as keyof FormState];
+      if (value && parseFloat(value as string) < 0) {
+        errs[field] = "Cannot be negative";
+      }
+    }
+    
+    if (form.night_time && parseFloat(form.night_time) < 0) {
+      errs.night_time = "Cannot be negative";
+    }
     if (form.night_time && form.total_time && parseFloat(form.night_time) > parseFloat(form.total_time)) {
       errs.night_time = "Cannot exceed total time";
     }
-    /*if (!form.act_instrument_time && parseFloat(form.act_instrument_time) < 0) errs.act_instrument_time = "Cannot be negative";
-    if (!form.sim_instrument_time && parseFloat(form.sim_instrument_time) < 0) errs.sim_instrument_time = "Cannot be negative";
-    if (!form.sim_time && parseFloat(form.sim_time) < 0) errs.sim_time = "Cannot be negative";*/
+    
+    if (form.sim_time && parseFloat(form.sim_time) < 0) {
+      errs.sim_time = "Cannot be negative";
+    }
+    
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -137,27 +145,27 @@ export default function EntryForm() {
         departure_time: form.departure_time || null,
         arrival_time: form.arrival_time || null,
         total_time: parseFloat(form.total_time),
-        sel_time: parseFloat(form.sel_time),
-        ses_time: parseFloat(form.ses_time),
-        mel_time: parseFloat(form.mel_time),
-        mes_time: parseFloat(form.mes_time),
-        helicopter_time: parseFloat(form.helicopter_time),
-        glider_time: parseFloat(form.glider_time),
-        pic_time: parseFloat(form.pic_time),
-        sic_time: parseFloat(form.sic_time),
-        dual_time: parseFloat(form.dual_time),
-        instructor_time: parseFloat(form.instructor_time),
-        xcountry_time: parseFloat(form.xcountry_time),
-        night_time: parseFloat(form.night_time) || 0,
-        act_instrument_time: parseFloat(form.act_instrument_time) || 0,
-        sim_instrument_time: parseFloat(form.sim_instrument_time) || 0,
-        sim_time: parseFloat(form.sim_time) || 0,
+        sel_time: form.sel_time ? parseFloat(form.sel_time) : null,
+        ses_time: form.ses_time ? parseFloat(form.ses_time) : null,
+        mel_time: form.mel_time ? parseFloat(form.mel_time) : null,
+        mes_time: form.mes_time ? parseFloat(form.mes_time) : null,
+        helicopter_time: form.helicopter_time ? parseFloat(form.helicopter_time) : null,
+        glider_time: form.glider_time ? parseFloat(form.glider_time) : null,
+        pic_time: form.pic_time ? parseFloat(form.pic_time) : null,
+        sic_time: form.sic_time ? parseFloat(form.sic_time) : null,
+        dual_time: form.dual_time ? parseFloat(form.dual_time) : null,
+        instructor_time: form.instructor_time ? parseFloat(form.instructor_time) : null,
+        xcountry_time: form.xcountry_time ? parseFloat(form.xcountry_time) : null,
+        night_time: form.night_time ? parseFloat(form.night_time) : null,
+        act_instrument_time: form.act_instrument_time ? parseFloat(form.act_instrument_time) : null,
+        sim_instrument_time: form.sim_instrument_time ? parseFloat(form.sim_instrument_time) : null,
+        sim_time: form.sim_time ? parseFloat(form.sim_time) : null,
         pilot_in_command: form.pilot_in_command.trim(),
         remarks: form.remarks.trim() || null,
-        takeoffs_day: parseInt(form.takeoffs_day) || 0,
-        takeoffs_night: parseInt(form.takeoffs_night) || 0,
-        landings_day: parseInt(form.landings_day) || 0,
-        landings_night: parseInt(form.landings_night) || 0,
+        takeoffs_day: form.takeoffs_day ? parseInt(form.takeoffs_day) : null,
+        takeoffs_night: form.takeoffs_night ? parseInt(form.takeoffs_night) : null,
+        landings_day: form.landings_day ? parseInt(form.landings_day) : null,
+        landings_night: form.landings_night ? parseInt(form.landings_night) : null,
         cross_country: form.cross_country,
       });
 
