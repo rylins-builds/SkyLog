@@ -215,7 +215,7 @@ export default function EntryForm() {
             value={form.pilot_in_command}
             onChange={handleChange}
             required
-            placeholder="e.g. John Doe"
+            placeholder="e.g. Mike Brogan"
             error={errors.pilot_in_command}
           />
           <Field
