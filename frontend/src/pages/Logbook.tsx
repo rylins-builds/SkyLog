@@ -143,7 +143,7 @@ export default function Logbook() {
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Multi Engine Land</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Single Engine Sea</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Helicopter</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">GLider</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Glider</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">PIC</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">SIC</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Dual Received</th>
