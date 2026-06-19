@@ -16,13 +16,6 @@ class FlightCreate(BaseModel):
     arrival_time: Optional[str] = None
     total_time: float = Field(..., gt=0)
     night_time: Optional[float] = Field(default=0, ge=0)
-    pic_time: Optional[float] = Field(default=0, ge=0)
-    sic_time: Optional[float] = Field(default=0, ge=0)
-    dual_received: Optional[float] = Field(default=0, ge=0)
-    dual_given: Optional[float] = Field(default=0, ge=0)
-    actual_instrument: Optional[float] = Field(default=0, ge=0)
-    sim_instrument: Optional[float] = Field(default=0, ge=0)
-    approaches: Optional[int] = Field(default=0, ge=0)
     pilot_in_command: str = Field(..., min_length=1, max_length=100)
     remarks: Optional[str] = None
     landings_day: Optional[int] = Field(default=0, ge=0)
@@ -41,13 +34,6 @@ class FlightUpdate(BaseModel):
     arrival_time: Optional[str] = None
     total_time: Optional[float] = Field(default=None, gt=0)
     night_time: Optional[float] = Field(default=None, ge=0)
-    pic_time: Optional[float] = Field(default=None, ge=0)
-    sic_time: Optional[float] = Field(default=None, ge=0)
-    dual_received: Optional[float] = Field(default=None, ge=0)
-    dual_given: Optional[float] = Field(default=None, ge=0)
-    actual_instrument: Optional[float] = Field(default=None, ge=0)
-    sim_instrument: Optional[float] = Field(default=None, ge=0)
-    approaches: Optional[int] = Field(default=None, ge=0)
     pilot_in_command: Optional[str] = Field(default=None, min_length=1, max_length=100)
     remarks: Optional[str] = None
     landings_day: Optional[int] = Field(default=None, ge=0)
@@ -67,13 +53,6 @@ class FlightResponse(BaseModel):
     arrival_time: Optional[str] = None
     total_time: float
     night_time: float = 0
-    pic_time: float = 0
-    sic_time: float = 0
-    dual_received: float = 0
-    dual_given: float = 0
-    actual_instrument: float = 0
-    sim_instrument: float = 0
-    approaches: int = 0
     pilot_in_command: str
     remarks: Optional[str] = None
     landings_day: int = 0
@@ -90,10 +69,6 @@ class DashboardStats(BaseModel):
     total_flights: int
     total_hours: float
     total_night_hours: float
-    total_pic_hours: float
-    total_sic_hours: float
-    total_instrument_hours: float
     hours_last_30_days: float
     total_landings: int
-    total_approaches: int
     unique_aircraft: int
