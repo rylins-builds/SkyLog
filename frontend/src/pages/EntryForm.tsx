@@ -22,6 +22,9 @@ interface FormState {
   instructor_time: string;
   xcountry_time: string;
   night_time: string;
+  act_instrument_time: string;
+  sim_instrument_time: string;
+  sim_time: string;
   pilot_in_command: string;
   remarks: string;
   takeoffs_day: string;
@@ -52,6 +55,9 @@ const initialForm = (): FormState => ({
   instructor_time: "0",
   xcountry_time: "0",
   night_time: "0",
+  act_instrument_time: "0",
+  sim_instrument_time: "0",
+  sim_time: "0",
   pilot_in_command: "",
   remarks: "",
   takeoffs_day: "0",
@@ -108,6 +114,9 @@ export default function EntryForm() {
     if (form.night_time && form.total_time && parseFloat(form.night_time) > parseFloat(form.total_time)) {
       errs.night_time = "Cannot exceed total time";
     }
+    if (form.act_instrument_time && parseFloat(form.act_instrument_time) < 0) errs.act_instrument_time = "Cannot be negative";
+    if (form.sim_instrument_time && parseFloat(form.sim_instrument_time) < 0) errs.sim_instrument_time = "Cannot be negative";
+    if (form.sim_time && parseFloat(form.sim_time) < 0) errs.sim_time = "Cannot be negative";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -140,6 +149,9 @@ export default function EntryForm() {
         instructor_time: parseFloat(form.instructor_time),
         xcountry_time: parseFloat(form.xcountry_time),
         night_time: parseFloat(form.night_time) || 0,
+        act_instrument_time: parseFloat(form.act_instrument_time) || 0,
+        sim_instrument_time: parseFloat(form.sim_instrument_time) || 0,
+        sim_time: parseFloat(form.sim_time) || 0,
         pilot_in_command: form.pilot_in_command.trim(),
         remarks: form.remarks.trim() || null,
         takeoffs_day: parseInt(form.takeoffs_day) || 0,
@@ -399,6 +411,39 @@ export default function EntryForm() {
             onChange={handleChange}
             placeholder="e.g. 0.5"
             error={errors.night_time}
+          />
+          <Field
+            label="Actual Instrument Time (hours)"
+            name="act_instrument_time"
+            type="number"
+            step="0.1"
+            min="0"
+            value={form.act_instrument_time}
+            onChange={handleChange}
+            placeholder="e.g. 0.5"
+            error={errors.act_instrument_time}
+          />
+          <Field
+            label="Hooded Instrument Time (hours)"
+            name="sim_instrument_time"
+            type="number"
+            step="0.1"
+            min="0"
+            value={form.sim_instrument_time}
+            onChange={handleChange}
+            placeholder="e.g. 0.5"
+            error={errors.sim_instrument_time}
+          />
+          <Field
+            label="Simulator Time (hours)"
+            name="sim_time"
+            type="number"
+            step="0.1"
+            min="0"
+            value={form.sim_time}
+            onChange={handleChange}
+            placeholder="e.g. 0.5"
+            error={errors.sim_time}
           />
           <Field
             label="Day Takeoffs"
