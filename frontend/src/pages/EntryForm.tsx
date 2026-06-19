@@ -99,7 +99,7 @@ export default function EntryForm() {
     if (!form.arrival.trim()) errs.arrival = "Required";
     if (!form.pilot_in_command.trim()) errs.pilot_in_command = "Required";
     if (!form.total_time || parseFloat(form.total_time) <= 0) errs.total_time = "Must be > 0";
-    /*if (!form.sel_time && parseFloat(form.sel_time) < 0) errs.sel_time = "Cannot be negative";
+    if (!form.sel_time && parseFloat(form.sel_time) < 0) errs.sel_time = "Cannot be negative";
     if (!form.ses_time && parseFloat(form.ses_time) < 0) errs.ses_time = "Cannot be negative";
     if (!form.mel_time && parseFloat(form.mel_time) < 0) errs.mel_time = "Cannot be negative";
     if (!form.mes_time && parseFloat(form.mes_time) < 0) errs.mes_time = "Cannot be negative";
@@ -109,14 +109,14 @@ export default function EntryForm() {
     if (!form.sic_time && parseFloat(form.sic_time) < 0) errs.sic_time = "Cannot be negative";
     if (!form.dual_time && parseFloat(form.dual_time) < 0) errs.dual_time = "Cannot be negative";
     if (!form.instructor_time && parseFloat(form.instructor_time) < 0) errs.instructor_time = "Cannot be negative";
-    if (!form.xcountry_time && parseFloat(form.xcountry_time) < 0) errs.xcountry_time = "Cannot be negative";*/
+    if (!form.xcountry_time && parseFloat(form.xcountry_time) < 0) errs.xcountry_time = "Cannot be negative";
     if (form.night_time && parseFloat(form.night_time) < 0) errs.night_time = "Cannot be negative";
     if (form.night_time && form.total_time && parseFloat(form.night_time) > parseFloat(form.total_time)) {
       errs.night_time = "Cannot exceed total time";
     }
-    /*if (!form.act_instrument_time && parseFloat(form.act_instrument_time) < 0) errs.act_instrument_time = "Cannot be negative";
+    if (!form.act_instrument_time && parseFloat(form.act_instrument_time) < 0) errs.act_instrument_time = "Cannot be negative";
     if (!form.sim_instrument_time && parseFloat(form.sim_instrument_time) < 0) errs.sim_instrument_time = "Cannot be negative";
-    if (!form.sim_time && parseFloat(form.sim_time) < 0) errs.sim_time = "Cannot be negative";*/
+    if (!form.sim_time && parseFloat(form.sim_time) < 0) errs.sim_time = "Cannot be negative";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
