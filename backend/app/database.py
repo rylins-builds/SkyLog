@@ -52,7 +52,7 @@ def init_db() -> None:
                 night_time      REAL    DEFAULT 0 CHECK(night_time >= 0),
                 act_instrument_time   REAL    NOT NULL CHECK(total_time > 0),
                 sim_instrument_time   REAL    NOT NULL CHECK(total_time > 0),
-                simulator_time   REAL    NOT NULL CHECK(total_time > 0),
+                sim_time        REAL    NOT NULL CHECK(total_time > 0),
                 pilot_in_command TEXT   NOT NULL,
                 remarks         TEXT,
                 takeoffs_day    INTEGER DEFAULT 0 CHECK(takeoffs_day >= 0),
