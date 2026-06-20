@@ -13,9 +13,21 @@ def get_db_path() -> str:
     return os.environ.get("SKYLOG_DB_PATH", str(DEFAULT_DB_PATH))
 
 
+def ensure_db_dir(db_path: str) -> None:
+    """Create the parent directory for the database file if it doesn't exist."""
+    db_dir = Path(db_path).parent
+    db_dir.mkdir(parents=True, exist_ok=True)
+
+
 def get_connection() -> sqlite3.Connection:
-    """Create and return a new SQLite connection with row factory enabled."""
+    """Create and return a new SQLite connection with row factory enabled.
+
+    Automatically creates the parent directory if it doesn't exist,
+    which is essential for Docker deployments where the data volume
+    is mounted to a directory path.
+    """
     db_path = get_db_path()
+    ensure_db_dir(db_path)
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
