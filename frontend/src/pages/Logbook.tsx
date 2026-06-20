@@ -178,7 +178,7 @@ export default function Logbook() {
                       <td className="px-4 py-3 row-actions whitespace-nowrap">
                         <div className="flex items-center gap-1">
                           <button
-                            onClick={() => alert("Edit: Implement edit navigation")}
+                            onClick={() => window.dispatchEvent(new CustomEvent("edit-flight", { detail: flight.id }))}
                             className="p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                             title="Edit flight"
                           >
