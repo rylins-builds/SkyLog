@@ -7,17 +7,36 @@ type Page = "dashboard" | "logbook" | "add";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>("dashboard");
+  const [editingFlightId, setEditingFlightId] = useState<number | null>(null);
 
   // Listen for custom navigate events from child components
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (detail === "add") setCurrentPage("add");
-      else if (detail === "logbook") setCurrentPage("logbook");
-      else if (detail === "dashboard") setCurrentPage("dashboard");
+      if (detail === "add") {
+        setEditingFlightId(null);
+        setCurrentPage("add");
+      } else if (detail === "logbook") {
+        setEditingFlightId(null);
+        setCurrentPage("logbook");
+      } else if (detail === "dashboard") {
+        setEditingFlightId(null);
+        setCurrentPage("dashboard");
+      }
     };
     window.addEventListener("navigate", handler);
     return () => window.removeEventListener("navigate", handler);
+  }, []);
+
+  // Listen for edit-flight events from Logbook
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const flightId = (e as CustomEvent).detail as number;
+      setEditingFlightId(flightId);
+      setCurrentPage("add");
+    };
+    window.addEventListener("edit-flight", handler);
+    return () => window.removeEventListener("edit-flight", handler);
   }, []);
 
   return (
@@ -36,7 +55,7 @@ export default function App() {
             <nav className="flex gap-1">
               <NavButton
                 active={currentPage === "dashboard"}
-                onClick={() => setCurrentPage("dashboard")}
+                onClick={() => { setEditingFlightId(null); setCurrentPage("dashboard"); }}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -45,7 +64,7 @@ export default function App() {
               </NavButton>
               <NavButton
                 active={currentPage === "logbook"}
-                onClick={() => setCurrentPage("logbook")}
+                onClick={() => { setEditingFlightId(null); setCurrentPage("logbook"); }}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -54,7 +73,7 @@ export default function App() {
               </NavButton>
               <NavButton
                 active={currentPage === "add"}
-                onClick={() => setCurrentPage("add")}
+                onClick={() => { setEditingFlightId(null); setCurrentPage("add"); }}
                 highlight
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -68,10 +87,10 @@ export default function App() {
       </header>
 
       {/* Page Content */}
-      <main className="animate-fade-in" key={currentPage}>
+      <main className="animate-fade-in" key={`${currentPage}-${editingFlightId ?? "new"}`}>
         {currentPage === "dashboard" && <Dashboard />}
         {currentPage === "logbook" && <Logbook />}
-        {currentPage === "add" && <EntryForm />}
+        {currentPage === "add" && <EntryForm editFlightId={editingFlightId} />}
       </main>
     </div>
   );

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api } from "../api/client";
+import type { Flight } from "../api/types";
 
 interface FormState {
   date: string;
@@ -67,11 +68,70 @@ const initialForm = (): FormState => ({
   cross_country: false,
 });
 
-export default function EntryForm() {
+/** Convert a Flight object from the API into form state. */
+const flightToForm = (flight: Flight): FormState => ({
+  date: flight.date,
+  aircraft_type: flight.aircraft_type,
+  aircraft_reg: flight.aircraft_reg,
+  departure: flight.departure,
+  arrival: flight.arrival,
+  departure_time: flight.departure_time ?? "",
+  arrival_time: flight.arrival_time ?? "",
+  total_time: flight.total_time.toString(),
+  sel_time: flight.sel_time.toString(),
+  ses_time: flight.ses_time.toString(),
+  mel_time: flight.mel_time.toString(),
+  mes_time: flight.mes_time.toString(),
+  helicopter_time: flight.helicopter_time.toString(),
+  glider_time: flight.glider_time.toString(),
+  pic_time: flight.pic_time.toString(),
+  sic_time: flight.sic_time.toString(),
+  dual_time: flight.dual_time.toString(),
+  instructor_time: flight.instructor_time.toString(),
+  xcountry_time: flight.xcountry_time.toString(),
+  night_time: flight.night_time.toString(),
+  act_instrument_time: flight.act_instrument_time.toString(),
+  sim_instrument_time: flight.sim_instrument_time.toString(),
+  sim_time: flight.sim_time.toString(),
+  pilot_in_command: flight.pilot_in_command,
+  remarks: flight.remarks ?? "",
+  takeoffs_day: flight.takeoffs_day.toString(),
+  takeoffs_night: flight.takeoffs_night.toString(),
+  landings_day: flight.landings_day.toString(),
+  landings_night: flight.landings_night.toString(),
+  cross_country: flight.cross_country,
+});
+
+export default function EntryForm({ editFlightId }: { editFlightId?: number | null }) {
+  const isEditMode = editFlightId != null;
+
   const [form, setForm] = useState<FormState>(initialForm());
   const [saving, setSaving] = useState(false);
+  const [loadingFlight, setLoadingFlight] = useState(isEditMode);
+  const [loadError, setLoadError] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // On mount (or editFlightId change), fetch flight data if editing
+  useEffect(() => {
+    if (editFlightId == null) {
+      setForm(initialForm());
+      setLoadingFlight(false);
+      return;
+    }
+    setLoadingFlight(true);
+    setLoadError("");
+    api
+      .getFlight(editFlightId)
+      .then((flight) => {
+        setForm(flightToForm(flight));
+        setLoadingFlight(false);
+      })
+      .catch((err) => {
+        setLoadError(`Failed to load flight: ${err.message}`);
+        setLoadingFlight(false);
+      });
+  }, [editFlightId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -99,24 +159,24 @@ export default function EntryForm() {
     if (!form.arrival.trim()) errs.arrival = "Required";
     if (!form.pilot_in_command.trim()) errs.pilot_in_command = "Required";
     if (!form.total_time || parseFloat(form.total_time) <= 0) errs.total_time = "Must be > 0";
-    if (!form.sel_time && parseFloat(form.sel_time) < 0) errs.sel_time = "Cannot be negative";
-    if (!form.ses_time && parseFloat(form.ses_time) < 0) errs.ses_time = "Cannot be negative";
-    if (!form.mel_time && parseFloat(form.mel_time) < 0) errs.mel_time = "Cannot be negative";
-    if (!form.mes_time && parseFloat(form.mes_time) < 0) errs.mes_time = "Cannot be negative";
-    if (!form.helicopter_time && parseFloat(form.helicopter_time) < 0) errs.helicopter_time = "Cannot be negative";
-    if (!form.glider_time && parseFloat(form.glider_time) < 0) errs.glider_time = "Cannot be negative";
-    if (!form.pic_time && parseFloat(form.pic_time) < 0) errs.pic_time = "Cannot be negative";
-    if (!form.sic_time && parseFloat(form.sic_time) < 0) errs.sic_time = "Cannot be negative";
-    if (!form.dual_time && parseFloat(form.dual_time) < 0) errs.dual_time = "Cannot be negative";
-    if (!form.instructor_time && parseFloat(form.instructor_time) < 0) errs.instructor_time = "Cannot be negative";
-    if (!form.xcountry_time && parseFloat(form.xcountry_time) < 0) errs.xcountry_time = "Cannot be negative";
+    if (form.sel_time && parseFloat(form.sel_time) < 0) errs.sel_time = "Cannot be negative";
+    if (form.ses_time && parseFloat(form.ses_time) < 0) errs.ses_time = "Cannot be negative";
+    if (form.mel_time && parseFloat(form.mel_time) < 0) errs.mel_time = "Cannot be negative";
+    if (form.mes_time && parseFloat(form.mes_time) < 0) errs.mes_time = "Cannot be negative";
+    if (form.helicopter_time && parseFloat(form.helicopter_time) < 0) errs.helicopter_time = "Cannot be negative";
+    if (form.glider_time && parseFloat(form.glider_time) < 0) errs.glider_time = "Cannot be negative";
+    if (form.pic_time && parseFloat(form.pic_time) < 0) errs.pic_time = "Cannot be negative";
+    if (form.sic_time && parseFloat(form.sic_time) < 0) errs.sic_time = "Cannot be negative";
+    if (form.dual_time && parseFloat(form.dual_time) < 0) errs.dual_time = "Cannot be negative";
+    if (form.instructor_time && parseFloat(form.instructor_time) < 0) errs.instructor_time = "Cannot be negative";
+    if (form.xcountry_time && parseFloat(form.xcountry_time) < 0) errs.xcountry_time = "Cannot be negative";
     if (form.night_time && parseFloat(form.night_time) < 0) errs.night_time = "Cannot be negative";
     if (form.night_time && form.total_time && parseFloat(form.night_time) > parseFloat(form.total_time)) {
       errs.night_time = "Cannot exceed total time";
     }
-    if (!form.act_instrument_time && parseFloat(form.act_instrument_time) < 0) errs.act_instrument_time = "Cannot be negative";
-    if (!form.sim_instrument_time && parseFloat(form.sim_instrument_time) < 0) errs.sim_instrument_time = "Cannot be negative";
-    if (!form.sim_time && parseFloat(form.sim_time) < 0) errs.sim_time = "Cannot be negative";
+    if (form.act_instrument_time && parseFloat(form.act_instrument_time) < 0) errs.act_instrument_time = "Cannot be negative";
+    if (form.sim_instrument_time && parseFloat(form.sim_instrument_time) < 0) errs.sim_instrument_time = "Cannot be negative";
+    if (form.sim_time && parseFloat(form.sim_time) < 0) errs.sim_time = "Cannot be negative";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -127,42 +187,48 @@ export default function EntryForm() {
     setSaving(true);
     setMessage(null);
 
-    try {
-      await api.createFlight({
-        date: form.date,
-        aircraft_type: form.aircraft_type.trim(),
-        aircraft_reg: form.aircraft_reg.trim().toUpperCase(),
-        departure: form.departure.trim().toUpperCase(),
-        arrival: form.arrival.trim().toUpperCase(),
-        departure_time: form.departure_time || null,
-        arrival_time: form.arrival_time || null,
-        total_time: parseFloat(form.total_time),
-        sel_time: parseFloat(form.sel_time) || 0,
-        ses_time: parseFloat(form.ses_time) || 0,
-        mel_time: parseFloat(form.mel_time) || 0,
-        mes_time: parseFloat(form.mes_time) || 0,
-        helicopter_time: parseFloat(form.helicopter_time) || 0,
-        glider_time: parseFloat(form.glider_time) || 0,
-        pic_time: parseFloat(form.pic_time) || 0,
-        sic_time: parseFloat(form.sic_time) || 0,
-        dual_time: parseFloat(form.dual_time) || 0,
-        instructor_time: parseFloat(form.instructor_time) || 0,
-        xcountry_time: parseFloat(form.xcountry_time)|| 0,
-        night_time: parseFloat(form.night_time) || 0,
-        act_instrument_time: parseFloat(form.act_instrument_time) || 0,
-        sim_instrument_time: parseFloat(form.sim_instrument_time) || 0,
-        sim_time: parseFloat(form.sim_time) || 0,
-        pilot_in_command: form.pilot_in_command.trim(),
-        remarks: form.remarks.trim() || null,
-        takeoffs_day: parseInt(form.takeoffs_day) || 0,
-        takeoffs_night: parseInt(form.takeoffs_night) || 0,
-        landings_day: parseInt(form.landings_day) || 0,
-        landings_night: parseInt(form.landings_night) || 0,
-        cross_country: form.cross_country,
-      });
+    const payload = {
+      date: form.date,
+      aircraft_type: form.aircraft_type.trim(),
+      aircraft_reg: form.aircraft_reg.trim().toUpperCase(),
+      departure: form.departure.trim().toUpperCase(),
+      arrival: form.arrival.trim().toUpperCase(),
+      departure_time: form.departure_time || null,
+      arrival_time: form.arrival_time || null,
+      total_time: parseFloat(form.total_time),
+      sel_time: parseFloat(form.sel_time) || 0,
+      ses_time: parseFloat(form.ses_time) || 0,
+      mel_time: parseFloat(form.mel_time) || 0,
+      mes_time: parseFloat(form.mes_time) || 0,
+      helicopter_time: parseFloat(form.helicopter_time) || 0,
+      glider_time: parseFloat(form.glider_time) || 0,
+      pic_time: parseFloat(form.pic_time) || 0,
+      sic_time: parseFloat(form.sic_time) || 0,
+      dual_time: parseFloat(form.dual_time) || 0,
+      instructor_time: parseFloat(form.instructor_time) || 0,
+      xcountry_time: parseFloat(form.xcountry_time) || 0,
+      night_time: parseFloat(form.night_time) || 0,
+      act_instrument_time: parseFloat(form.act_instrument_time) || 0,
+      sim_instrument_time: parseFloat(form.sim_instrument_time) || 0,
+      sim_time: parseFloat(form.sim_time) || 0,
+      pilot_in_command: form.pilot_in_command.trim(),
+      remarks: form.remarks.trim() || null,
+      takeoffs_day: parseInt(form.takeoffs_day) || 0,
+      takeoffs_night: parseInt(form.takeoffs_night) || 0,
+      landings_day: parseInt(form.landings_day) || 0,
+      landings_night: parseInt(form.landings_night) || 0,
+      cross_country: form.cross_country,
+    };
 
-      setMessage({ type: "success", text: "Flight logged successfully!" });
-      setForm(initialForm());
+    try {
+      if (isEditMode) {
+        await api.updateFlight(editFlightId, payload);
+        setMessage({ type: "success", text: "Flight updated successfully!" });
+      } else {
+        await api.createFlight(payload);
+        setMessage({ type: "success", text: "Flight logged successfully!" });
+        setForm(initialForm());
+      }
       setErrors({});
     } catch (err) {
       setMessage({
@@ -174,9 +240,39 @@ export default function EntryForm() {
     }
   };
 
+  // Loading state when fetching flight for edit
+  if (loadingFlight) {
+    return (
+      <div className="p-4 sm:p-8 max-w-2xl mx-auto animate-fade-in">
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">Edit Flight</h1>
+        <div className="space-y-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="skeleton h-10 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Error loading flight for edit
+  if (loadError) {
+    return (
+      <div className="p-8 text-center animate-fade-in">
+        <div className="inline-flex items-center gap-2 bg-red-100 text-red-700 px-4 py-3 rounded-lg">
+          <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{loadError}</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 sm:p-8 max-w-2xl mx-auto animate-fade-in">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Log a New Flight</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">
+        {isEditMode ? "Edit Flight" : "Log a New Flight"}
+      </h1>
 
       {/* Alert */}
       {message && (
@@ -258,7 +354,6 @@ export default function EntryForm() {
             label="Departure Time (Zulu)"
             name="departure_time"
             type="time"
-            /*placeholder="DD:HH:MM (e.g. 12:30:23)"*/
             value={form.departure_time}
             onChange={handleChange}
           />
@@ -266,7 +361,6 @@ export default function EntryForm() {
             label="Arrival Time (Zulu)"
             name="arrival_time"
             type="time"
-            /*pattern="\d{2}:\d{2}"*/
             value={form.arrival_time}
             onChange={handleChange}
           />
@@ -481,6 +575,21 @@ export default function EntryForm() {
           />
         </div>
 
+        {/* Cross Country Checkbox */}
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            name="cross_country"
+            id="cross_country"
+            checked={form.cross_country}
+            onChange={handleChange}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <label htmlFor="cross_country" className="text-sm text-gray-700 select-none">
+            Cross Country
+          </label>
+        </div>
+
         {/* Remarks */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
@@ -506,14 +615,14 @@ export default function EntryForm() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              Saving...
+              {isEditMode ? "Updating..." : "Saving..."}
             </>
           ) : (
             <>
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              Log Flight
+              {isEditMode ? "Update Flight" : "Log Flight"}
             </>
           )}
         </button>
