@@ -144,6 +144,7 @@ export default function Logbook() {
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Hooded Instrument</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Flight Simulator</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Remarks</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Actions</th>
                   </tr>
                 </thead>
                 <tbody>

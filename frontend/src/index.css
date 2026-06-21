@@ -63,12 +63,12 @@
   box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1);
 }
 
-/* ── Table Row Hover ── */
+/* ── Table Row Actions ── */
 .logbook-row {
   transition: background-color 0.15s ease;
 }
 .logbook-row .row-actions {
-  opacity: 0;
+  opacity: 1;
   transition: opacity 0.15s ease;
 }
 .logbook-row:hover .row-actions {
