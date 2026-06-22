@@ -6,7 +6,7 @@ const PAGE_SIZE = 15;
 
 type SortField = "date" | "total_time" | "aircraft_type" | "departure" | "arrival";
 type SortDir = "asc" | "desc";
-type FilterKey = "sel_time" | "cross_country" | "night" | "sel" | "";
+type FilterKey = "sel_time" | "ses_time" | "cross_country" | "night" | "sel" | "";
 
 export default function Logbook() {
   const [flights, setFlights] = useState<Flight[]>([]);
@@ -66,8 +66,8 @@ export default function Logbook() {
 
   // Apply quick filter
   if (activeFilter === "sel_time") filtered = filtered.filter((f) => f.sel_time > 0);
-  /* if (activeFilter === "Single Engine Sea") filtered = filtered.filter((f) => f.ses_time > 0);
-  if (activeFilter === "Multi Engine Land") filtered = filtered.filter((f) => f.mel_time > 0);
+  if (activeFilter === "ses_time") filtered = filtered.filter((f) => f.ses_time > 0);
+  /*if (activeFilter === "Multi Engine Land") filtered = filtered.filter((f) => f.mel_time > 0);
   if (activeFilter === "Multi Engine Sea") filtered = filtered.filter((f) => f.mes_time > 0);
   if (activeFilter === "Helicopter") filtered = filtered.filter((f) => f.helicopter_time > 0);
   if (activeFilter === "Glider") filtered = filtered.filter((f) => f.glider_time > 0);
@@ -118,6 +118,7 @@ export default function Logbook() {
 
   const filterOptions: { label: string; key: FilterKey }[] = [
     { label: "Single Engine Land", key: "sel_time" },
+    { label: "Single Engine Sea", key: "ses_time" },
     { label: "Cross Country", key: "cross_country" },
     { label: "Night Flights", key: "night" },
     { label: "Single Engine Land", key: "sel" },
