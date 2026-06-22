@@ -6,7 +6,7 @@ const PAGE_SIZE = 15;
 
 type SortField = "date" | "total_time" | "aircraft_type" | "departure" | "arrival";
 type SortDir = "asc" | "desc";
-type FilterKey = "cross_country" | "night" | "sel" | "";
+type FilterKey = "sel_time" | "cross_country" | "night" | "sel" | "";
 
 export default function Logbook() {
   const [flights, setFlights] = useState<Flight[]>([]);
