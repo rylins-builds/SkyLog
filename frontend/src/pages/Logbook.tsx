@@ -4,7 +4,7 @@ import type { Flight } from "../api/types";
 
 const PAGE_SIZE = 15;
 
-type SortField = "date" | "total_time" | "aircraft_type" | "departure" | "arrival";
+type SortField = "date" | "total_time" | "aircraft_type" | "departure" | "arrival" | "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time" | "";
 type SortDir = "asc" | "desc";
 type FilterKey = "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time" | "";
 
@@ -112,6 +112,18 @@ export default function Logbook() {
     { label: "Aircraft Type", field: "aircraft_type" },
     { label: "Departure", field: "departure" },
     { label: "Arrival", field: "arrival" },
+    { label: "Single Engine Land", field: "sel_time" },
+    { label: "Single Engine Sea", field: "ses_time" },
+    { label: "Multi Engine Land", field: "mel_time" },
+    { label: "Multi Engine Sea", field: "mes_time" },
+    { label: "Helicopter", field: "helicopter_time" },
+    { label: "Glider", field: "glider_time" },
+    { label: "PIC", field: "pic_time" },
+    { label: "SIC", field: "sic_time" },
+    { label: "Dual Received", field: "dual_time" },
+    { label: "Instructor", field: "instructor_time" },
+    { label: "Cross Country", field: "xcountry_time" },
+    { label: "Night", field: "night_time" },
   ];
 
   const filterOptions: { label: string; key: FilterKey }[] = [
@@ -338,7 +350,7 @@ export default function Logbook() {
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Aircraft Registration</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">From</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">To</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Duration</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Total Time</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Single Engine Land</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Single Engine Sea</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Multi Engine Land</th>
