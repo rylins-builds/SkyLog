@@ -329,9 +329,9 @@ export default function Logbook() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+      <div className="w-full bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
         {filtered.length === 0 ? (
-          <div className="text-center py-2 text-gray-500">
+          <div className="text-center py-12 text-gray-500">
             <p className="text-lg">No flights match your search{activeFilter ? " or filter" : ""}.</p>
             <button
               onClick={() => { setSearch(""); setActiveFilter(""); setPage(0); }}
