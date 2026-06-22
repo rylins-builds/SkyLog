@@ -79,7 +79,6 @@ export default function Logbook() {
   if (activeFilter === "Night") filtered = filtered.filter((f) => f.night_time > 0); */
   if (activeFilter === "cross_country") filtered = filtered.filter((f) => f.cross_country);
   if (activeFilter === "night") filtered = filtered.filter((f) => f.night_time > 0);
-  if (activeFilter === "sel") filtered = filtered.filter((f) => f.sel_time > 0);
 
   // Apply sort
   filtered.sort((a, b) => {
