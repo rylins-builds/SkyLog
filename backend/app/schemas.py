@@ -38,6 +38,9 @@ class FlightCreate(BaseModel):
     landings_night: Optional[int] = Field(default=0, ge=0)
     cross_country: Optional[bool] = Field(default=False)
 
+    class Config:
+        json_encoders = {date: lambda v: v.isoformat() if v else None}
+
 
 class FlightUpdate(BaseModel):
     """Schema for updating an existing flight entry (all fields optional)."""
