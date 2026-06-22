@@ -329,7 +329,7 @@ export default function Logbook() {
       </div>
 
       {/* Table */}
-      <div className="w-full bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
         {filtered.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
             <p className="text-lg">No flights match your search{activeFilter ? " or filter" : ""}.</p>
@@ -343,7 +343,7 @@ export default function Logbook() {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full text-center">
+              <table className="w-full text-center min-w-max">
                 <thead>
                   <tr className="border-b-2 border-gray-200 bg-gray-50">
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600">Date</th>
