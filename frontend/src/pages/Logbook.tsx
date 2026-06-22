@@ -1,8 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api } from "../api/client";
 import type { Flight } from "../api/types";
 
 const PAGE_SIZE = 15;
+
+type SortField = "date" | "total_time" | "aircraft_type" | "departure" | "arrival";
+type SortDir = "asc" | "desc";
+type FilterKey = "cross_country" | "night" | "sel" | "";
 
 export default function Logbook() {
   const [flights, setFlights] = useState<Flight[]>([]);
@@ -10,8 +14,27 @@ export default function Logbook() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
 
+  const [sortField, setSortField] = useState<SortField>("date");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
+
+  const [activeFilter, setActiveFilter] = useState<FilterKey>("");
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     api.listFlights().then(setFlights).catch((e) => setError(e.message));
+  }, []);
+
+  // Close menus on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setShowSortMenu(false);
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) setShowFilterMenu(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   if (error) {
@@ -29,7 +52,7 @@ export default function Logbook() {
 
   // Filter by search term
   const q = search.toLowerCase().trim();
-  const filtered = q
+  let filtered = q
     ? flights.filter(
         (f) =>
           f.aircraft_type.toLowerCase().includes(q) ||
@@ -39,7 +62,25 @@ export default function Logbook() {
           f.pilot_in_command.toLowerCase().includes(q) ||
           (f.remarks && f.remarks.toLowerCase().includes(q))
       )
-    : flights;
+    : [...flights];
+
+  // Apply quick filter
+  if (activeFilter === "cross_country") filtered = filtered.filter((f) => f.cross_country);
+  if (activeFilter === "night") filtered = filtered.filter((f) => f.night_time > 0);
+  if (activeFilter === "sel") filtered = filtered.filter((f) => f.sel_time > 0);
+
+  // Apply sort
+  filtered.sort((a, b) => {
+    let aVal: string | number = a[sortField] ?? "";
+    let bVal: string | number = b[sortField] ?? "";
+    if (typeof aVal === "string" && typeof bVal === "string") {
+      aVal = aVal.toLowerCase();
+      bVal = bVal.toLowerCase();
+    }
+    if (aVal < bVal) return sortDir === "asc" ? -1 : 1;
+    if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
 
   // Paginate
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -55,6 +96,23 @@ export default function Logbook() {
       alert(`Failed to delete: ${err instanceof Error ? err.message : "Unknown error"}`);
     }
   };
+
+  const sortOptions: { label: string; field: SortField }[] = [
+    { label: "Date", field: "date" },
+    { label: "Duration", field: "total_time" },
+    { label: "Aircraft Type", field: "aircraft_type" },
+    { label: "Departure", field: "departure" },
+    { label: "Arrival", field: "arrival" },
+  ];
+
+  const filterOptions: { label: string; key: FilterKey }[] = [
+    { label: "Cross Country", key: "cross_country" },
+    { label: "Night Flights", key: "night" },
+    { label: "Single Engine Land", key: "sel" },
+  ];
+
+  const activeSortLabel = sortOptions.find((o) => o.field === sortField)?.label ?? "Date";
+  const activeFilterLabel = filterOptions.find((o) => o.key === activeFilter)?.label;
 
   // Empty state — no flights at all
   if (flights.length === 0) {
@@ -84,7 +142,142 @@ export default function Logbook() {
     <div className="p-4 sm:p-8 max-w-6xl mx-auto animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
         <h1 className="text-3xl font-bold text-gray-900">Logbook</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+
+          {/* Sort dropdown */}
+          <div className="relative" ref={sortRef}>
+            <button
+              onClick={() => { setShowSortMenu((v) => !v); setShowFilterMenu(false); }}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                showSortMenu
+                  ? "bg-blue-50 border-blue-300 text-blue-700"
+                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+              </svg>
+              <span>{activeSortLabel}</span>
+              <svg className={`w-3.5 h-3.5 transition-transform ${showSortMenu ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showSortMenu && (
+              <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
+                <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Sort by</div>
+                {sortOptions.map((opt) => (
+                  <button
+                    key={opt.field}
+                    onClick={() => {
+                      if (sortField === opt.field) {
+                        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+                      } else {
+                        setSortField(opt.field);
+                        setSortDir("desc");
+                      }
+                      setPage(0);
+                      setShowSortMenu(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${
+                      sortField === opt.field ? "text-blue-600 font-medium" : "text-gray-700"
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                    {sortField === opt.field && (
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        {sortDir === "desc"
+                          ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                          : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m-5-4v12m0 0l-4-4m4 4l4-4" />
+                        }
+                      </svg>
+                    )}
+                  </button>
+                ))}
+                <div className="border-t border-gray-100 mt-1 pt-1 px-3 pb-1">
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Direction</div>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => { setSortDir("asc"); setPage(0); setShowSortMenu(false); }}
+                      className={`flex-1 py-1 text-xs rounded-md font-medium transition-colors ${sortDir === "asc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                    >↑ Asc</button>
+                    <button
+                      onClick={() => { setSortDir("desc"); setPage(0); setShowSortMenu(false); }}
+                      className={`flex-1 py-1 text-xs rounded-md font-medium transition-colors ${sortDir === "desc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                    >↓ Desc</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Filter dropdown */}
+          <div className="relative" ref={filterRef}>
+            <button
+              onClick={() => { setShowFilterMenu((v) => !v); setShowSortMenu(false); }}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                activeFilter
+                  ? "bg-amber-50 border-amber-300 text-amber-700"
+                  : showFilterMenu
+                  ? "bg-blue-50 border-blue-300 text-blue-700"
+                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+              </svg>
+              <span>{activeFilterLabel ?? "Filter"}</span>
+              {activeFilter && (
+                <span
+                  onClick={(e) => { e.stopPropagation(); setActiveFilter(""); setPage(0); }}
+                  className="ml-0.5 w-4 h-4 rounded-full bg-amber-200 hover:bg-amber-300 text-amber-800 flex items-center justify-center text-xs leading-none cursor-pointer"
+                >×</span>
+              )}
+              {!activeFilter && (
+                <svg className={`w-3.5 h-3.5 transition-transform ${showFilterMenu ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              )}
+            </button>
+
+            {showFilterMenu && (
+              <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
+                <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Filter by</div>
+                {filterOptions.map((opt) => (
+                  <button
+                    key={opt.key}
+                    onClick={() => {
+                      setActiveFilter(activeFilter === opt.key ? "" : opt.key);
+                      setPage(0);
+                      setShowFilterMenu(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${
+                      activeFilter === opt.key ? "text-amber-700 font-medium" : "text-gray-700"
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                    {activeFilter === opt.key && (
+                      <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+                {activeFilter && (
+                  <>
+                    <div className="border-t border-gray-100 mt-1" />
+                    <button
+                      onClick={() => { setActiveFilter(""); setPage(0); setShowFilterMenu(false); }}
+                      className="w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+                    >
+                      Clear filter
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Search */}
           <div className="relative">
             <svg
@@ -108,12 +301,12 @@ export default function Logbook() {
       <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
         {filtered.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
-            <p className="text-lg">No flights match your search.</p>
+            <p className="text-lg">No flights match your search{activeFilter ? " or filter" : ""}.</p>
             <button
-              onClick={() => { setSearch(""); setPage(0); }}
+              onClick={() => { setSearch(""); setActiveFilter(""); setPage(0); }}
               className="text-sm text-blue-600 hover:text-blue-700 mt-2 underline"
             >
-              Clear search
+              Clear search{activeFilter ? " and filter" : ""}
             </button>
           </div>
         ) : (
