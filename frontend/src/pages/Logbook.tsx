@@ -6,7 +6,7 @@ const PAGE_SIZE = 15;
 
 type SortField = "date" | "total_time" | "aircraft_type" | "departure" | "arrival";
 type SortDir = "asc" | "desc";
-type FilterKey = "sel_time" | "ses_time" | "cross_country" | "night" | "sel" | "";
+type FilterKey = "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "";
 
 export default function Logbook() {
   const [flights, setFlights] = useState<Flight[]>([]);
@@ -67,18 +67,16 @@ export default function Logbook() {
   // Apply quick filter
   if (activeFilter === "sel_time") filtered = filtered.filter((f) => f.sel_time > 0);
   if (activeFilter === "ses_time") filtered = filtered.filter((f) => f.ses_time > 0);
-  /*if (activeFilter === "Multi Engine Land") filtered = filtered.filter((f) => f.mel_time > 0);
-  if (activeFilter === "Multi Engine Sea") filtered = filtered.filter((f) => f.mes_time > 0);
-  if (activeFilter === "Helicopter") filtered = filtered.filter((f) => f.helicopter_time > 0);
-  if (activeFilter === "Glider") filtered = filtered.filter((f) => f.glider_time > 0);
-  if (activeFilter === "PIC") filtered = filtered.filter((f) => f.pic_time > 0);
-  if (activeFilter === "SIC") filtered = filtered.filter((f) => f.sic_time > 0);
-  if (activeFilter === "Dual") filtered = filtered.filter((f) => f.dual_time > 0);
-  if (activeFilter === "Instructor") filtered = filtered.filter((f) => f.instructor_time > 0);
-  if (activeFilter === "Cross Country") filtered = filtered.filter((f) => f.xcountry_time > 0);
-  if (activeFilter === "Night") filtered = filtered.filter((f) => f.night_time > 0); */
-  if (activeFilter === "cross_country") filtered = filtered.filter((f) => f.cross_country);
-  if (activeFilter === "night") filtered = filtered.filter((f) => f.night_time > 0);
+  if (activeFilter === "mel_time") filtered = filtered.filter((f) => f.mel_time > 0);
+  if (activeFilter === "mes_time") filtered = filtered.filter((f) => f.mes_time > 0);
+  if (activeFilter === "helicopter_time") filtered = filtered.filter((f) => f.helicopter_time > 0);
+  if (activeFilter === "glider_time") filtered = filtered.filter((f) => f.glider_time > 0);
+  if (activeFilter === "pic_time") filtered = filtered.filter((f) => f.pic_time > 0);
+  if (activeFilter === "sic_time") filtered = filtered.filter((f) => f.sic_time > 0);
+  if (activeFilter === "dual_time") filtered = filtered.filter((f) => f.dual_time > 0);
+  if (activeFilter === "instructor_time") filtered = filtered.filter((f) => f.instructor_time > 0);
+  if (activeFilter === "xcountry_time") filtered = filtered.filter((f) => f.xcountry_time > 0);
+  if (activeFilter === "night_time") filtered = filtered.filter((f) => f.night_time > 0);
 
   // Apply sort
   filtered.sort((a, b) => {
@@ -119,9 +117,16 @@ export default function Logbook() {
   const filterOptions: { label: string; key: FilterKey }[] = [
     { label: "Single Engine Land", key: "sel_time" },
     { label: "Single Engine Sea", key: "ses_time" },
-    { label: "Cross Country", key: "cross_country" },
-    { label: "Night Flights", key: "night" },
-    { label: "Single Engine Land", key: "sel" },
+    { label: "Multi Engine Land", key: "mel_time" },
+    { label: "Multi Engine Sea", key: "mes_time" },
+    { label: "Helicopter", key: "helicopter_time" },
+    { label: "Glider", key: "glider_time" },
+    { label: "PIC", key: "pic_time" },
+    { label: "SIC", key: "sic_time" },
+    { label: "Dual Received", key: "dual_time" },
+    { label: "Instructor", key: "instructor_time" },
+    { label: "Cross Country", key: "xcountry_time" },
+    { label: "Night", key: "night_time" },
   ];
 
   const activeSortLabel = sortOptions.find((o) => o.field === sortField)?.label ?? "Date";
