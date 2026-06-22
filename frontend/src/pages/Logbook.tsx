@@ -65,7 +65,7 @@ export default function Logbook() {
     : [...flights];
 
   // Apply quick filter
-  if (activeFilter === "Single Engine Land") filtered = filtered.filter((f) => f.sel_time > 0);
+  /* if (activeFilter === "Single Engine Land") filtered = filtered.filter((f) => f.sel_time > 0);
   if (activeFilter === "Single Engine Sea") filtered = filtered.filter((f) => f.ses_time > 0);
   if (activeFilter === "Multi Engine Land") filtered = filtered.filter((f) => f.mel_time > 0);
   if (activeFilter === "Multi Engine Sea") filtered = filtered.filter((f) => f.mes_time > 0);
@@ -76,7 +76,7 @@ export default function Logbook() {
   if (activeFilter === "Dual") filtered = filtered.filter((f) => f.dual_time > 0);
   if (activeFilter === "Instructor") filtered = filtered.filter((f) => f.instructor_time > 0);
   if (activeFilter === "Cross Country") filtered = filtered.filter((f) => f.xcountry_time > 0);
-  if (activeFilter === "Night") filtered = filtered.filter((f) => f.night_time > 0);
+  if (activeFilter === "Night") filtered = filtered.filter((f) => f.night_time > 0); */
   if (activeFilter === "cross_country") filtered = filtered.filter((f) => f.cross_country);
   if (activeFilter === "night") filtered = filtered.filter((f) => f.night_time > 0);
   if (activeFilter === "sel") filtered = filtered.filter((f) => f.sel_time > 0);
@@ -111,13 +111,14 @@ export default function Logbook() {
 
   const sortOptions: { label: string; field: SortField }[] = [
     { label: "Date", field: "date" },
-    { label: "Duration", field: "total_time" },
+    { label: "Total Time", field: "total_time" },
     { label: "Aircraft Type", field: "aircraft_type" },
     { label: "Departure", field: "departure" },
     { label: "Arrival", field: "arrival" },
   ];
 
   const filterOptions: { label: string; key: FilterKey }[] = [
+    { label: "Single Engine Land", key: "sel_time" },
     { label: "Cross Country", key: "cross_country" },
     { label: "Night Flights", key: "night" },
     { label: "Single Engine Land", key: "sel" },
