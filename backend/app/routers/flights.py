@@ -144,68 +144,18 @@ async def update_flight(flight_id: int, flight: FlightUpdate):
         if not existing:
             raise HTTPException(status_code=404, detail="Flight not found")
 
-        # Build update fields dynamically (only non-None fields)
+        # Build update fields dynamically using model_fields_set so that fields
+        # omitted from the request payload are never touched, even if they
+        # default to None on the Pydantic model.
         updates = {}
-        if flight.date is not None:
-            updates["date"] = flight.date.isoformat()
-        if flight.aircraft_type is not None:
-            updates["aircraft_type"] = flight.aircraft_type
-        if flight.aircraft_reg is not None:
-            updates["aircraft_reg"] = flight.aircraft_reg
-        if flight.departure is not None:
-            updates["departure"] = flight.departure
-        if flight.arrival is not None:
-            updates["arrival"] = flight.arrival
-        if flight.departure_time is not None:
-            updates["departure_time"] = flight.departure_time
-        if flight.arrival_time is not None:
-            updates["arrival_time"] = flight.arrival_time
-        if flight.total_time is not None:
-            updates["total_time"] = flight.total_time
-        if flight.sel_time is not None:
-            updates["sel_time"] = flight.sel_time
-        if flight.ses_time is not None:
-            updates["ses_time"] = flight.ses_time
-        if flight.mel_time is not None:
-            updates["mel_time"] = flight.mel_time
-        if flight.mes_time is not None:
-            updates["mes_time"] = flight.mes_time
-        if flight.helicopter_time is not None:
-            updates["helicopter_time"] = flight.helicopter_time
-        if flight.glider_time is not None:
-            updates["glider_time"] = flight.glider_time
-        if flight.pic_time is not None:
-            updates["pic_time"] = flight.pic_time
-        if flight.sic_time is not None:
-            updates["sic_time"] = flight.sic_time
-        if flight.dual_time is not None:
-            updates["dual_time"] = flight.dual_time
-        if flight.instructor_time is not None:
-            updates["instructor_time"] = flight.instructor_time
-        if flight.xcountry_time is not None:
-            updates["xcountry_time"] = flight.xcountry_time
-        if flight.night_time is not None:
-            updates["night_time"] = flight.night_time
-        if flight.act_instrument_time is not None:
-            updates["act_instrument_time"] = flight.act_instrument_time
-        if flight.sim_instrument_time is not None:
-            updates["sim_instrument_time"] = flight.sim_instrument_time
-        if flight.sim_time is not None:
-            updates["sim_time"] = flight.sim_time
-        if flight.pilot_in_command is not None:
-            updates["pilot_in_command"] = flight.pilot_in_command
-        if flight.remarks is not None:
-            updates["remarks"] = flight.remarks
-        if flight.takeoffs_day is not None:
-            updates["takeoffs_day"] = flight.takeoffs_day
-        if flight.takeoffs_night is not None:
-            updates["takeoffs_night"] = flight.takeoffs_night
-        if flight.landings_day is not None:
-            updates["landings_day"] = flight.landings_day
-        if flight.landings_night is not None:
-            updates["landings_night"] = flight.landings_night
-        if flight.cross_country is not None:
-            updates["cross_country"] = 1 if flight.cross_country else 0
+        for field in flight.model_fields_set:
+            value = getattr(flight, field)
+            if field == "date" and value is not None:
+                updates["date"] = value.isoformat()
+            elif field == "cross_country":
+                updates["cross_country"] = 1 if value else 0
+            else:
+                updates[field] = value
 
         if not updates:
             return row_to_flight_response(existing)
