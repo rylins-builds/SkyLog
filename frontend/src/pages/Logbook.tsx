@@ -65,7 +65,7 @@ export default function Logbook() {
     : [...flights];
 
   // Apply quick filter
-  if (activeFilter === "Single Engine Land") filtered = filtered.filter((f) => f.sel_time > 0);
+  if (activeFilter === "sel_time") filtered = filtered.filter((f) => f.sel_time > 0);
   /* if (activeFilter === "Single Engine Sea") filtered = filtered.filter((f) => f.ses_time > 0);
   if (activeFilter === "Multi Engine Land") filtered = filtered.filter((f) => f.mel_time > 0);
   if (activeFilter === "Multi Engine Sea") filtered = filtered.filter((f) => f.mes_time > 0);
