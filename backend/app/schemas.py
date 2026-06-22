@@ -41,7 +41,7 @@ class FlightCreate(BaseModel):
 
 class FlightUpdate(BaseModel):
     """Schema for updating an existing flight entry (all fields optional)."""
-    date: Optional[date] = None
+    date: Optional[str] = None
     aircraft_type: Optional[str] = Field(default=None, min_length=1, max_length=50)
     aircraft_reg: Optional[str] = Field(default=None, min_length=1, max_length=20)
     departure: Optional[str] = Field(default=None, min_length=1, max_length=10)
