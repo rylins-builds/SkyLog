@@ -4,7 +4,7 @@ import type { Flight } from "../api/types";
 
 const PAGE_SIZE = 15;
 
-type SortField = "date" | "total_time" | "aircraft_type" | "departure" | "arrival" | "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time";
+type SortField = "date" | "total_time" | "aircraft_type" | "aircraft_reg" | "departure" | "arrival" | "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time";
 type SortDir = "asc" | "desc";
 type FilterKey = "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time" | "";
 
@@ -110,6 +110,7 @@ export default function Logbook() {
     { label: "Date", field: "date" },
     { label: "Total Time", field: "total_time" },
     { label: "Aircraft Type", field: "aircraft_type" },
+    { label: "Aircraft Registration", field: "aircraft_reg" },
     { label: "Departure", field: "departure" },
     { label: "Arrival", field: "arrival" },
     { label: "Single Engine Land", field: "sel_time" },
