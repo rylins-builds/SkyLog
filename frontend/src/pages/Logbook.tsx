@@ -65,6 +65,18 @@ export default function Logbook() {
     : [...flights];
 
   // Apply quick filter
+  if (activeFilter === "Single Engine Land") filtered = filtered.filter((f) => f.sel_time > 0);
+  if (activeFilter === "Single Engine Sea") filtered = filtered.filter((f) => f.ses_time > 0);
+  if (activeFilter === "Multi Engine Land") filtered = filtered.filter((f) => f.mel_time > 0);
+  if (activeFilter === "Multi Engine Sea") filtered = filtered.filter((f) => f.mes_time > 0);
+  if (activeFilter === "Helicopter") filtered = filtered.filter((f) => f.helicopter_time > 0);
+  if (activeFilter === "Glider") filtered = filtered.filter((f) => f.glider_time > 0);
+  if (activeFilter === "PIC") filtered = filtered.filter((f) => f.pic_time > 0);
+  if (activeFilter === "SIC") filtered = filtered.filter((f) => f.sic_time > 0);
+  if (activeFilter === "Dual") filtered = filtered.filter((f) => f.dual_time > 0);
+  if (activeFilter === "Instructor") filtered = filtered.filter((f) => f.instructor_time > 0);
+  if (activeFilter === "Cross Country") filtered = filtered.filter((f) => f.xcountry_time > 0);
+  if (activeFilter === "Night") filtered = filtered.filter((f) => f.night_time > 0);
   if (activeFilter === "cross_country") filtered = filtered.filter((f) => f.cross_country);
   if (activeFilter === "night") filtered = filtered.filter((f) => f.night_time > 0);
   if (activeFilter === "sel") filtered = filtered.filter((f) => f.sel_time > 0);
