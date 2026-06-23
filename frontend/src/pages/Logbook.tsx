@@ -111,8 +111,8 @@ export default function Logbook() {
     { label: "Total Time", field: "total_time" },
     { label: "Aircraft Type", field: "aircraft_type" },
     { label: "Aircraft Registration", field: "aircraft_reg" },
-    { label: "Departure", field: "departure" },
-    { label: "Arrival", field: "arrival" },
+    { label: "From", field: "departure" },
+    { label: "To", field: "arrival" },
     { label: "Single Engine Land", field: "sel_time" },
     { label: "Single Engine Sea", field: "ses_time" },
     { label: "Multi Engine Land", field: "mel_time" },
@@ -170,9 +170,9 @@ export default function Logbook() {
   }
 
   return (
-    <div className="p-4 sm:p-8 max-w-6xl mx-auto animate-fade-in">
+    <div className="p-4 sm:p-8 max-w-[95%] mx-auto animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900">Logbook</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Logbook</h1>
         <div className="flex items-center gap-2">
 
           {/* Sort dropdown */}
@@ -181,8 +181,8 @@ export default function Logbook() {
               onClick={() => { setShowSortMenu((v) => !v); setShowFilterMenu(false); }}
               className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
                 showSortMenu
-                  ? "bg-blue-50 border-blue-300 text-blue-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                  ? "bg-blue-50 border-blue-300 text-blue-700 dark:bg-blue-800 dark:border-blue-700 dark:text-blue-300"
+                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-zinc-800 dark:border-zinc-600 dark:text-white"
               }`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -195,8 +195,8 @@ export default function Logbook() {
             </button>
 
             {showSortMenu && (
-              <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
-                <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Sort by</div>
+              <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 dark:bg-zinc-800 dark:border-zinc-600">
+                <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide dark:text-gray-400">Sort by</div>
                 {sortOptions.map((opt) => (
                   <button
                     key={opt.field}
@@ -251,7 +251,7 @@ export default function Logbook() {
                   ? "bg-amber-50 border-amber-300 text-amber-700"
                   : showFilterMenu
                   ? "bg-blue-50 border-blue-300 text-blue-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:text-white dark:bg-gray-800 dark:border-gray-600"
               }`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -329,9 +329,9 @@ export default function Logbook() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden dark:bg-zinc-800 dark:border-zinc-600">
         {filtered.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-gray-500 dark:text-white">
             <p className="text-lg">No flights match your search{activeFilter ? " or filter" : ""}.</p>
             <button
               onClick={() => { setSearch(""); setActiveFilter(""); setPage(0); }}
@@ -343,32 +343,32 @@ export default function Logbook() {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full text-center min-w-max">
+              <table className="w-full text-center">
                 <thead>
-                  <tr className="border-b-2 border-gray-200 bg-gray-50">
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Date</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Aircraft Type</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Aircraft Registration</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">From</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">To</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Total Time</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Single Engine Land</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Single Engine Sea</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Multi Engine Land</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Single Engine Sea</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Helicopter</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Glider</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">PIC</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">SIC</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Dual Received</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Instructor</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Cross Country</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Night</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Actual Instrument</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Hooded Instrument</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Flight Simulator</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Remarks</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600">Actions</th>
+                  <tr className="border-b-2 border-gray-200 bg-gray-50 dark:bg-zinc-900 dark:border-zinc-600">
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Date</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Aircraft Type</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Aircraft Registration</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">From</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">To</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Total Time</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Single Engine Land</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Single Engine Sea</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Multi Engine Land</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Single Engine Sea</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Helicopter</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Glider</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">PIC</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">SIC</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Dual Received</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Instructor</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Cross Country</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Night</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Actual Instrument</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Hooded Instrument</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Flight Simulator</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Remarks</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -378,28 +378,28 @@ export default function Logbook() {
                       className="border-b border-gray-100 hover:bg-gray-50 logbook-row"
                       style={{ animationDelay: `${idx * 30}ms` }}
                     >
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.date}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.aircraft_type}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.aircraft_reg}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.departure}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.arrival}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.total_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.sel_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.ses_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.mel_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.mes_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.helicopter_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.glider_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.pic_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.sic_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.dual_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.instructor_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.xcountry_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.night_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.act_instrument_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.sim_instrument_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.sim_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{flight.remarks}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.date}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.aircraft_type}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.aircraft_reg}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.departure}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.arrival}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.total_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.sel_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.ses_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.mel_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.mes_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.helicopter_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.glider_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.pic_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.sic_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.dual_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.instructor_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.xcountry_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.night_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.act_instrument_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.sim_instrument_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.sim_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.remarks}</td>
                       <td className="px-4 py-3 row-actions whitespace-nowrap">
                         <div className="flex items-center gap-1">
                           <button

@@ -5,6 +5,12 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
+module.exports = defineConfig([
+    {
+        darkMode: 'class',
+    }
+])
+
 export default defineConfig([
   globalIgnores(['dist']),
   {
