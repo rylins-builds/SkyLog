@@ -117,7 +117,7 @@ export default function Dashboard() {
                 {recentFlights.map((flight, idx) => (
                   <tr
                     key={flight.id}
-                    className="border-b border-gray-50 hover:bg-gray-50 logbook-row dark:border-zinc-600 dark:hover:bg-zinc-900"
+                    className="border-b border-gray-50 hover:bg-gray-50 logbook-row dark:border-zinc-600 dark:hover:bg-zinc-700"
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
                     <td className="px-6 py-3 text-sm text-gray-900 dark:text-white">{flight.date}</td>
