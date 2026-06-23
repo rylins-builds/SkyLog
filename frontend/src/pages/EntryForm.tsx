@@ -244,7 +244,7 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
   if (loadingFlight) {
     return (
       <div className="p-4 sm:p-8 max-w-2xl mx-auto animate-fade-in">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Edit Flight</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-6 dark:text-white">Edit Flight</h1>
         <div className="space-y-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="skeleton h-10 w-full" />
@@ -270,7 +270,7 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
 
   return (
     <div className="p-4 sm:p-8 max-w-2xl mx-auto animate-fade-in">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">
+      <h1 className="text-3xl font-bold text-gray-900 mb-6 dark:text-white">
         {isEditMode ? "Edit Flight" : "Log a New Flight"}
       </h1>
 
@@ -575,31 +575,16 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
           />
         </div>
 
-        {/* Cross Country Checkbox */}
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            name="cross_country"
-            id="cross_country"
-            checked={form.cross_country}
-            onChange={handleChange}
-            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          <label htmlFor="cross_country" className="text-sm text-gray-700 select-none">
-            Cross Country
-          </label>
-        </div>
-
         {/* Remarks */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white">Remarks</label>
           <textarea
             name="remarks"
             value={form.remarks}
             onChange={handleChange}
             rows={3}
             placeholder="VFR flight, smooth conditions, worst landing ever, etc."
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400 resize-none"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400 resize-none dark:text-white"
           />
         </div>
 
@@ -656,7 +641,7 @@ function Field({
 }) {
   return (
     <div>
-      <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
+      <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1 dark:text-white">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
       <input
