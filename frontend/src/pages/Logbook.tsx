@@ -181,8 +181,8 @@ export default function Logbook() {
               onClick={() => { setShowSortMenu((v) => !v); setShowFilterMenu(false); }}
               className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
                 showSortMenu
-                  ? "bg-blue-50 border-blue-300 text-blue-700 dark:bg-blue-800 dark:border-blue-700 dark:text-blue-300"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-zinc-900 dark:border-zinc-600 dark:text-white dark:hover:bg-zinc-700"
+                  ? "bg-blue-50 border-blue-300 text-blue-700 dark:bg-zinc-900 dark:border-blue-700 dark:text-blue-300"
+                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-zinc-900 dark:border-zinc-600 dark:text-white dark:hover:bg-zinc-800"
               }`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -195,7 +195,7 @@ export default function Logbook() {
             </button>
 
             {showSortMenu && (
-              <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 dark:bg-zinc-800 dark:border-zinc-600">
+              <div className="absolute left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 dark:bg-zinc-900 dark:border-zinc-600">
                 <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide dark:text-white">Sort by</div>
                 {sortOptions.map((opt) => (
                   <button
@@ -211,7 +211,7 @@ export default function Logbook() {
                       setShowSortMenu(false);
                     }}
                     className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${
-                      sortField === opt.field ? "text-blue-600 font-medium" : "text-gray-700 dark:text-white dark:hover:bg-zinc-700"
+                      sortField === opt.field ? "text-blue-600 font-medium" : "text-gray-700 dark:text-white dark:hover:bg-zinc-800"
                     }`}
                   >
                     <span>{opt.label}</span>
@@ -250,8 +250,8 @@ export default function Logbook() {
                 activeFilter
                   ? "bg-amber-50 border-amber-300 text-amber-700"
                   : showFilterMenu
-                  ? "bg-blue-50 border-blue-300 text-blue-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:text-white dark:bg-zinc-900 dark:border-gray-600 dark:hover:bg-zinc-700"
+                  ? "bg-blue-50 border-blue-300 text-blue-700 dark:bg-zinc-900 dark:text-blue-300 dark:border-blue-700"
+                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:text-white dark:bg-zinc-900 dark:border-zinc-600 dark:hover:bg-zinc-800"
               }`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
