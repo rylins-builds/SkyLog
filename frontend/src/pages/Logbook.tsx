@@ -182,11 +182,11 @@ export default function Logbook() {
               className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
                 showSortMenu
                   ? "bg-blue-50 border-blue-300 text-blue-700 dark:bg-blue-800 dark:border-blue-700 dark:text-blue-300"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-zinc-800 dark:border-zinc-600 dark:text-white"
+                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-zinc-900 dark:border-zinc-600 dark:text-white dark:hover:bg-zinc-700"
               }`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 17h6m-6-5h9m5-1v8m0 0l3-3m-3 3l-3-3M4 7h12" />
               </svg>
               <span>{activeSortLabel}</span>
               <svg className={`w-3.5 h-3.5 transition-transform ${showSortMenu ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -196,7 +196,7 @@ export default function Logbook() {
 
             {showSortMenu && (
               <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 dark:bg-zinc-800 dark:border-zinc-600">
-                <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide dark:text-gray-400">Sort by</div>
+                <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide dark:text-white">Sort by</div>
                 {sortOptions.map((opt) => (
                   <button
                     key={opt.field}
@@ -211,15 +211,15 @@ export default function Logbook() {
                       setShowSortMenu(false);
                     }}
                     className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${
-                      sortField === opt.field ? "text-blue-600 font-medium" : "text-gray-700"
+                      sortField === opt.field ? "text-blue-600 font-medium" : "text-gray-700 dark:text-white dark:hover:bg-zinc-700"
                     }`}
                   >
                     <span>{opt.label}</span>
                     {sortField === opt.field && (
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         {sortDir === "desc"
-                          ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
-                          : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m-5-4v12m0 0l-4-4m4 4l4-4" />
+                          ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 17h6m-6-5h9m5-1v8m0 0l3-3m-3 3l-3-3M4 7h12" />
+                          : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 17h12M4 12h9M4 7h6m8 6V5m0 0l3 3m-3-3l-3 3" />
                         }
                       </svg>
                     )}
@@ -230,11 +230,11 @@ export default function Logbook() {
                   <div className="flex gap-1">
                     <button
                       onClick={() => { setSortDir("asc"); setPage(0); setShowSortMenu(false); }}
-                      className={`flex-1 py-1 text-xs rounded-md font-medium transition-colors ${sortDir === "asc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                      className={`flex-1 py-1 text-xs rounded-md font-medium transition-colors ${sortDir === "asc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:text-white dark:bg-zinc-700 dark:hover:bg-zinc-600"}`}
                     >↑ Asc</button>
                     <button
                       onClick={() => { setSortDir("desc"); setPage(0); setShowSortMenu(false); }}
-                      className={`flex-1 py-1 text-xs rounded-md font-medium transition-colors ${sortDir === "desc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                      className={`flex-1 py-1 text-xs rounded-md font-medium transition-colors ${sortDir === "desc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:text-white dark:bg-zinc-700 dark:hover:bg-zinc-600"}`}
                     >↓ Desc</button>
                   </div>
                 </div>
@@ -251,11 +251,11 @@ export default function Logbook() {
                   ? "bg-amber-50 border-amber-300 text-amber-700"
                   : showFilterMenu
                   ? "bg-blue-50 border-blue-300 text-blue-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:text-white dark:bg-gray-800 dark:border-gray-600"
+                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:text-white dark:bg-zinc-900 dark:border-gray-600 dark:hover:bg-zinc-700"
               }`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M22 3H2l8 10v4l4 4v-8z" />
               </svg>
               <span>{activeFilterLabel ?? "Filter"}</span>
               {activeFilter && (
@@ -272,7 +272,7 @@ export default function Logbook() {
             </button>
 
             {showFilterMenu && (
-              <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
+              <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 dark:bg-zinc-800 dark:border-zinc-600">
                 <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Filter by</div>
                 {filterOptions.map((opt) => (
                   <button
@@ -282,8 +282,8 @@ export default function Logbook() {
                       setPage(0);
                       setShowFilterMenu(false);
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${
-                      activeFilter === opt.key ? "text-amber-700 font-medium" : "text-gray-700"
+                    className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 transition-colors dark:hover:bg-zinc-600 ${
+                      activeFilter === opt.key ? "text-amber-700 font-medium" : "text-gray-700 dark:text-white"
                     }`}
                   >
                     <span>{opt.label}</span>
@@ -315,7 +315,7 @@ export default function Logbook() {
               className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
               fill="none" viewBox="0 0 24 24" stroke="currentColor"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               type="text"
