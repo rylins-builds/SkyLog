@@ -17,6 +17,7 @@ interface FormState {
   mes_time: string;
   helicopter_time: string;
   glider_time: string;
+  solo_time: string;
   pic_time: string;
   sic_time: string;
   dual_time: string;
@@ -50,6 +51,7 @@ const initialForm = (): FormState => ({
   mes_time: "",
   helicopter_time: "",
   glider_time: "",
+  solo_time: "",
   pic_time: "",
   sic_time: "",
   dual_time: "",
@@ -84,6 +86,7 @@ const flightToForm = (flight: Flight): FormState => ({
   mes_time: flight.mes_time.toString(),
   helicopter_time: flight.helicopter_time.toString(),
   glider_time: flight.glider_time.toString(),
+  solo_time: flight.solo_time.toString(),
   pic_time: flight.pic_time.toString(),
   sic_time: flight.sic_time.toString(),
   dual_time: flight.dual_time.toString(),
@@ -165,6 +168,7 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
     if (form.mes_time && parseFloat(form.mes_time) < 0) errs.mes_time = "Cannot be negative";
     if (form.helicopter_time && parseFloat(form.helicopter_time) < 0) errs.helicopter_time = "Cannot be negative";
     if (form.glider_time && parseFloat(form.glider_time) < 0) errs.glider_time = "Cannot be negative";
+    if (form.solo_time && parseFloat(form.solo_time) < 0) errs.solo_time = "Cannot be negative";
     if (form.pic_time && parseFloat(form.pic_time) < 0) errs.pic_time = "Cannot be negative";
     if (form.sic_time && parseFloat(form.sic_time) < 0) errs.sic_time = "Cannot be negative";
     if (form.dual_time && parseFloat(form.dual_time) < 0) errs.dual_time = "Cannot be negative";
@@ -202,6 +206,7 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
       mes_time: parseFloat(form.mes_time) || 0,
       helicopter_time: parseFloat(form.helicopter_time) || 0,
       glider_time: parseFloat(form.glider_time) || 0,
+      solo_time: parseFloat(form.solo_time) || 0,
       pic_time: parseFloat(form.pic_time) || 0,
       sic_time: parseFloat(form.sic_time) || 0,
       dual_time: parseFloat(form.dual_time) || 0,
@@ -441,6 +446,17 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
             onChange={handleChange}
             placeholder="0"
             error={errors.glider_time}
+          />
+          <Field
+            label="Solo Time (hours)"
+            name="solo_time"
+            type="number"
+            step="0.1"
+            min="0"
+            value={form.solo_time}
+            onChange={handleChange}
+            placeholder="0"
+            error={errors.solo_time}
           />
           <Field
             label="PIC Time (hours)"

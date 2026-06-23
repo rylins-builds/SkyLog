@@ -16,6 +16,7 @@ export interface Flight {
   mes_time: number;
   helicopter_time: number;
   glider_time: number;
+  solo_time: number;
   pic_time: number;
   sic_time: number;
   dual_time: number;
@@ -50,6 +51,7 @@ export interface FlightCreate {
   mes_time: number;
   helicopter_time: number;
   glider_time: number;
+  solo_time: number;
   pic_time: number;
   sic_time: number;
   dual_time: number;

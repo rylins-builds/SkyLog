@@ -4,9 +4,9 @@ import type { Flight } from "../api/types";
 
 const PAGE_SIZE = 15;
 
-type SortField = "date" | "total_time" | "aircraft_type" | "aircraft_reg" | "departure" | "arrival" | "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time";
+type SortField = "date" | "total_time" | "aircraft_type" | "aircraft_reg" | "departure" | "arrival" | "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "solo_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time";
 type SortDir = "asc" | "desc";
-type FilterKey = "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time" | "";
+type FilterKey = "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "solo_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time" | "";
 
 export default function Logbook() {
   const [flights, setFlights] = useState<Flight[]>([]);
@@ -71,6 +71,7 @@ export default function Logbook() {
   if (activeFilter === "mes_time") filtered = filtered.filter((f) => f.mes_time > 0);
   if (activeFilter === "helicopter_time") filtered = filtered.filter((f) => f.helicopter_time > 0);
   if (activeFilter === "glider_time") filtered = filtered.filter((f) => f.glider_time > 0);
+  if (activeFilter === "solo_time") filtered = filtered.filter((f) => f.solo_time > 0);
   if (activeFilter === "pic_time") filtered = filtered.filter((f) => f.pic_time > 0);
   if (activeFilter === "sic_time") filtered = filtered.filter((f) => f.sic_time > 0);
   if (activeFilter === "dual_time") filtered = filtered.filter((f) => f.dual_time > 0);
@@ -119,6 +120,7 @@ export default function Logbook() {
     { label: "Multi Engine Sea", field: "mes_time" },
     { label: "Helicopter", field: "helicopter_time" },
     { label: "Glider", field: "glider_time" },
+    { label: "Solo", field: "solo_time" },
     { label: "PIC", field: "pic_time" },
     { label: "SIC", field: "sic_time" },
     { label: "Dual Received", field: "dual_time" },
@@ -134,6 +136,7 @@ export default function Logbook() {
     { label: "Multi Engine Sea", key: "mes_time" },
     { label: "Helicopter", key: "helicopter_time" },
     { label: "Glider", key: "glider_time" },
+    { label: "Solo", key: "solo_time" },
     { label: "PIC", key: "pic_time" },
     { label: "SIC", key: "sic_time" },
     { label: "Dual Received", key: "dual_time" },
@@ -151,8 +154,8 @@ export default function Logbook() {
       <div className="p-8 text-center animate-fade-in">
         <div className="max-w-md mx-auto py-16">
           <div className="text-6xl mb-4">📖</div>
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">No flights logged yet</h2>
-          <p className="text-gray-500 mb-6">
+          <h2 className="text-xl font-semibold text-gray-700 mb-2 dark:text-white">No flights logged yet</h2>
+          <p className="text-gray-500 mb-6 dark:text-white">
             Ready for takeoff? Add your first flight to get started.
           </p>
           <button
@@ -358,6 +361,7 @@ export default function Logbook() {
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Single Engine Sea</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Helicopter</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Glider</th>
+                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Solo</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">PIC</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">SIC</th>
                     <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Dual Received</th>
@@ -375,7 +379,7 @@ export default function Logbook() {
                   {paged.map((flight, idx) => (
                     <tr
                       key={flight.id}
-                      className="border-b border-gray-100 hover:bg-gray-50 logbook-row"
+                      className="border-b border-gray-100 hover:bg-gray-50 dark:hover:bg-zinc-700 logbook-row"
                       style={{ animationDelay: `${idx * 30}ms` }}
                     >
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.date}</td>
@@ -390,6 +394,7 @@ export default function Logbook() {
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.mes_time.toFixed(1)}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.helicopter_time.toFixed(1)}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.glider_time.toFixed(1)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.solo_time.toFixed(1)}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.pic_time.toFixed(1)}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.sic_time.toFixed(1)}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.dual_time.toFixed(1)}</td>

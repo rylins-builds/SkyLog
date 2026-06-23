@@ -56,6 +56,7 @@ def init_db() -> None:
                 mes_time        REAL    NOT NULL CHECK(total_time > 0),
                 helicopter_time REAL    NOT NULL CHECK(total_time > 0),
                 glider_time     REAL    NOT NULL CHECK(total_time > 0),
+                solo_time       REAL    NOT NULL CHECK(total_time > 0),
                 pic_time        REAL    NOT NULL CHECK(total_time > 0),
                 sic_time        REAL    NOT NULL CHECK(total_time > 0),
                 dual_time       REAL    NOT NULL CHECK(total_time > 0),
