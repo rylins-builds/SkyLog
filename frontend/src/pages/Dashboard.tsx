@@ -81,9 +81,9 @@ export default function Dashboard() {
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 dark:text-white dark:bg-zinc-800 dark:border-zinc-300">
         <StatCard label="Total Flights" value={stats.total_flights} icon="📊" />
-        <StatCard label="Total Hours" value={`${stats.total_hours.toFixed(1)}h`} icon="⏱️" />
-        <StatCard label="Night Hours" value={`${stats.total_night_hours.toFixed(1)}h`} icon="🌙" />
-        <StatCard label="Hours (Last 30 Days)" value={`${stats.hours_last_30_days.toFixed(1)}h`} icon="📅" />
+        <StatCard label="Total Hours" value={`${stats.total_hours.toFixed(1)}`} icon="⏱️" />
+        <StatCard label="Night Hours" value={`${stats.total_night_hours.toFixed(1)}`} icon="🌙" />
+        <StatCard label="Hours (Last 30 Days)" value={`${stats.hours_last_30_days.toFixed(1)}`} icon="📅" />
         <StatCard label="Total Landings" value={stats.total_landings} icon="🛬" />
         <StatCard label="Unique Aircraft" value={stats.unique_aircraft} icon="🛩️" />
       </div>
