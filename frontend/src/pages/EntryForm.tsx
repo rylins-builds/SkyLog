@@ -68,7 +68,9 @@ const initialForm = (): FormState => ({
   cross_country: false,
 });
 
-/** Convert a Flight object from the API into form state. */
+/** Convert a Flight object from the API into form state.
+ *  Uses null-coalescing (?? 0) to safely handle NULL values from
+ *  old database records that predate schema migrations. */
 const flightToForm = (flight: Flight): FormState => ({
   date: flight.date,
   aircraft_type: flight.aircraft_type,
@@ -78,28 +80,28 @@ const flightToForm = (flight: Flight): FormState => ({
   departure_time: flight.departure_time ?? "",
   arrival_time: flight.arrival_time ?? "",
   total_time: flight.total_time.toString(),
-  sel_time: flight.sel_time.toString(),
-  ses_time: flight.ses_time.toString(),
-  mel_time: flight.mel_time.toString(),
-  mes_time: flight.mes_time.toString(),
-  helicopter_time: flight.helicopter_time.toString(),
-  glider_time: flight.glider_time.toString(),
-  pic_time: flight.pic_time.toString(),
-  sic_time: flight.sic_time.toString(),
-  dual_time: flight.dual_time.toString(),
-  instructor_time: flight.instructor_time.toString(),
-  xcountry_time: flight.xcountry_time.toString(),
-  night_time: flight.night_time.toString(),
-  act_instrument_time: flight.act_instrument_time.toString(),
-  sim_instrument_time: flight.sim_instrument_time.toString(),
-  sim_time: flight.sim_time.toString(),
+  sel_time: (flight.sel_time ?? 0).toString(),
+  ses_time: (flight.ses_time ?? 0).toString(),
+  mel_time: (flight.mel_time ?? 0).toString(),
+  mes_time: (flight.mes_time ?? 0).toString(),
+  helicopter_time: (flight.helicopter_time ?? 0).toString(),
+  glider_time: (flight.glider_time ?? 0).toString(),
+  pic_time: (flight.pic_time ?? 0).toString(),
+  sic_time: (flight.sic_time ?? 0).toString(),
+  dual_time: (flight.dual_time ?? 0).toString(),
+  instructor_time: (flight.instructor_time ?? 0).toString(),
+  xcountry_time: (flight.xcountry_time ?? 0).toString(),
+  night_time: (flight.night_time ?? 0).toString(),
+  act_instrument_time: (flight.act_instrument_time ?? 0).toString(),
+  sim_instrument_time: (flight.sim_instrument_time ?? 0).toString(),
+  sim_time: (flight.sim_time ?? 0).toString(),
   pilot_in_command: flight.pilot_in_command,
   remarks: flight.remarks ?? "",
-  takeoffs_day: flight.takeoffs_day.toString(),
-  takeoffs_night: flight.takeoffs_night.toString(),
-  landings_day: flight.landings_day.toString(),
-  landings_night: flight.landings_night.toString(),
-  cross_country: flight.cross_country,
+  takeoffs_day: (flight.takeoffs_day ?? 0).toString(),
+  takeoffs_night: (flight.takeoffs_night ?? 0).toString(),
+  landings_day: (flight.landings_day ?? 0).toString(),
+  landings_night: (flight.landings_night ?? 0).toString(),
+  cross_country: flight.cross_country ?? false,
 });
 
 export default function EntryForm({ editFlightId }: { editFlightId?: number | null }) {
