@@ -1,8 +1,0 @@
-- [ ] Register settings router in backend/main.py
-- [ ] Add API methods (getCurrentUser, updateUsername, changePassword) to client.ts
-- [ ] Create shared settings config types in a reusable module
-- [ ] Update App.tsx to conditionally show/hide optional nav pages
-- [ ] Update Logbook.tsx to respect columnVisibility settings
-- [ ] Update EntryForm.tsx to respect columnVisibility settings
-- [ ] Update Settings.tsx to use shared types and connect to backend
-- [ ] Verify everything builds
