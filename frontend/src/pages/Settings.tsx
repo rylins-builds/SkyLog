@@ -382,8 +382,8 @@ export default function Settings() {
   const corePages = [
     { key: "dashboard", label: "Dashboard" },
     { key: "logbook", label: "Logbook" },
-    { key: "newFlight", label: "New Flight" },
-    { key: "settings", label: "Settings" }
+    { key: "settings", label: "Settings" },
+    { key: "newFlight", label: "New Flight" }
   ];
 
   return (

@@ -293,26 +293,6 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
         {isEditMode ? "Edit Flight" : "Log a New Flight"}
       </h1>
 
-      {/* Alert */}
-      {message && (
-        <div
-          className={`flex items-center gap-2 p-3 rounded-lg mb-4 animate-slide-up ${
-            message.type === "error" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
-          }`}
-        >
-          {message.type === "success" ? (
-            <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          )}
-          <span className="text-sm">{message.text}</span>
-        </div>
-      )}
-
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {isFieldVisible("date") && (
@@ -675,6 +655,26 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
               placeholder="VFR flight, smooth conditions, worst landing ever, etc."
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400 resize-none dark:text-white"
             />
+          </div>
+        )}
+
+        {/* Alert */}
+        {message && (
+          <div
+            className={`flex items-center gap-2 p-3 rounded-lg animate-slide-up ${
+              message.type === "error" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
+            }`}
+          >
+            {message.type === "success" ? (
+              <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )}
+            <span className="text-sm">{message.text}</span>
           </div>
         )}
 
