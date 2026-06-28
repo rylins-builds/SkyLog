@@ -1,12 +1,22 @@
 import { useEffect, useState, useRef } from "react";
 import { api } from "../api/client";
 import type { Flight } from "../api/types";
+import { loadSettings, type ColumnVisibility } from "../api/settings";
 
 const PAGE_SIZE = 15;
 
 type SortField = "date" | "total_time" | "aircraft_type" | "aircraft_reg" | "departure" | "arrival" | "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "solo_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time";
 type SortDir = "asc" | "desc";
 type FilterKey = "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "solo_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time" | "";
+
+interface ColumnDef {
+  key: keyof ColumnVisibility;
+  label: string;
+  /** Render the cell content for a given flight */
+  render: (flight: Flight) => React.ReactNode;
+  /** For the actions column, we keep it special */
+  isActions?: boolean;
+}
 
 export default function Logbook() {
   const [flights, setFlights] = useState<Flight[]>([]);
@@ -22,6 +32,14 @@ export default function Logbook() {
   const [activeFilter, setActiveFilter] = useState<FilterKey>("");
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
+
+  // Column visibility from settings
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(() => loadSettings().columnVisibility);
+  useEffect(() => {
+    const handler = () => setColumnVisibility(loadSettings().columnVisibility);
+    window.addEventListener("settingsUpdated", handler);
+    return () => window.removeEventListener("settingsUpdated", handler);
+  }, []);
 
   useEffect(() => {
     api.listFlights().then(setFlights).catch((e) => setError(e.message));
@@ -54,7 +72,7 @@ export default function Logbook() {
   const q = search.toLowerCase().trim();
   let filtered = q
     ? flights.filter(
-        (f) =>
+        (f: Flight) =>
           f.aircraft_type.toLowerCase().includes(q) ||
           f.aircraft_reg.toLowerCase().includes(q) ||
           f.departure.toLowerCase().includes(q) ||
@@ -65,22 +83,22 @@ export default function Logbook() {
     : [...flights];
 
   // Apply quick filter
-  if (activeFilter === "sel_time") filtered = filtered.filter((f) => f.sel_time > 0);
-  if (activeFilter === "ses_time") filtered = filtered.filter((f) => f.ses_time > 0);
-  if (activeFilter === "mel_time") filtered = filtered.filter((f) => f.mel_time > 0);
-  if (activeFilter === "mes_time") filtered = filtered.filter((f) => f.mes_time > 0);
-  if (activeFilter === "helicopter_time") filtered = filtered.filter((f) => f.helicopter_time > 0);
-  if (activeFilter === "glider_time") filtered = filtered.filter((f) => f.glider_time > 0);
-  if (activeFilter === "solo_time") filtered = filtered.filter((f) => f.solo_time > 0);
-  if (activeFilter === "pic_time") filtered = filtered.filter((f) => f.pic_time > 0);
-  if (activeFilter === "sic_time") filtered = filtered.filter((f) => f.sic_time > 0);
-  if (activeFilter === "dual_time") filtered = filtered.filter((f) => f.dual_time > 0);
-  if (activeFilter === "instructor_time") filtered = filtered.filter((f) => f.instructor_time > 0);
-  if (activeFilter === "xcountry_time") filtered = filtered.filter((f) => f.xcountry_time > 0);
-  if (activeFilter === "night_time") filtered = filtered.filter((f) => f.night_time > 0);
+  if (activeFilter === "sel_time") filtered = filtered.filter((f: Flight) => f.sel_time > 0);
+  if (activeFilter === "ses_time") filtered = filtered.filter((f: Flight) => f.ses_time > 0);
+  if (activeFilter === "mel_time") filtered = filtered.filter((f: Flight) => f.mel_time > 0);
+  if (activeFilter === "mes_time") filtered = filtered.filter((f: Flight) => f.mes_time > 0);
+  if (activeFilter === "helicopter_time") filtered = filtered.filter((f: Flight) => f.helicopter_time > 0);
+  if (activeFilter === "glider_time") filtered = filtered.filter((f: Flight) => f.glider_time > 0);
+  if (activeFilter === "solo_time") filtered = filtered.filter((f: Flight) => f.solo_time > 0);
+  if (activeFilter === "pic_time") filtered = filtered.filter((f: Flight) => f.pic_time > 0);
+  if (activeFilter === "sic_time") filtered = filtered.filter((f: Flight) => f.sic_time > 0);
+  if (activeFilter === "dual_time") filtered = filtered.filter((f: Flight) => f.dual_time > 0);
+  if (activeFilter === "instructor_time") filtered = filtered.filter((f: Flight) => f.instructor_time > 0);
+  if (activeFilter === "xcountry_time") filtered = filtered.filter((f: Flight) => f.xcountry_time > 0);
+  if (activeFilter === "night_time") filtered = filtered.filter((f: Flight) => f.night_time > 0);
 
   // Apply sort
-  filtered.sort((a, b) => {
+  filtered.sort((a: Flight, b: Flight) => {
     let aVal: string | number = a[sortField] ?? "";
     let bVal: string | number = b[sortField] ?? "";
     if (typeof aVal === "string" && typeof bVal === "string") {
@@ -101,7 +119,7 @@ export default function Logbook() {
     if (!confirm("Delete this flight record?")) return;
     try {
       await api.deleteFlight(id);
-      setFlights((prev) => prev.filter((f) => f.id !== id));
+      setFlights((prev: Flight[]) => prev.filter((f: Flight) => f.id !== id));
     } catch (err) {
       alert(`Failed to delete: ${err instanceof Error ? err.message : "Unknown error"}`);
     }
@@ -148,6 +166,63 @@ export default function Logbook() {
   const activeSortLabel = sortOptions.find((o) => o.field === sortField)?.label ?? "Date";
   const activeFilterLabel = filterOptions.find((o) => o.key === activeFilter)?.label;
 
+  // Define all columns once
+  const allColumns: ColumnDef[] = [
+    { key: "date", label: "Date", render: (f) => f.date },
+    { key: "aircraftType", label: "Aircraft Type", render: (f) => f.aircraft_type },
+    { key: "aircraftReg", label: "Aircraft Registration", render: (f) => f.aircraft_reg },
+    { key: "departure", label: "From", render: (f) => f.departure },
+    { key: "arrival", label: "To", render: (f) => f.arrival },
+    { key: "totalTime", label: "Total Time", render: (f) => f.total_time.toFixed(1) },
+    { key: "selTime", label: "Single Engine Land", render: (f) => f.sel_time.toFixed(1) },
+    { key: "sesTime", label: "Single Engine Sea", render: (f) => f.ses_time.toFixed(1) },
+    { key: "melTime", label: "Multi Engine Land", render: (f) => f.mel_time.toFixed(1) },
+    { key: "mesTime", label: "Multi Engine Sea", render: (f) => f.mes_time.toFixed(1) },
+    { key: "helicopterTime", label: "Helicopter", render: (f) => f.helicopter_time.toFixed(1) },
+    { key: "gliderTime", label: "Glider", render: (f) => f.glider_time.toFixed(1) },
+    { key: "soloTime", label: "Solo", render: (f) => f.solo_time.toFixed(1) },
+    { key: "picTime", label: "PIC", render: (f) => f.pic_time.toFixed(1) },
+    { key: "sicTime", label: "SIC", render: (f) => f.sic_time.toFixed(1) },
+    { key: "dualTime", label: "Dual Received", render: (f) => f.dual_time.toFixed(1) },
+    { key: "instructorTime", label: "Instructor", render: (f) => f.instructor_time.toFixed(1) },
+    { key: "xcountryTime", label: "Cross Country", render: (f) => f.xcountry_time.toFixed(1) },
+    { key: "nightTime", label: "Night", render: (f) => f.night_time.toFixed(1) },
+    { key: "actInstrumentTime", label: "Actual Instrument", render: (f) => f.act_instrument_time.toFixed(1) },
+    { key: "simInstrumentTime", label: "Hooded Instrument", render: (f) => f.sim_instrument_time.toFixed(1) },
+    { key: "simTime", label: "Flight Simulator", render: (f) => f.sim_time.toFixed(1) },
+    { key: "remarks", label: "Remarks", render: (f) => f.remarks },
+    {
+      key: "actions",
+      label: "Actions",
+      isActions: true,
+      render: (f) => (
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("edit-flight", { detail: f.id }))}
+            className="p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+            title="Edit flight"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => handleDelete(f.id)}
+            className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+            title="Delete flight"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  // Only show visible columns
+  const visibleColumns = allColumns.filter((col) => columnVisibility[col.key]);
+
   // Empty state — no flights at all
   if (flights.length === 0) {
     return (
@@ -177,7 +252,6 @@ export default function Logbook() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Logbook</h1>
         <div className="flex items-center gap-2">
-
           {/* Sort dropdown */}
           <div className="relative" ref={sortRef}>
             <button
@@ -196,7 +270,6 @@ export default function Logbook() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-
             {showSortMenu && (
               <div className="absolute left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 dark:bg-zinc-900 dark:border-zinc-600">
                 <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide dark:text-white">Sort by</div>
@@ -273,7 +346,6 @@ export default function Logbook() {
                 </svg>
               )}
             </button>
-
             {showFilterMenu && (
               <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 dark:bg-zinc-800 dark:border-zinc-600">
                 <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Filter by</div>
@@ -349,30 +421,11 @@ export default function Logbook() {
               <table className="w-full text-center">
                 <thead>
                   <tr className="border-b-2 border-gray-200 bg-gray-50 dark:bg-zinc-900 dark:border-zinc-600">
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Date</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Aircraft Type</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Aircraft Registration</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">From</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">To</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Total Time</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Single Engine Land</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Single Engine Sea</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Multi Engine Land</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Single Engine Sea</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Helicopter</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Glider</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Solo</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">PIC</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">SIC</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Dual Received</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Instructor</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Cross Country</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Night</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Actual Instrument</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Hooded Instrument</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Flight Simulator</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Remarks</th>
-                    <th className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">Actions</th>
+                    {visibleColumns.map((col) => (
+                      <th key={col.key} className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">
+                        {col.label}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -382,51 +435,16 @@ export default function Logbook() {
                       className="border-b border-gray-100 hover:bg-gray-50 dark:hover:bg-zinc-700 logbook-row"
                       style={{ animationDelay: `${idx * 30}ms` }}
                     >
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.date}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.aircraft_type}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.aircraft_reg}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.departure}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.arrival}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.total_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.sel_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.ses_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.mel_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.mes_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.helicopter_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.glider_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.solo_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.pic_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.sic_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.dual_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.instructor_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.xcountry_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.night_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.act_instrument_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.sim_instrument_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.sim_time.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white">{flight.remarks}</td>
-                      <td className="px-4 py-3 row-actions whitespace-nowrap">
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => window.dispatchEvent(new CustomEvent("edit-flight", { detail: flight.id }))}
-                            className="p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                            title="Edit flight"
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => handleDelete(flight.id)}
-                            className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                            title="Delete flight"
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
+                      {visibleColumns.map((col) => (
+                        <td
+                          key={col.key}
+                          className={`px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white ${
+                            col.isActions ? "row-actions" : ""
+                          }`}
+                        >
+                          {col.render(flight)}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>

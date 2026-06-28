@@ -1,55 +1,761 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { Flight } from "../api/types";
+import {
+  type PageVisibility,
+  type ColumnVisibility,
+} from "../api/settings";
+
+interface SettingsState {
+  pageVisibility: PageVisibility;
+  columnVisibility: ColumnVisibility;
+  username: string;
+}
 
 export default function Settings() {
-  const [flights, setFlights] = useState<Flight[]>([]);
-  const [error, setError] = useState("");
+  const [settings, setSettings] = useState<SettingsState>({
+    pageVisibility: {
+      currency: true,
+      FAA8710: true,
+    },
+    columnVisibility: {
+      date: true,
+      aircraftType: true,
+      aircraftReg: true,
+      departure: true,
+      arrival: true,
+      departureTime: true,
+      arrivalTime: true,
+      totalTime: true,
+      selTime: true,
+      sesTime: true,
+      melTime: true,
+      mesTime: true,
+      helicopterTime: true,
+      gliderTime: true,
+      soloTime: true,
+      picTime: true,
+      sicTime: true,
+      dualTime: true,
+      instructorTime: true,
+      xcountryTime: true,
+      nightTime: true,
+      actInstrumentTime: true,
+      simInstrumentTime: true,
+      simTime: true,
+      pilotInCommand: true,
+      remarks: true,
+      takeoffsDay: true,
+      takeoffsNight: true,
+      landingsDay: true,
+      landingsNight: true,
+      crossCountry: true,
+      actions: true,
+    },
+    username: "",
+  });
 
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [importErrors, setImportErrors] = useState<{row: number; error: string}[]>([]);
+  const [showImportErrors, setShowImportErrors] = useState(false);
+
+  // Load settings on mount
   useEffect(() => {
-    api.listFlights().then(setFlights).catch((e) => setError(e.message));
+    loadSettings();
   }, []);
 
-  if (error) {
-    return (
-      <div className="p-8 text-center animate-fade-in">
-        <div className="inline-flex items-center gap-2 bg-red-100 text-red-700 px-4 py-3 rounded-lg">
-            <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          <span>Failed to load flights: {error}</span>
+  const loadSettings = async () => {
+    try {
+      // Load from localStorage or API
+      const savedSettings = localStorage.getItem("flightLogbookSettings");
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        setSettings(prev => ({ ...prev, ...parsed }));
+      }
+      
+      // Load username from session
+      const user = await api.getCurrentUser();
+      setSettings(prev => ({ ...prev, username: user.username }));
+    } catch (e) {
+      console.error("Failed to load settings:", e);
+    }
+  };
+
+  const saveSettings = async () => {
+    try {
+      setIsLoading(true);
+      localStorage.setItem("flightLogbookSettings", JSON.stringify(settings));
+      
+      // Broadcast settings change to other components
+      window.dispatchEvent(new CustomEvent("settingsUpdated", { 
+        detail: settings 
+      }));
+      
+      setSuccess("Settings saved successfully!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (e) {
+      setError("Failed to save settings");
+      setTimeout(() => setError(""), 3000);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      setTimeout(() => setError(""), 3000);
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      setTimeout(() => setError(""), 3000);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await api.changePassword(currentPassword, password);
+      setSuccess("Password changed successfully!");
+      setPassword("");
+      setConfirmPassword("");
+      setCurrentPassword("");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (e) {
+      setError("Failed to change password");
+      setTimeout(() => setError(""), 3000);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUsernameChange = async () => {
+    try {
+      setIsLoading(true);
+      await api.updateUsername(settings.username);
+      setSuccess("Username updated successfully!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (e) {
+      setError("Failed to update username");
+      setTimeout(() => setError(""), 3000);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      setIsLoading(true);
+      const flights = await api.listFlights();
+      
+      // Convert flights to CSV - include all columns
+      const headers = [
+        "Date", "Aircraft Type", "Registration", "Departure", "Arrival",
+        "Departure Time", "Arrival Time", "Total Time", "SEL", "SES", "MEL", 
+        "MES", "Helicopter", "Glider", "Solo", "PIC", "SIC", "Dual Received", 
+        "Instructor", "Cross Country", "Night", "Actual Instrument", 
+        "Simulated Instrument", "Flight Simulator", "Pilot in Command",
+        "Remarks", "Takeoffs Day", "Takeoffs Night", "Landings Day", 
+        "Landings Night", "Cross Country Flight"
+      ];
+      
+      const rows = flights.map((flight: Flight) => [
+        flight.date,
+        flight.aircraft_type,
+        flight.aircraft_reg,
+        flight.departure,
+        flight.arrival,
+        flight.departure_time || "",
+        flight.arrival_time || "",
+        flight.total_time.toFixed(1),
+        flight.sel_time?.toFixed(1) || "0.0",
+        flight.ses_time?.toFixed(1) || "0.0",
+        flight.mel_time?.toFixed(1) || "0.0",
+        flight.mes_time?.toFixed(1) || "0.0",
+        flight.helicopter_time?.toFixed(1) || "0.0",
+        flight.glider_time?.toFixed(1) || "0.0",
+        flight.solo_time?.toFixed(1) || "0.0",
+        flight.pic_time.toFixed(1),
+        flight.sic_time.toFixed(1),
+        flight.dual_time?.toFixed(1) || "0.0",
+        flight.instructor_time?.toFixed(1) || "0.0",
+        flight.xcountry_time?.toFixed(1) || "0.0",
+        flight.night_time?.toFixed(1) || "0.0",
+        flight.act_instrument_time?.toFixed(1) || "0.0",
+        flight.sim_instrument_time?.toFixed(1) || "0.0",
+        flight.sim_time?.toFixed(1) || "0.0",
+        flight.pilot_in_command,
+        flight.remarks || "",
+        flight.takeoffs_day || 0,
+        flight.takeoffs_night || 0,
+        flight.landings_day || 0,
+        flight.landings_night || 0,
+        flight.cross_country ? "Yes" : "No"
+      ]);
+      
+      const csvContent = [
+        headers.join(","),
+        ...rows.map(row => row.join(","))
+      ].join("\n");
+      
+      // Download CSV
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `flights_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      setSuccess(`Exported ${flights.length} flights successfully!`);
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (e) {
+      setError("Failed to export flights");
+      setTimeout(() => setError(""), 3000);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Parse a single CSV line into fields, handling quoted values with commas
+  const parseCSVLine = (line: string): string[] => {
+    const fields: string[] = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        inQuotes = !inQuotes;
+      } else if (ch === "," && !inQuotes) {
+        fields.push(current);
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+    fields.push(current);
+    return fields;
+  };
+
+  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsLoading(true);
+      setImportErrors([]);
+      setShowImportErrors(false);
+      const text = await file.text();
+      const lines = text.split("\n");
+      
+      const rows = lines.slice(1).filter(line => line.trim());
+      let imported = 0;
+      let failed = 0;
+      const errors: {row: number; error: string}[] = [];
+
+      for (let idx = 0; idx < rows.length; idx++) {
+        const line = rows[idx];
+        const csvLineNumber = idx + 2; // +2 because line 1 is the header, and idx is 0-based
+        let values: string[] = [];
+        try {
+          values = parseCSVLine(line);
+          if (values.length < 31) {
+            const dateHint = values[0] ? ` (date: ${values[0]})` : "";
+            errors.push({
+              row: csvLineNumber,
+              error: `Too few columns (got ${values.length}, need 31).${dateHint}`,
+            });
+            failed++;
+            continue;
+          }
+
+          await api.createFlight({
+            date: values[0],
+            aircraft_type: values[1],
+            aircraft_reg: values[2],
+            departure: values[3],
+            arrival: values[4],
+            departure_time: values[5] || null,
+            arrival_time: values[6] || null,
+            total_time: parseFloat(values[7]) || 0,
+            sel_time: parseFloat(values[8]) || 0,
+            ses_time: parseFloat(values[9]) || 0,
+            mel_time: parseFloat(values[10]) || 0,
+            mes_time: parseFloat(values[11]) || 0,
+            helicopter_time: parseFloat(values[12]) || 0,
+            glider_time: parseFloat(values[13]) || 0,
+            solo_time: parseFloat(values[14]) || 0,
+            pic_time: parseFloat(values[15]) || 0,
+            sic_time: parseFloat(values[16]) || 0,
+            dual_time: parseFloat(values[17]) || 0,
+            instructor_time: parseFloat(values[18]) || 0,
+            xcountry_time: parseFloat(values[19]) || 0,
+            night_time: parseFloat(values[20]) || 0,
+            act_instrument_time: parseFloat(values[21]) || 0,
+            sim_instrument_time: parseFloat(values[22]) || 0,
+            sim_time: parseFloat(values[23]) || 0,
+            pilot_in_command: values[24] || "",
+            remarks: values[25] || null,
+            takeoffs_day: parseInt(values[26]) || 0,
+            takeoffs_night: parseInt(values[27]) || 0,
+            landings_day: parseInt(values[28]) || 0,
+            landings_night: parseInt(values[29]) || 0,
+            cross_country: values[30]?.toLowerCase() === "yes",
+          });
+          imported++;
+        } catch (e) {
+          const errMsg = e instanceof Error ? e.message : String(e);
+          const dateHint = values?.[0] ? ` (date: ${values[0]})` : "";
+          errors.push({
+            row: csvLineNumber,
+            error: `${errMsg}${dateHint}`,
+          });
+          failed++;
+        }
+      }
+
+      event.target.value = ""; // Reset input
+      setImportErrors(errors);
+
+      if (failed > 0) {
+        setSuccess(`Imported ${imported} flights (${failed} skipped due to errors).`);
+        setShowImportErrors(true);
+      } else {
+        setSuccess(`Successfully imported ${imported} flights!`);
+      }
+      setTimeout(() => setSuccess(""), 5000);
+      
+      // Refresh the flight list
+      const updatedFlights = await api.listFlights();
+      window.dispatchEvent(new CustomEvent("flightsUpdated", { 
+        detail: updatedFlights 
+      }));
+      
+    } catch (e) {
+      setError("Failed to import flights. Please check the CSV format.");
+      setTimeout(() => setError(""), 3000);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const togglePageVisibility = (page: keyof PageVisibility) => {
+    setSettings(prev => ({
+      ...prev,
+      pageVisibility: {
+        ...prev.pageVisibility,
+        [page]: !prev.pageVisibility[page]
+      }
+    }));
+  };
+
+  const toggleColumnVisibility = (column: keyof ColumnVisibility) => {
+    setSettings(prev => ({
+      ...prev,
+      columnVisibility: {
+        ...prev.columnVisibility,
+        [column]: !prev.columnVisibility[column]
+      }
+    }));
+  };
+
+  // Column groups for better organization
+  const columnGroups = [
+    {
+      title: "Basic Information",
+      columns: [
+        { key: "date", label: "Date" },
+        { key: "aircraftType", label: "Aircraft Type" },
+        { key: "aircraftReg", label: "Registration" },
+        { key: "departure", label: "Departure" },
+        { key: "arrival", label: "Arrival" },
+        { key: "departureTime", label: "Departure Time" },
+        { key: "arrivalTime", label: "Arrival Time" },
+        { key: "pilotInCommand", label: "Pilot in Command" },
+      ]
+    },
+    {
+      title: "Time Categories",
+      columns: [
+        { key: "totalTime", label: "Total Time" },
+        { key: "selTime", label: "Single Engine Land" },
+        { key: "sesTime", label: "Single Engine Sea" },
+        { key: "melTime", label: "Multi Engine Land" },
+        { key: "mesTime", label: "Multi Engine Sea" },
+        { key: "helicopterTime", label: "Helicopter" },
+        { key: "gliderTime", label: "Glider" },
+      ]
+    },
+    {
+      title: "Pilot Time",
+      columns: [
+        { key: "soloTime", label: "Solo" },
+        { key: "picTime", label: "PIC" },
+        { key: "sicTime", label: "SIC" },
+        { key: "dualTime", label: "Dual Received" },
+        { key: "instructorTime", label: "Instructor" },
+      ]
+    },
+    {
+      title: "Special Categories",
+      columns: [
+        { key: "xcountryTime", label: "Cross Country Time" },
+        { key: "nightTime", label: "Night" },
+        { key: "actInstrumentTime", label: "Actual Instrument" },
+        { key: "simInstrumentTime", label: "Simulated Instrument" },
+        { key: "simTime", label: "Flight Simulator" },
+        { key: "crossCountry", label: "Cross Country Flight" },
+      ]
+    },
+    {
+      title: "Takeoffs & Landings",
+      columns: [
+        { key: "takeoffsDay", label: "Day Takeoffs" },
+        { key: "takeoffsNight", label: "Night Takeoffs" },
+        { key: "landingsDay", label: "Day Landings" },
+        { key: "landingsNight", label: "Night Landings" },
+      ]
+    },
+    {
+      title: "Other",
+      columns: [
+        { key: "remarks", label: "Remarks" },
+        { key: "actions", label: "Actions" },
+      ]
+    }
+  ];
+
+  // Define core pages that should always be visible
+  const corePages = [
+    { key: "dashboard", label: "Dashboard" },
+    { key: "logbook", label: "Logbook" },
+    { key: "settings", label: "Settings" },
+    { key: "newFlight", label: "New Flight" }
+  ];
+
+  return (
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto animate-fade-in dark:bg-zinc-800">
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Settings</h1>
+
+      {/* Page Visibility */}
+      <div className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100 dark:bg-zinc-900 dark:border-zinc-600 animate-slide-up">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Page Visibility</h2>
+        
+        {/* Core Pages - Always Visible (non-configurable) */}
+        <div className="mb-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+            Core Pages (always visible)
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {corePages.map(({ key, label }) => (
+              <div key={key} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-zinc-800 rounded-lg">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</span>
+                <span className="text-xs px-2 py-1 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 rounded-full">
+                  Always On
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Optional Pages - Configurable */}
+        <div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+            Optional Pages (toggle visibility)
+          </p>
+          <div className="space-y-3">
+            {Object.entries(settings.pageVisibility).map(([page, visible]) => (
+              <div key={page} className="flex items-center justify-between">
+                <label className="text-gray-700 dark:text-gray-300 capitalize">
+                  {page === "FAA8710" ? "FAA 8710" : page.replace(/([A-Z])/g, ' $1').trim()}
+                </label>
+                <button
+                  onClick={() => togglePageVisibility(page as keyof PageVisibility)}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${
+                    visible ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                      visible ? "left-7" : "left-1"
+                    }`}
+                  />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    );
-  }
-    
-  // Empty state — no flights at all
-  if (flights.length === 0) {
-    return (
-      <div className="p-8 text-center animate-fade-in">
-        <div className="max-w-md mx-auto py-16">
-          <div className="text-6xl mb-4">📖</div>
-          <h2 className="text-xl font-semibold text-gray-700 mb-2 dark:text-white">No flights logged yet</h2>
-          <p className="text-gray-500 mb-6 dark:text-white">
-            Ready for takeoff? Add your first flight to get started.
-          </p>
+
+      {/* Column Visibility */}
+      <div className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100 dark:bg-zinc-900 dark:border-zinc-600 animate-slide-up" style={{ animationDelay: "100ms" }}>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Column Visibility</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Hide columns in the Logbook and New Flight form
+        </p>
+        
+        {columnGroups.map((group, groupIndex) => (
+          <div key={groupIndex} className="mb-6 last:mb-0">
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3 border-b border-gray-200 dark:border-zinc-700 pb-2">
+              {group.title}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {group.columns.map(({ key, label }) => {
+                const columnKey = key as keyof ColumnVisibility;
+                return (
+                  <div key={key} className="flex items-center space-x-2">
+                    <button
+                      onClick={() => toggleColumnVisibility(columnKey)}
+                      className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                        settings.columnVisibility[columnKey]
+                          ? "bg-blue-600 border-blue-600" 
+                          : "border-gray-400 dark:border-gray-500"
+                      }`}
+                    >
+                      {settings.columnVisibility[columnKey] && (
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                    <label className="text-sm text-gray-700 dark:text-gray-300">
+                      {label}
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        {/* Quick Actions */}
+        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-700 flex flex-wrap gap-3">
           <button
-            onClick={() => window.dispatchEvent(new CustomEvent("navigate", { detail: "add" }))}
-            className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors btn-primary"
+            onClick={() => {
+              const allVisible = Object.keys(settings.columnVisibility).reduce((acc, key) => {
+                acc[key as keyof ColumnVisibility] = true;
+                return acc;
+              }, {} as ColumnVisibility);
+              setSettings(prev => ({ ...prev, columnVisibility: allVisible }));
+            }}
+            className="text-sm px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors dark:bg-zinc-700 dark:text-white dark:hover:bg-zinc-600"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Your First Flight
+            Show All
+          </button>
+          <button
+            onClick={() => {
+              const allHidden = Object.keys(settings.columnVisibility).reduce((acc, key) => {
+                acc[key as keyof ColumnVisibility] = false;
+                return acc;
+              }, {} as ColumnVisibility);
+              setSettings(prev => ({ ...prev, columnVisibility: allHidden }));
+            }}
+            className="text-sm px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors dark:bg-zinc-700 dark:text-white dark:hover:bg-zinc-600"
+          >
+            Hide All
           </button>
         </div>
       </div>
-    );
-  }
 
-  return (
-      <div className="p-8 max-w-[80%] mx-auto animate-fade-in">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6 dark:text-white">Settings</h1>
+      {/* User Settings */}
+      <div className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100 dark:bg-zinc-900 dark:border-zinc-600 animate-slide-up" style={{ animationDelay: "200ms" }}>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">User Settings</h2>
+        
+        {/* Username */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Username
+          </label>
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={settings.username}
+              onChange={(e) => setSettings(prev => ({ ...prev, username: e.target.value }))}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-zinc-800 dark:border-zinc-600 dark:text-white"
+            />
+            <button
+              onClick={handleUsernameChange}
+              disabled={isLoading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              Update
+            </button>
+          </div>
+        </div>
+
+        {/* Password Change */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Change Password
+          </label>
+          <div className="space-y-3">
+            <input
+              type="password"
+              placeholder="Current Password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-zinc-800 dark:border-zinc-600 dark:text-white"
+            />
+            <input
+              type="password"
+              placeholder="New Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-zinc-800 dark:border-zinc-600 dark:text-white"
+            />
+            <input
+              type="password"
+              placeholder="Confirm New Password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-zinc-800 dark:border-zinc-600 dark:text-white"
+            />
+            <button
+              onClick={handlePasswordChange}
+              disabled={isLoading}
+              className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              Change Password
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* CSV Import/Export */}
+      <div className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100 dark:bg-zinc-900 dark:border-zinc-600 animate-slide-up" style={{ animationDelay: "300ms" }}>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">CSV Management</h2>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <button
+              onClick={handleExportCSV}
+              disabled={isLoading}
+              className="w-full py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+            >
+              <div className="flex items-center justify-center gap-2">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export Flights (CSV)
+              </div>
+            </button>
+          </div>
+          <div className="flex-1">
+            <label className="block w-full">
+              <div className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center cursor-pointer">
+                <div className="flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Import Flights (CSV)
+                </div>
+              </div>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleImportCSV}
+                className="hidden"
+                disabled={isLoading}
+              />
+            </label>
+          </div>
+        </div>
+        <div className="mt-3 p-3 bg-gray-50 rounded-lg dark:bg-zinc-800">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            <strong>CSV Format:</strong> Date, Aircraft Type, Registration, Departure, Arrival, 
+            Departure Time, Arrival Time, Total Time, SEL, SES, MEL, MES, Helicopter, Glider, 
+            Solo, PIC, SIC, Dual Received, Instructor, Cross Country, Night, Actual Instrument, 
+            Simulated Instrument, Flight Simulator, Pilot in Command, Remarks, Takeoffs Day, 
+            Takeoffs Night, Landings Day, Landings Night, Cross Country Flight
+          </p>
+        </div>
+      </div>
+
+      {/* Import Error Details */}
+      {showImportErrors && importErrors.length > 0 && (
+        <div className="mb-6 bg-white rounded-xl shadow-md border border-red-200 dark:bg-zinc-900 dark:border-red-800 animate-slide-up">
+          <button
+            onClick={() => setShowImportErrors(!showImportErrors)}
+            className="w-full flex items-center justify-between p-4 text-left"
+          >
+            <h3 className="text-sm font-semibold text-red-700 dark:text-red-400">
+              Import Errors ({importErrors.length})
+            </h3>
+            <svg
+              className={`w-5 h-5 text-red-500 transition-transform ${
+                showImportErrors ? "rotate-180" : ""
+              }`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div className="px-4 pb-4 max-h-64 overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-red-100 dark:border-red-900">
+                  <th className="text-left py-2 pr-4 text-red-600 dark:text-red-400 font-medium w-20">Row</th>
+                  <th className="text-left py-2 text-red-600 dark:text-red-400 font-medium">Error</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importErrors.map((err, i) => (
+                  <tr
+                    key={i}
+                    className="border-b border-gray-100 dark:border-zinc-800 last:border-0"
+                  >
+                    <td className="py-2 pr-4 text-gray-500 dark:text-gray-400 font-mono">
+                      {err.row}
+                    </td>
+                    <td className="py-2 text-gray-700 dark:text-gray-300 break-words">
+                      {err.error}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg dark:bg-red-900 dark:text-red-300 animate-fade-in">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="mb-4 p-4 bg-green-100 text-green-700 rounded-lg dark:bg-green-900 dark:text-green-300 animate-fade-in">
+          {success}
+        </div>
+      )}
+
+      {/* Save All Settings */}
+      <button
+        onClick={saveSettings}
+        disabled={isLoading}
+        className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 animate-slide-up"
+        style={{ animationDelay: "400ms" }}
+      >
+        {isLoading ? (
+          <span className="flex items-center justify-center gap-2">
+            <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            Saving...
+          </span>
+        ) : (
+          "Save All Settings"
+        )}
+      </button>
+    </div>
   );
 }
