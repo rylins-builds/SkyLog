@@ -61,6 +61,8 @@ export default function Settings() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [importErrors, setImportErrors] = useState<{row: number; error: string}[]>([]);
+  const [showImportErrors, setShowImportErrors] = useState(false);
 
   // Load settings on mount
   useEffect(() => {
@@ -223,6 +225,26 @@ export default function Settings() {
     }
   };
 
+  // Parse a single CSV line into fields, handling quoted values with commas
+  const parseCSVLine = (line: string): string[] => {
+    const fields: string[] = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        inQuotes = !inQuotes;
+      } else if (ch === "," && !inQuotes) {
+        fields.push(current);
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+    fields.push(current);
+    return fields;
+  };
+
   const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -232,51 +254,65 @@ export default function Settings() {
       const text = await file.text();
       const lines = text.split("\n");
       
-      const flights = lines.slice(1).filter(line => line.trim()).map(line => {
-        const values = line.split(",");
-        return {
-          date: values[0],
-          aircraft_type: values[1],
-          aircraft_reg: values[2],
-          departure: values[3],
-          arrival: values[4],
-          departure_time: values[5] || null,
-          arrival_time: values[6] || null,
-          total_time: parseFloat(values[7]) || 0,
-          sel_time: parseFloat(values[8]) || 0,
-          ses_time: parseFloat(values[9]) || 0,
-          mel_time: parseFloat(values[10]) || 0,
-          mes_time: parseFloat(values[11]) || 0,
-          helicopter_time: parseFloat(values[12]) || 0,
-          glider_time: parseFloat(values[13]) || 0,
-          solo_time: parseFloat(values[14]) || 0,
-          pic_time: parseFloat(values[15]) || 0,
-          sic_time: parseFloat(values[16]) || 0,
-          dual_time: parseFloat(values[17]) || 0,
-          instructor_time: parseFloat(values[18]) || 0,
-          xcountry_time: parseFloat(values[19]) || 0,
-          night_time: parseFloat(values[20]) || 0,
-          act_instrument_time: parseFloat(values[21]) || 0,
-          sim_instrument_time: parseFloat(values[22]) || 0,
-          sim_time: parseFloat(values[23]) || 0,
-          pilot_in_command: values[24] || "",
-          remarks: values[25] || null,
-          takeoffs_day: parseInt(values[26]) || 0,
-          takeoffs_night: parseInt(values[27]) || 0,
-          landings_day: parseInt(values[28]) || 0,
-          landings_night: parseInt(values[29]) || 0,
-          cross_country: values[30]?.toLowerCase() === "yes",
-        };
-      });
+      const rows = lines.slice(1).filter(line => line.trim());
+      let imported = 0;
+      let failed = 0;
 
-      // Import flights
-      for (const flight of flights) {
-        await api.createFlight(flight);
+      for (const line of rows) {
+        try {
+          const values = parseCSVLine(line);
+          if (values.length < 31) {
+            failed++;
+            continue;
+          }
+
+          await api.createFlight({
+            date: values[0],
+            aircraft_type: values[1],
+            aircraft_reg: values[2],
+            departure: values[3],
+            arrival: values[4],
+            departure_time: values[5] || null,
+            arrival_time: values[6] || null,
+            total_time: parseFloat(values[7]) || 0,
+            sel_time: parseFloat(values[8]) || 0,
+            ses_time: parseFloat(values[9]) || 0,
+            mel_time: parseFloat(values[10]) || 0,
+            mes_time: parseFloat(values[11]) || 0,
+            helicopter_time: parseFloat(values[12]) || 0,
+            glider_time: parseFloat(values[13]) || 0,
+            solo_time: parseFloat(values[14]) || 0,
+            pic_time: parseFloat(values[15]) || 0,
+            sic_time: parseFloat(values[16]) || 0,
+            dual_time: parseFloat(values[17]) || 0,
+            instructor_time: parseFloat(values[18]) || 0,
+            xcountry_time: parseFloat(values[19]) || 0,
+            night_time: parseFloat(values[20]) || 0,
+            act_instrument_time: parseFloat(values[21]) || 0,
+            sim_instrument_time: parseFloat(values[22]) || 0,
+            sim_time: parseFloat(values[23]) || 0,
+            pilot_in_command: values[24] || "",
+            remarks: values[25] || null,
+            takeoffs_day: parseInt(values[26]) || 0,
+            takeoffs_night: parseInt(values[27]) || 0,
+            landings_day: parseInt(values[28]) || 0,
+            landings_night: parseInt(values[29]) || 0,
+            cross_country: values[30]?.toLowerCase() === "yes",
+          });
+          imported++;
+        } catch {
+          failed++;
+        }
       }
 
-      setSuccess(`Successfully imported ${flights.length} flights!`);
       event.target.value = ""; // Reset input
-      setTimeout(() => setSuccess(""), 3000);
+
+      if (failed > 0) {
+        setSuccess(`Imported ${imported} flights (${failed} skipped due to errors).`);
+      } else {
+        setSuccess(`Successfully imported ${imported} flights!`);
+      }
+      setTimeout(() => setSuccess(""), 5000);
       
       // Refresh the flight list
       const updatedFlights = await api.listFlights();
