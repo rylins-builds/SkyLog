@@ -251,17 +251,28 @@ export default function Settings() {
 
     try {
       setIsLoading(true);
+      setImportErrors([]);
+      setShowImportErrors(false);
       const text = await file.text();
       const lines = text.split("\n");
       
       const rows = lines.slice(1).filter(line => line.trim());
       let imported = 0;
       let failed = 0;
+      const errors: {row: number; error: string}[] = [];
 
-      for (const line of rows) {
+      for (let idx = 0; idx < rows.length; idx++) {
+        const line = rows[idx];
+        const csvLineNumber = idx + 2; // +2 because line 1 is the header, and idx is 0-based
+        let values: string[] = [];
         try {
-          const values = parseCSVLine(line);
+          values = parseCSVLine(line);
           if (values.length < 31) {
+            const dateHint = values[0] ? ` (date: ${values[0]})` : "";
+            errors.push({
+              row: csvLineNumber,
+              error: `Too few columns (got ${values.length}, need 31).${dateHint}`,
+            });
             failed++;
             continue;
           }
@@ -300,15 +311,23 @@ export default function Settings() {
             cross_country: values[30]?.toLowerCase() === "yes",
           });
           imported++;
-        } catch {
+        } catch (e) {
+          const errMsg = e instanceof Error ? e.message : String(e);
+          const dateHint = values?.[0] ? ` (date: ${values[0]})` : "";
+          errors.push({
+            row: csvLineNumber,
+            error: `${errMsg}${dateHint}`,
+          });
           failed++;
         }
       }
 
       event.target.value = ""; // Reset input
+      setImportErrors(errors);
 
       if (failed > 0) {
         setSuccess(`Imported ${imported} flights (${failed} skipped due to errors).`);
+        setShowImportErrors(true);
       } else {
         setSuccess(`Successfully imported ${imported} flights!`);
       }
@@ -658,6 +677,53 @@ export default function Settings() {
           </p>
         </div>
       </div>
+
+      {/* Import Error Details */}
+      {showImportErrors && importErrors.length > 0 && (
+        <div className="mb-6 bg-white rounded-xl shadow-md border border-red-200 dark:bg-zinc-900 dark:border-red-800 animate-slide-up">
+          <button
+            onClick={() => setShowImportErrors(!showImportErrors)}
+            className="w-full flex items-center justify-between p-4 text-left"
+          >
+            <h3 className="text-sm font-semibold text-red-700 dark:text-red-400">
+              Import Errors ({importErrors.length})
+            </h3>
+            <svg
+              className={`w-5 h-5 text-red-500 transition-transform ${
+                showImportErrors ? "rotate-180" : ""
+              }`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <div className="px-4 pb-4 max-h-64 overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-red-100 dark:border-red-900">
+                  <th className="text-left py-2 pr-4 text-red-600 dark:text-red-400 font-medium w-20">Row</th>
+                  <th className="text-left py-2 text-red-600 dark:text-red-400 font-medium">Error</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importErrors.map((err, i) => (
+                  <tr
+                    key={i}
+                    className="border-b border-gray-100 dark:border-zinc-800 last:border-0"
+                  >
+                    <td className="py-2 pr-4 text-gray-500 dark:text-gray-400 font-mono">
+                      {err.row}
+                    </td>
+                    <td className="py-2 text-gray-700 dark:text-gray-300 break-words">
+                      {err.error}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg dark:bg-red-900 dark:text-red-300 animate-fade-in">
