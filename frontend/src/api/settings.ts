@@ -36,6 +36,9 @@ export interface ColumnVisibility {
   takeoffsNight: boolean;
   landingsDay: boolean;
   landingsNight: boolean;
+  precisionApproaches: boolean;
+  nonPrecisionApproaches: boolean;
+  holdingPatterns: boolean;
   crossCountry: boolean;
   actions: boolean;
 }
@@ -78,6 +81,9 @@ export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   takeoffsNight: true,
   landingsDay: true,
   landingsNight: true,
+  precisionApproaches: true,
+  nonPrecisionApproaches: true,
+  holdingPatterns: true,
   crossCountry: true,
   actions: true,
 };
@@ -159,6 +165,9 @@ export const COLUMN_TO_FORM_FIELD: Record<string, string> = {
   takeoffsNight: "takeoffs_night",
   landingsDay: "landings_day",
   landingsNight: "landings_night",
+  precisionApproaches: "precision_approaches",
+  nonPrecisionApproaches: "non_precision_approaches",
+  holdingPatterns: "holding_patterns",
   crossCountry: "cross_country",
 };
 
@@ -170,4 +179,5 @@ export const FORM_GRID_FIELDS = new Set([
   "picTime", "sicTime", "dualTime", "instructorTime", "xcountryTime",
   "nightTime", "actInstrumentTime", "simInstrumentTime", "simTime",
   "pilotInCommand", "takeoffsDay", "takeoffsNight", "landingsDay", "landingsNight",
+  "precisionApproaches", "nonPrecisionApproaches", "holdingPatterns",
 ]);

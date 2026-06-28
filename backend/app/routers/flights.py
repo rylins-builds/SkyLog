@@ -43,6 +43,9 @@ def row_to_flight_response(row) -> dict:
         "takeoffs_night": row["takeoffs_night"],
         "landings_day": row["landings_day"],
         "landings_night": row["landings_night"],
+        "precision_approaches": row["precision_approaches"],
+        "non_precision_approaches": row["non_precision_approaches"],
+        "holding_patterns": row["holding_patterns"],
         "cross_country": bool(row["cross_country"]),
         "created_at": row["created_at"],
     }
@@ -88,8 +91,8 @@ async def create_flight(flight: FlightCreate):
                 helicopter_time, glider_time, solo_time, pic_time, sic_time, dual_time, instructor_time, 
                 xcountry_time, night_time, act_instrument_time, sim_instrument_time, sim_time, 
                 pilot_in_command, remarks, takeoffs_day, takeoffs_night, landings_day, 
-                landings_night, cross_country)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                landings_night, precision_approaches, non_precision_approaches, holding_patterns, cross_country)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 flight.date.isoformat(),
                 flight.aircraft_type,
@@ -121,6 +124,9 @@ async def create_flight(flight: FlightCreate):
                 flight.takeoffs_night or 0,
                 flight.landings_day or 0,
                 flight.landings_night or 0,
+                flight.precision_approaches or 0,
+                flight.non_precision_approaches or 0,
+                flight.holding_patterns or 0,
                 1 if flight.cross_country else 0,
             ),
         )

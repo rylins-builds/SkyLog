@@ -32,6 +32,9 @@ export interface Flight {
   takeoffs_night: number;
   landings_day: number;
   landings_night: number;
+  precision_approaches: number;
+  non_precision_approaches: number;
+  holding_patterns: number;
   cross_country: boolean;
   created_at: string;
 }
@@ -67,6 +70,9 @@ export interface FlightCreate {
   takeoffs_night: number;
   landings_day?: number;
   landings_night?: number;
+  precision_approaches?: number;
+  non_precision_approaches?: number;
+  holding_patterns?: number;
   cross_country?: boolean;
 }
 

@@ -3,9 +3,9 @@ import { api } from "../api/client";
 import type { Flight } from "../api/types";
 import { loadSettings, saveSettings, type ColumnVisibility } from "../api/settings";
 
-type SortField = "date" | "total_time" | "aircraft_type" | "aircraft_reg" | "departure" | "arrival" | "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "solo_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time";
+type SortField = "date" | "total_time" | "aircraft_type" | "aircraft_reg" | "departure" | "arrival" | "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "solo_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time" | "takeoffs_day" | "takeoffs_night" | "landings_day" | "landings_night" | "precision_approaches" | "non_precision_approaches" | "holding_patterns";
 type SortDir = "asc" | "desc";
-type FilterKey = "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "solo_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time" | "";
+type FilterKey = "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "solo_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time" | "takeoffs_day" | "takeoffs_night" | "landings_day" | "landings_night" | "precision_approaches" | "non_precision_approaches" | "holding_patterns" | "";
 
 interface ColumnDef {
   key: keyof ColumnVisibility;
@@ -105,6 +105,13 @@ export default function Logbook() {
   if (activeFilter === "instructor_time") filtered = filtered.filter((f) => f.instructor_time > 0);
   if (activeFilter === "xcountry_time") filtered = filtered.filter((f) => f.xcountry_time > 0);
   if (activeFilter === "night_time") filtered = filtered.filter((f) => f.night_time > 0);
+  if (activeFilter === "takeoffs_day") filtered = filtered.filter((f) => f.takeoffs_day > 0);
+  if (activeFilter === "takeoffs_night") filtered = filtered.filter((f) => f.takeoffs_night > 0);
+  if (activeFilter === "landings_day") filtered = filtered.filter((f) => f.landings_day > 0);
+  if (activeFilter === "landings_night") filtered = filtered.filter((f) => f.landings_night > 0);
+  if (activeFilter === "precision_approaches") filtered = filtered.filter((f) => f.precision_approaches > 0);
+  if (activeFilter === "non_precision_approaches") filtered = filtered.filter((f) => f.non_precision_approaches > 0);
+  if (activeFilter === "holding_patterns") filtered = filtered.filter((f) => f.holding_patterns > 0);
 
   // Apply sort
   filtered.sort((a, b) => {
@@ -155,6 +162,13 @@ export default function Logbook() {
     { label: "Instructor", field: "instructor_time" },
     { label: "Cross Country", field: "xcountry_time" },
     { label: "Night", field: "night_time" },
+    { label: "Day Takeoffs", field: "takeoffs_day" },
+    { label: "Night Takeoffs", field: "takeoffs_night" },
+    { label: "Day Landings", field: "landings_day" },
+    { label: "Night Landings", field: "landings_night" },
+    { label: "Precision Approaches", field: "precision_approaches" },
+    { label: "Non-Precision Approaches", field: "non_precision_approaches" },
+    { label: "Holding Patterns", field: "holding_patterns" },
   ];
 
   const filterOptions: { label: string; key: FilterKey }[] = [
@@ -171,7 +185,49 @@ export default function Logbook() {
     { label: "Instructor", key: "instructor_time" },
     { label: "Cross Country", key: "xcountry_time" },
     { label: "Night", key: "night_time" },
+    { label: "Day Takeoffs", key: "takeoffs_day" },
+    { label: "Night Takeoffs", key: "takeoffs_night" },
+    { label: "Day Landings", key: "landings_day" },
+    { label: "Night Landings", key: "landings_night" },
+    { label: "Precision Approaches", key: "precision_approaches" },
+    { label: "Non-Precision Approaches", key: "non_precision_approaches" },
+    { label: "Holding Patterns", key: "holding_patterns" },
   ];
+
+  // Map sort/filter keys to ColumnVisibility keys so hidden columns hide their options
+  const sortToColumnKey: Record<string, keyof ColumnVisibility> = {
+    date: "date",
+    total_time: "totalTime",
+    aircraft_type: "aircraftType",
+    aircraft_reg: "aircraftReg",
+    departure: "departure",
+    arrival: "arrival",
+    departure_time: "departureTime",
+    arrival_time: "arrivalTime",
+    sel_time: "selTime",
+    ses_time: "sesTime",
+    mel_time: "melTime",
+    mes_time: "mesTime",
+    helicopter_time: "helicopterTime",
+    glider_time: "gliderTime",
+    solo_time: "soloTime",
+    pic_time: "picTime",
+    sic_time: "sicTime",
+    dual_time: "dualTime",
+    instructor_time: "instructorTime",
+    xcountry_time: "xcountryTime",
+    night_time: "nightTime",
+    takeoffs_day: "takeoffsDay",
+    takeoffs_night: "takeoffsNight",
+    landings_day: "landingsDay",
+    landings_night: "landingsNight",
+    precision_approaches: "precisionApproaches",
+    non_precision_approaches: "nonPrecisionApproaches",
+    holding_patterns: "holdingPatterns",
+  };
+
+  const availableSortOptions = sortOptions.filter((opt) => columnVisibility[sortToColumnKey[opt.field]]);
+  const availableFilterOptions = filterOptions.filter((opt) => columnVisibility[sortToColumnKey[opt.key]]);
 
   const activeSortLabel = sortOptions.find((o) => o.field === sortField)?.label ?? "Date";
   const activeFilterLabel = filterOptions.find((o) => o.key === activeFilter)?.label;
@@ -200,6 +256,13 @@ export default function Logbook() {
     { key: "actInstrumentTime", label: "Actual Instrument", render: (f) => f.act_instrument_time.toFixed(1) },
     { key: "simInstrumentTime", label: "Hooded Instrument", render: (f) => f.sim_instrument_time.toFixed(1) },
     { key: "simTime", label: "Flight Simulator", render: (f) => f.sim_time.toFixed(1) },
+    { key: "takeoffsDay", label: "Day Takeoffs", render: (f) => f.takeoffs_day },
+    { key: "takeoffsNight", label: "Night Takeoffs", render: (f) => f.takeoffs_night },
+    { key: "landingsDay", label: "Day Landings", render: (f) => f.landings_day },
+    { key: "landingsNight", label: "Night Landings", render: (f) => f.landings_night },
+    { key: "precisionApproaches", label: "Precision Approaches", render: (f) => f.precision_approaches },
+    { key: "nonPrecisionApproaches", label: "Non-Precision Approaches", render: (f) => f.non_precision_approaches },
+    { key: "holdingPatterns", label: "Holding Patterns", render: (f) => f.holding_patterns },
     { key: "remarks", label: "Remarks", render: (f) => f.remarks },
     {
       key: "actions",
@@ -283,34 +346,36 @@ export default function Logbook() {
             {showSortMenu && (
               <div className="absolute left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 dark:bg-zinc-900 dark:border-zinc-600">
                 <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide dark:text-white">Sort by</div>
-                {sortOptions.map((opt) => (
-                  <button
-                    key={opt.field}
-                    onClick={() => {
-                      if (sortField === opt.field) {
-                        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-                      } else {
-                        setSortField(opt.field);
-                        setSortDir("desc");
-                      }
-                      setPage(0);
-                      setShowSortMenu(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${
-                      sortField === opt.field ? "text-blue-600 font-medium" : "text-gray-700 dark:text-white dark:hover:bg-zinc-800"
-                    }`}
-                  >
-                    <span>{opt.label}</span>
-                    {sortField === opt.field && (
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        {sortDir === "desc"
-                          ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 17h6m-6-5h9m5-1v8m0 0l3-3m-3 3l-3-3M4 7h12" />
-                          : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 17h12M4 12h9M4 7h6m8 6V5m0 0l3 3m-3-3l-3 3" />
+                <div className="max-h-64 overflow-y-auto">
+                  {availableSortOptions.map((opt) => (
+                    <button
+                      key={opt.field}
+                      onClick={() => {
+                        if (sortField === opt.field) {
+                          setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+                        } else {
+                          setSortField(opt.field);
+                          setSortDir("desc");
                         }
-                      </svg>
-                    )}
-                  </button>
-                ))}
+                        setPage(0);
+                        setShowSortMenu(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-gray-50 transition-colors ${
+                        sortField === opt.field ? "text-blue-600 font-medium" : "text-gray-700 dark:text-white dark:hover:bg-zinc-800"
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {sortField === opt.field && (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          {sortDir === "desc"
+                            ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 17h6m-6-5h9m5-1v8m0 0l3-3m-3 3l-3-3M4 7h12" />
+                            : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 17h12M4 12h9M4 7h6m8 6V5m0 0l3 3m-3-3l-3 3" />
+                          }
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
                 <div className="border-t border-gray-100 mt-1 pt-1 px-3 pb-1">
                   <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Direction</div>
                   <div className="flex gap-1">
@@ -359,26 +424,28 @@ export default function Logbook() {
             {showFilterMenu && (
               <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 dark:bg-zinc-800 dark:border-zinc-600">
                 <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Filter by</div>
-                {filterOptions.map((opt) => (
-                  <button
-                    key={opt.key}
-                    onClick={() => {
-                      setActiveFilter(activeFilter === opt.key ? "" : opt.key);
-                      setPage(0);
-                      setShowFilterMenu(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 transition-colors dark:hover:bg-zinc-600 ${
-                      activeFilter === opt.key ? "text-amber-700 font-medium" : "text-gray-700 dark:text-white"
-                    }`}
-                  >
-                    <span>{opt.label}</span>
-                    {activeFilter === opt.key && (
-                      <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </button>
-                ))}
+                <div className="max-h-64 overflow-y-auto">
+                  {availableFilterOptions.map((opt) => (
+                    <button
+                      key={opt.key}
+                      onClick={() => {
+                        setActiveFilter(activeFilter === opt.key ? "" : opt.key);
+                        setPage(0);
+                        setShowFilterMenu(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 transition-colors dark:hover:bg-zinc-600 text-left ${
+                        activeFilter === opt.key ? "text-amber-700 font-medium " : "text-gray-700 dark:text-white"
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {activeFilter === opt.key && (
+                        <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
                 {activeFilter && (
                   <>
                     <div className="border-t border-gray-100 mt-1" />
