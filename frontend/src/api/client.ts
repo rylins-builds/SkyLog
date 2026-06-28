@@ -47,4 +47,21 @@ export const api = {
 
   /** Health check */
   healthCheck: () => request<{ status: string }>("/health"),
+
+  /** Get current user */
+  getCurrentUser: () => request<{ username: string }>("/settings/user"),
+
+  /** Update username */
+  updateUsername: (username: string) =>
+    request<{ username: string }>("/settings/username", {
+      method: "PUT",
+      body: JSON.stringify({ username }),
+    }),
+
+  /** Change password */
+  changePassword: (current_password: string, new_password: string) =>
+    request<{ status: string }>("/settings/password", {
+      method: "PUT",
+      body: JSON.stringify({ current_password, new_password }),
+    }),
 };

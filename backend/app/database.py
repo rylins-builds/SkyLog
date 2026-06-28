@@ -50,22 +50,22 @@ def init_db() -> None:
                 departure_time  TEXT,
                 arrival_time    TEXT,
                 total_time      REAL    NOT NULL CHECK(total_time > 0),
-                sel_time        REAL    NOT NULL CHECK(total_time > 0),
-                ses_time        REAL    NOT NULL CHECK(total_time > 0),
-                mel_time        REAL    NOT NULL CHECK(total_time > 0),
-                mes_time        REAL    NOT NULL CHECK(total_time > 0),
-                helicopter_time REAL    NOT NULL CHECK(total_time > 0),
-                glider_time     REAL    NOT NULL CHECK(total_time > 0),
-                solo_time       REAL    NOT NULL CHECK(total_time > 0),
-                pic_time        REAL    NOT NULL CHECK(total_time > 0),
-                sic_time        REAL    NOT NULL CHECK(total_time > 0),
-                dual_time       REAL    NOT NULL CHECK(total_time > 0),
-                instructor_time REAL    NOT NULL CHECK(total_time > 0),
-                xcountry_time   REAL    NOT NULL CHECK(total_time > 0),
+                sel_time        REAL    NOT NULL CHECK(sel_time >= 0),
+                ses_time        REAL    NOT NULL CHECK(ses_time >= 0),
+                mel_time        REAL    NOT NULL CHECK(mel_time >= 0),
+                mes_time        REAL    NOT NULL CHECK(mes_time >= 0),
+                helicopter_time REAL    NOT NULL CHECK(helicopter_time >= 0),
+                glider_time     REAL    NOT NULL CHECK(glider_time >= 0),
+                solo_time       REAL    NOT NULL CHECK(solo_time >= 0),
+                pic_time        REAL    NOT NULL CHECK(pic_time >= 0),
+                sic_time        REAL    NOT NULL CHECK(sic_time >= 0),
+                dual_time       REAL    NOT NULL CHECK(dual_time >= 0),
+                instructor_time REAL    NOT NULL CHECK(instructor_time >= 0),
+                xcountry_time   REAL    NOT NULL CHECK(xcountry_time >= 0),
                 night_time      REAL    DEFAULT 0 CHECK(night_time >= 0),
-                act_instrument_time   REAL    NOT NULL CHECK(total_time > 0),
-                sim_instrument_time   REAL    NOT NULL CHECK(total_time > 0),
-                sim_time        REAL    NOT NULL CHECK(total_time > 0),
+                act_instrument_time   REAL    NOT NULL CHECK(act_instrument_time >= 0),
+                sim_instrument_time   REAL    NOT NULL CHECK(sim_instrument_time >= 0),
+                sim_time        REAL    NOT NULL CHECK(sim_time >= 0),
                 pilot_in_command TEXT   NOT NULL,
                 remarks         TEXT,
                 takeoffs_day    INTEGER DEFAULT 0 CHECK(takeoffs_day >= 0),
@@ -74,6 +74,12 @@ def init_db() -> None:
                 landings_night  INTEGER DEFAULT 0 CHECK(landings_night >= 0),
                 cross_country   INTEGER DEFAULT 0,
                 created_at      TEXT    DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS users (
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT    NOT NULL UNIQUE,
+                password TEXT    NOT NULL
             );
         """)
         conn.commit()

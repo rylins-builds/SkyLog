@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.database import init_db
-from app.routers import flights
+from app.routers import flights, settings
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
@@ -37,6 +37,7 @@ app.add_middleware(
 
 # Register routers
 app.include_router(flights.router, prefix="/api", tags=["flights"])
+app.include_router(settings.router, prefix="/api", tags=["settings"])
 
 
 @app.get("/api/health")

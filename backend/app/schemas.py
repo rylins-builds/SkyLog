@@ -122,3 +122,31 @@ class DashboardStats(BaseModel):
     hours_last_30_days: float
     total_landings: int
     unique_aircraft: int
+
+
+# ── User schemas ──
+
+class UserCreate(BaseModel):
+    """Schema for creating the initial user."""
+    username: str = Field(..., min_length=1, max_length=50)
+    password: str = Field(..., min_length=6)
+
+
+class UserUpdateUsername(BaseModel):
+    """Schema for updating the username."""
+    username: str = Field(..., min_length=1, max_length=50)
+
+
+class UserChangePassword(BaseModel):
+    """Schema for changing the password."""
+    current_password: str
+    new_password: str = Field(..., min_length=6)
+
+
+class UserResponse(BaseModel):
+    """Schema for returning user data (safe, no password)."""
+    id: int
+    username: str
+
+    class Config:
+        from_attributes = True

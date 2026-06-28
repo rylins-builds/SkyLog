@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "../api/client";
 import type { Flight } from "../api/types";
+import { loadSettings, type ColumnVisibility } from "../api/settings";
 
 interface FormState {
   date: string;
@@ -114,6 +115,14 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
   const [loadError, setLoadError] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Column visibility from settings
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(() => loadSettings().columnVisibility);
+  useEffect(() => {
+    const handler = () => setColumnVisibility(loadSettings().columnVisibility);
+    window.addEventListener("settingsUpdated", handler);
+    return () => window.removeEventListener("settingsUpdated", handler);
+  }, []);
 
   // On mount (or editFlightId change), fetch flight data if editing
   useEffect(() => {
@@ -245,6 +254,11 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
     }
   };
 
+  // Helper to check if a ColumnVisibility key maps to a visible form field
+  const isFieldVisible = (visKey: string): boolean => {
+    return columnVisibility[visKey as keyof ColumnVisibility] ?? true;
+  };
+
   // Loading state when fetching flight for edit
   if (loadingFlight) {
     return (
@@ -301,308 +315,368 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field
-            label="Date"
-            name="date"
-            type="date"
-            value={form.date}
-            onChange={handleChange}
-            required
-            error={errors.date}
-          />
-          <Field
-            label="Pilot in Command"
-            name="pilot_in_command"
-            value={form.pilot_in_command}
-            onChange={handleChange}
-            required
-            placeholder="e.g. Mike Brogan"
-            error={errors.pilot_in_command}
-          />
-          <Field
-            label="Aircraft Type"
-            name="aircraft_type"
-            value={form.aircraft_type}
-            onChange={handleChange}
-            required
-            placeholder="e.g. Cessna 172"
-            error={errors.aircraft_type}
-          />
-          <Field
-            label="Aircraft Registration"
-            name="aircraft_reg"
-            value={form.aircraft_reg}
-            onChange={handleChange}
-            required
-            placeholder="e.g. N2860Q"
-            error={errors.aircraft_reg}
-          />
-          <Field
-            label="Departure (ICAO)"
-            name="departure"
-            value={form.departure}
-            onChange={handleChange}
-            required
-            placeholder="e.g. KLAW"
-            error={errors.departure}
-          />
-          <Field
-            label="Arrival (ICAO)"
-            name="arrival"
-            value={form.arrival}
-            onChange={handleChange}
-            required
-            placeholder="e.g. KMIB"
-            error={errors.arrival}
-          />
-          <Field
-            label="Departure Time (Zulu)"
-            name="departure_time"
-            type="time"
-            value={form.departure_time}
-            onChange={handleChange}
-          />
-          <Field
-            label="Arrival Time (Zulu)"
-            name="arrival_time"
-            type="time"
-            value={form.arrival_time}
-            onChange={handleChange}
-          />
-          <Field
-            label="Total Time (hours)"
-            name="total_time"
-            type="number"
-            step="0.1"
-            min="0"
-            value={form.total_time}
-            onChange={handleChange}
-            required
-            placeholder="e.g. 2.3"
-            error={errors.total_time}
-          />
-          <Field
-            label="Single Engine Land Time (hours)"
-            name="sel_time"
-            type="number"
-            step="0.1"
-            min="0"
-            value={form.sel_time}
-            onChange={handleChange}
-            placeholder="0"
-            error={errors.sel_time}
-          />
-          <Field
-            label="Single Engine Sea Time (hours)"
-            name="ses_time"
-            type="number"
-            step="0.1"
-            min="0"
-            value={form.ses_time}
-            onChange={handleChange}
-            placeholder="0"
-            error={errors.ses_time}
-          />
-          <Field
-            label="Multi Engine Land Time (hours)"
-            name="mel_time"
-            type="number"
-            step="0.1"
-            min="0"
-            value={form.mel_time}
-            onChange={handleChange}
-            placeholder="0"
-            error={errors.mel_time}
-          />
-          <Field
-            label="Multi Engine Sea Time (hours)"
-            name="mes_time"
-            type="number"
-            step="0.1"
-            min="0"
-            value={form.mes_time}
-            onChange={handleChange}
-            placeholder="0"
-            error={errors.mes_time}
-          />
-          <Field
-            label="Helicopter Time (hours)"
-            name="helicopter_time"
-            type="number"
-            step="0.1"
-            min="0"
-            value={form.helicopter_time}
-            onChange={handleChange}
-            placeholder="0"
-            error={errors.helicopter_time}
-          />
-          <Field
-            label="Glider Time (hours)"
-            name="glider_time"
-            type="number"
-            step="0.1"
-            min="0"
-            value={form.glider_time}
-            onChange={handleChange}
-            placeholder="0"
-            error={errors.glider_time}
-          />
-          <Field
-            label="Solo Time (hours)"
-            name="solo_time"
-            type="number"
-            step="0.1"
-            min="0"
-            value={form.solo_time}
-            onChange={handleChange}
-            placeholder="0"
-            error={errors.solo_time}
-          />
-          <Field
-            label="PIC Time (hours)"
-            name="pic_time"
-            type="number"
-            step="0.1"
-            min="0"
-            value={form.pic_time}
-            onChange={handleChange}
-            placeholder="0"
-            error={errors.pic_time}
-          />
-          <Field
-            label="SIC Time (hours)"
-            name="sic_time"
-            type="number"
-            step="0.1"
-            min="0"
-            value={form.sic_time}
-            onChange={handleChange}
-            placeholder="0"
-            error={errors.sic_time}
-          />
-          <Field
-            label="Dual Time (hours)"
-            name="dual_time"
-            type="number"
-            step="0.1"
-            min="0"
-            value={form.dual_time}
-            onChange={handleChange}
-            placeholder="0"
-            error={errors.dual_time}
-          />
-          <Field
-            label="Instructor Time (hours)"
-            name="instructor_time"
-            type="number"
-            step="0.1"
-            min="0"
-            value={form.instructor_time}
-            onChange={handleChange}
-            placeholder="0"
-            error={errors.instructor_time}
-          />
-          <Field
-            label="Cross Country Time (hours)"
-            name="xcountry_time"
-            type="number"
-            step="0.1"
-            min="0"
-            value={form.xcountry_time}
-            onChange={handleChange}
-            placeholder="0"
-            error={errors.xcountry_time}
-          />
-          <Field
-            label="Night Time (hours)"
-            name="night_time"
-            type="number"
-            step="0.1"
-            min="0"
-            value={form.night_time}
-            onChange={handleChange}
-            placeholder="0"
-            error={errors.night_time}
-          />
-          <Field
-            label="Actual Instrument Time (hours)"
-            name="act_instrument_time"
-            type="number"
-            step="0.1"
-            min="0"
-            value={form.act_instrument_time}
-            onChange={handleChange}
-            placeholder="0"
-            error={errors.act_instrument_time}
-          />
-          <Field
-            label="Hooded Instrument Time (hours)"
-            name="sim_instrument_time"
-            type="number"
-            step="0.1"
-            min="0"
-            value={form.sim_instrument_time}
-            onChange={handleChange}
-            placeholder="0"
-            error={errors.sim_instrument_time}
-          />
-          <Field
-            label="Simulator Time (hours)"
-            name="sim_time"
-            type="number"
-            step="0.1"
-            min="0"
-            value={form.sim_time}
-            onChange={handleChange}
-            placeholder="0"
-            error={errors.sim_time}
-          />
-          <Field
-            label="Day Takeoffs"
-            name="takeoffs_day"
-            type="number"
-            min="0"
-            value={form.takeoffs_day}
-            onChange={handleChange}
-          />
-          <Field
-            label="Night Takeoffs"
-            name="takeoffs_night"
-            type="number"
-            min="0"
-            value={form.takeoffs_night}
-            onChange={handleChange}
-          />
-          <Field
-            label="Day Landings"
-            name="landings_day"
-            type="number"
-            min="0"
-            value={form.landings_day}
-            onChange={handleChange}
-          />
-          <Field
-            label="Night Landings"
-            name="landings_night"
-            type="number"
-            min="0"
-            value={form.landings_night}
-            onChange={handleChange}
-          />
+          {isFieldVisible("date") && (
+            <Field
+              label="Date"
+              name="date"
+              type="date"
+              value={form.date}
+              onChange={handleChange}
+              required
+              error={errors.date}
+            />
+          )}
+          {isFieldVisible("pilotInCommand") && (
+            <Field
+              label="Pilot in Command"
+              name="pilot_in_command"
+              value={form.pilot_in_command}
+              onChange={handleChange}
+              required
+              placeholder="e.g. Mike Brogan"
+              error={errors.pilot_in_command}
+            />
+          )}
+          {isFieldVisible("aircraftType") && (
+            <Field
+              label="Aircraft Type"
+              name="aircraft_type"
+              value={form.aircraft_type}
+              onChange={handleChange}
+              required
+              placeholder="e.g. Cessna 172"
+              error={errors.aircraft_type}
+            />
+          )}
+          {isFieldVisible("aircraftReg") && (
+            <Field
+              label="Aircraft Registration"
+              name="aircraft_reg"
+              value={form.aircraft_reg}
+              onChange={handleChange}
+              required
+              placeholder="e.g. N2860Q"
+              error={errors.aircraft_reg}
+            />
+          )}
+          {isFieldVisible("departure") && (
+            <Field
+              label="Departure (ICAO)"
+              name="departure"
+              value={form.departure}
+              onChange={handleChange}
+              required
+              placeholder="e.g. KLAW"
+              error={errors.departure}
+            />
+          )}
+          {isFieldVisible("arrival") && (
+            <Field
+              label="Arrival (ICAO)"
+              name="arrival"
+              value={form.arrival}
+              onChange={handleChange}
+              required
+              placeholder="e.g. KMIB"
+              error={errors.arrival}
+            />
+          )}
+          {isFieldVisible("departureTime") && (
+            <Field
+              label="Departure Time (Zulu)"
+              name="departure_time"
+              type="time"
+              value={form.departure_time}
+              onChange={handleChange}
+            />
+          )}
+          {isFieldVisible("arrivalTime") && (
+            <Field
+              label="Arrival Time (Zulu)"
+              name="arrival_time"
+              type="time"
+              value={form.arrival_time}
+              onChange={handleChange}
+            />
+          )}
+          {isFieldVisible("totalTime") && (
+            <Field
+              label="Total Time (hours)"
+              name="total_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.total_time}
+              onChange={handleChange}
+              required
+              placeholder="e.g. 2.3"
+              error={errors.total_time}
+            />
+          )}
+          {isFieldVisible("selTime") && (
+            <Field
+              label="Single Engine Land Time (hours)"
+              name="sel_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.sel_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.sel_time}
+            />
+          )}
+          {isFieldVisible("sesTime") && (
+            <Field
+              label="Single Engine Sea Time (hours)"
+              name="ses_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.ses_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.ses_time}
+            />
+          )}
+          {isFieldVisible("melTime") && (
+            <Field
+              label="Multi Engine Land Time (hours)"
+              name="mel_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.mel_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.mel_time}
+            />
+          )}
+          {isFieldVisible("mesTime") && (
+            <Field
+              label="Multi Engine Sea Time (hours)"
+              name="mes_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.mes_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.mes_time}
+            />
+          )}
+          {isFieldVisible("helicopterTime") && (
+            <Field
+              label="Helicopter Time (hours)"
+              name="helicopter_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.helicopter_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.helicopter_time}
+            />
+          )}
+          {isFieldVisible("gliderTime") && (
+            <Field
+              label="Glider Time (hours)"
+              name="glider_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.glider_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.glider_time}
+            />
+          )}
+          {isFieldVisible("soloTime") && (
+            <Field
+              label="Solo Time (hours)"
+              name="solo_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.solo_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.solo_time}
+            />
+          )}
+          {isFieldVisible("picTime") && (
+            <Field
+              label="PIC Time (hours)"
+              name="pic_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.pic_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.pic_time}
+            />
+          )}
+          {isFieldVisible("sicTime") && (
+            <Field
+              label="SIC Time (hours)"
+              name="sic_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.sic_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.sic_time}
+            />
+          )}
+          {isFieldVisible("dualTime") && (
+            <Field
+              label="Dual Time (hours)"
+              name="dual_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.dual_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.dual_time}
+            />
+          )}
+          {isFieldVisible("instructorTime") && (
+            <Field
+              label="Instructor Time (hours)"
+              name="instructor_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.instructor_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.instructor_time}
+            />
+          )}
+          {isFieldVisible("xcountryTime") && (
+            <Field
+              label="Cross Country Time (hours)"
+              name="xcountry_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.xcountry_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.xcountry_time}
+            />
+          )}
+          {isFieldVisible("nightTime") && (
+            <Field
+              label="Night Time (hours)"
+              name="night_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.night_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.night_time}
+            />
+          )}
+          {isFieldVisible("actInstrumentTime") && (
+            <Field
+              label="Actual Instrument Time (hours)"
+              name="act_instrument_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.act_instrument_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.act_instrument_time}
+            />
+          )}
+          {isFieldVisible("simInstrumentTime") && (
+            <Field
+              label="Hooded Instrument Time (hours)"
+              name="sim_instrument_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.sim_instrument_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.sim_instrument_time}
+            />
+          )}
+          {isFieldVisible("simTime") && (
+            <Field
+              label="Simulator Time (hours)"
+              name="sim_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.sim_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.sim_time}
+            />
+          )}
+          {isFieldVisible("takeoffsDay") && (
+            <Field
+              label="Day Takeoffs"
+              name="takeoffs_day"
+              type="number"
+              min="0"
+              value={form.takeoffs_day}
+              onChange={handleChange}
+            />
+          )}
+          {isFieldVisible("takeoffsNight") && (
+            <Field
+              label="Night Takeoffs"
+              name="takeoffs_night"
+              type="number"
+              min="0"
+              value={form.takeoffs_night}
+              onChange={handleChange}
+            />
+          )}
+          {isFieldVisible("landingsDay") && (
+            <Field
+              label="Day Landings"
+              name="landings_day"
+              type="number"
+              min="0"
+              value={form.landings_day}
+              onChange={handleChange}
+            />
+          )}
+          {isFieldVisible("landingsNight") && (
+            <Field
+              label="Night Landings"
+              name="landings_night"
+              type="number"
+              min="0"
+              value={form.landings_night}
+              onChange={handleChange}
+            />
+          )}
         </div>
 
         {/* Remarks */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white">Remarks</label>
-          <textarea
-            name="remarks"
-            value={form.remarks}
-            onChange={handleChange}
-            rows={3}
-            placeholder="VFR flight, smooth conditions, worst landing ever, etc."
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400 resize-none dark:text-white"
-          />
-        </div>
+        {isFieldVisible("remarks") && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white">Remarks</label>
+            <textarea
+              name="remarks"
+              value={form.remarks}
+              onChange={handleChange}
+              rows={3}
+              placeholder="VFR flight, smooth conditions, worst landing ever, etc."
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400 resize-none dark:text-white"
+            />
+          </div>
+        )}
 
         {/* Submit Button */}
         <button
