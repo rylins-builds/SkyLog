@@ -40,10 +40,50 @@ export interface ColumnVisibility {
   actions: boolean;
 }
 
+export interface FaCategoryMapping {
+  /** Glob/fragment matched against aircraft_type (case-insensitive) */
+  pattern: string;
+  /** FAA category/class key */
+  category: FaCategoryKey;
+}
+
+export type FaCategoryKey =
+  | "sel"
+  | "ses"
+  | "mel"
+  | "mes"
+  | "helicopter"
+  | "gyroplane"
+  | "powered_lift"
+  | "glider"
+  | "lighter_than_air";
+
+export interface FaCategoryDef {
+  key: FaCategoryKey;
+  label: string;
+  /** Which DB time field to sum for total time */
+  timeField: "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | null;
+}
+
+/** All FAA categories that appear in the 8710 table */
+export const FA_CATEGORIES: FaCategoryDef[] = [
+  { key: "sel",           label: "Airplane Single-Engine Land", timeField: "sel_time" },
+  { key: "ses",           label: "Airplane Single-Engine Sea",  timeField: "ses_time" },
+  { key: "mel",           label: "Airplane Multi-Engine Land",  timeField: "mel_time" },
+  { key: "mes",           label: "Airplane Multi-Engine Sea",   timeField: "mes_time" },
+  { key: "helicopter",    label: "Rotorcraft Helicopter",       timeField: "helicopter_time" },
+  { key: "gyroplane",     label: "Rotorcraft Gyroplane",        timeField: null },
+  { key: "powered_lift",  label: "Powered Lift",                timeField: null },
+  { key: "glider",        label: "Glider",                      timeField: "glider_time" },
+  { key: "lighter_than_air", label: "Lighter-Than-Air",         timeField: null },
+];
+
 export interface SettingsData {
   pageVisibility: PageVisibility;
   columnVisibility: ColumnVisibility;
   username: string;
+  pageSize: number;
+  faCategoryMappings: FaCategoryMapping[];
 }
 
 export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
@@ -86,6 +126,10 @@ export const DEFAULT_PAGE_VISIBILITY: PageVisibility = {
   FAA8710: true,
 };
 
+const DEFAULT_PAGE_SIZE = 15;
+
+const DEFAULT_FA_MAPPINGS: FaCategoryMapping[] = [];
+
 /** Load settings from localStorage */
 export function loadSettings(): SettingsData {
   try {
@@ -96,6 +140,8 @@ export function loadSettings(): SettingsData {
         pageVisibility: { ...DEFAULT_PAGE_VISIBILITY, ...parsed.pageVisibility },
         columnVisibility: { ...DEFAULT_COLUMN_VISIBILITY, ...parsed.columnVisibility },
         username: parsed.username ?? "",
+        pageSize: parsed.pageSize ?? DEFAULT_PAGE_SIZE,
+        faCategoryMappings: parsed.faCategoryMappings ?? DEFAULT_FA_MAPPINGS,
       };
     }
   } catch {
@@ -105,6 +151,8 @@ export function loadSettings(): SettingsData {
     pageVisibility: { ...DEFAULT_PAGE_VISIBILITY },
     columnVisibility: { ...DEFAULT_COLUMN_VISIBILITY },
     username: "",
+    pageSize: DEFAULT_PAGE_SIZE,
+    faCategoryMappings: DEFAULT_FA_MAPPINGS,
   };
 }
 
@@ -112,6 +160,20 @@ export function loadSettings(): SettingsData {
 export function saveSettings(settings: SettingsData): void {
   localStorage.setItem("flightLogbookSettings", JSON.stringify(settings));
   window.dispatchEvent(new CustomEvent("settingsUpdated", { detail: settings }));
+}
+
+/** Resolve an aircraft_type to an FaCategoryKey using the configured mappings */
+export function resolveCategory(
+  aircraftType: string,
+  mappings: FaCategoryMapping[],
+): FaCategoryKey | null {
+  const upper = aircraftType.toUpperCase();
+  for (const m of mappings) {
+    if (upper.includes(m.pattern.toUpperCase())) {
+      return m.category;
+    }
+  }
+  return null;
 }
 
 /** Core pages that are always visible and cannot be hidden */
