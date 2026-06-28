@@ -1,9 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { api } from "../api/client";
 import type { Flight } from "../api/types";
-import { loadSettings, type ColumnVisibility } from "../api/settings";
-
-const PAGE_SIZE = 15;
+import { loadSettings, saveSettings, type ColumnVisibility } from "../api/settings";
 
 type SortField = "date" | "total_time" | "aircraft_type" | "aircraft_reg" | "departure" | "arrival" | "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "solo_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time";
 type SortDir = "asc" | "desc";
@@ -12,11 +10,11 @@ type FilterKey = "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter
 interface ColumnDef {
   key: keyof ColumnVisibility;
   label: string;
-  /** Render the cell content for a given flight */
   render: (flight: Flight) => React.ReactNode;
-  /** For the actions column, we keep it special */
   isActions?: boolean;
 }
+
+const PAGE_SIZE_OPTIONS = [10, 15, 25, 50, 100, 0] as const; // 0 means "All"
 
 export default function Logbook() {
   const [flights, setFlights] = useState<Flight[]>([]);
@@ -32,6 +30,17 @@ export default function Logbook() {
   const [activeFilter, setActiveFilter] = useState<FilterKey>("");
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
+
+  // Page size persisted in settings
+  const [pageSize, setPageSize] = useState<number>(() => loadSettings().pageSize);
+
+  const persistPageSize = (size: number) => {
+    setPageSize(size);
+    setPage(0);
+    const s = loadSettings();
+    s.pageSize = size;
+    saveSettings(s);
+  };
 
   // Column visibility from settings
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(() => loadSettings().columnVisibility);
@@ -72,7 +81,7 @@ export default function Logbook() {
   const q = search.toLowerCase().trim();
   let filtered = q
     ? flights.filter(
-        (f: Flight) =>
+        (f) =>
           f.aircraft_type.toLowerCase().includes(q) ||
           f.aircraft_reg.toLowerCase().includes(q) ||
           f.departure.toLowerCase().includes(q) ||
@@ -83,22 +92,22 @@ export default function Logbook() {
     : [...flights];
 
   // Apply quick filter
-  if (activeFilter === "sel_time") filtered = filtered.filter((f: Flight) => f.sel_time > 0);
-  if (activeFilter === "ses_time") filtered = filtered.filter((f: Flight) => f.ses_time > 0);
-  if (activeFilter === "mel_time") filtered = filtered.filter((f: Flight) => f.mel_time > 0);
-  if (activeFilter === "mes_time") filtered = filtered.filter((f: Flight) => f.mes_time > 0);
-  if (activeFilter === "helicopter_time") filtered = filtered.filter((f: Flight) => f.helicopter_time > 0);
-  if (activeFilter === "glider_time") filtered = filtered.filter((f: Flight) => f.glider_time > 0);
-  if (activeFilter === "solo_time") filtered = filtered.filter((f: Flight) => f.solo_time > 0);
-  if (activeFilter === "pic_time") filtered = filtered.filter((f: Flight) => f.pic_time > 0);
-  if (activeFilter === "sic_time") filtered = filtered.filter((f: Flight) => f.sic_time > 0);
-  if (activeFilter === "dual_time") filtered = filtered.filter((f: Flight) => f.dual_time > 0);
-  if (activeFilter === "instructor_time") filtered = filtered.filter((f: Flight) => f.instructor_time > 0);
-  if (activeFilter === "xcountry_time") filtered = filtered.filter((f: Flight) => f.xcountry_time > 0);
-  if (activeFilter === "night_time") filtered = filtered.filter((f: Flight) => f.night_time > 0);
+  if (activeFilter === "sel_time") filtered = filtered.filter((f) => f.sel_time > 0);
+  if (activeFilter === "ses_time") filtered = filtered.filter((f) => f.ses_time > 0);
+  if (activeFilter === "mel_time") filtered = filtered.filter((f) => f.mel_time > 0);
+  if (activeFilter === "mes_time") filtered = filtered.filter((f) => f.mes_time > 0);
+  if (activeFilter === "helicopter_time") filtered = filtered.filter((f) => f.helicopter_time > 0);
+  if (activeFilter === "glider_time") filtered = filtered.filter((f) => f.glider_time > 0);
+  if (activeFilter === "solo_time") filtered = filtered.filter((f) => f.solo_time > 0);
+  if (activeFilter === "pic_time") filtered = filtered.filter((f) => f.pic_time > 0);
+  if (activeFilter === "sic_time") filtered = filtered.filter((f) => f.sic_time > 0);
+  if (activeFilter === "dual_time") filtered = filtered.filter((f) => f.dual_time > 0);
+  if (activeFilter === "instructor_time") filtered = filtered.filter((f) => f.instructor_time > 0);
+  if (activeFilter === "xcountry_time") filtered = filtered.filter((f) => f.xcountry_time > 0);
+  if (activeFilter === "night_time") filtered = filtered.filter((f) => f.night_time > 0);
 
   // Apply sort
-  filtered.sort((a: Flight, b: Flight) => {
+  filtered.sort((a, b) => {
     let aVal: string | number = a[sortField] ?? "";
     let bVal: string | number = b[sortField] ?? "";
     if (typeof aVal === "string" && typeof bVal === "string") {
@@ -110,16 +119,17 @@ export default function Logbook() {
     return 0;
   });
 
-  // Paginate
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // Paginate — pageSize === 0 means "All"
+  const effectivePageSize = pageSize === 0 ? filtered.length : pageSize;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / effectivePageSize));
   const safePage = Math.min(page, totalPages - 1);
-  const paged = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+  const paged = filtered.slice(safePage * effectivePageSize, (safePage + 1) * effectivePageSize);
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this flight record?")) return;
     try {
       await api.deleteFlight(id);
-      setFlights((prev: Flight[]) => prev.filter((f: Flight) => f.id !== id));
+      setFlights((prev) => prev.filter((f) => f.id !== id));
     } catch (err) {
       alert(`Failed to delete: ${err instanceof Error ? err.message : "Unknown error"}`);
     }
@@ -417,10 +427,10 @@ export default function Logbook() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[calc(100vh-16rem)]">
               <table className="w-full text-center">
                 <thead>
-                  <tr className="border-b-2 border-gray-200 bg-gray-50 dark:bg-zinc-900 dark:border-zinc-600">
+                  <tr className="border-b-2 border-gray-200 bg-gray-50 dark:bg-zinc-900 dark:border-zinc-600 sticky top-0 z-10">
                     {visibleColumns.map((col) => (
                       <th key={col.key} className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">
                         {col.label}
@@ -452,47 +462,69 @@ export default function Logbook() {
             </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-600">
-                <span>
-                  Showing {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, filtered.length)} of{" "}
-                  {filtered.length} flights
-                </span>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    disabled={safePage === 0}
-                    className="px-3 py-1.5 rounded-md hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                  >
-                    ‹ Prev
-                  </button>
-                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                    const start = Math.max(0, Math.min(safePage - 2, totalPages - 5));
-                    const pg = start + i;
-                    return (
-                      <button
-                        key={pg}
-                        onClick={() => setPage(pg)}
-                        className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-                          pg === safePage
-                            ? "bg-blue-600 text-white"
-                            : "hover:bg-gray-200 text-gray-700"
-                        }`}
-                      >
-                        {pg + 1}
-                      </button>
-                    );
-                  })}
-                  <button
-                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                    disabled={safePage >= totalPages - 1}
-                    className="px-3 py-1.5 rounded-md hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                  >
-                    Next ›
-                  </button>
-                </div>
+            <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-600 dark:bg-zinc-900 dark:border-zinc-600 dark:text-gray-300">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500 dark:text-gray-400">Rows:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => persistPageSize(Number(e.target.value))}
+                  className="px-2 py-1 rounded border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:border-zinc-600 dark:text-white"
+                >
+                  {PAGE_SIZE_OPTIONS.map((n) => (
+                    <option key={n} value={n}>
+                      {n === 0 ? "All" : n}
+                    </option>
+                  ))}
+                </select>
               </div>
-            )}
+
+              {totalPages > 1 && (
+                <>
+                  <span className="hidden sm:inline">
+                    Showing {safePage * effectivePageSize + 1}–{Math.min((safePage + 1) * effectivePageSize, filtered.length)} of{" "}
+                    {filtered.length} flights
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                      disabled={safePage === 0}
+                      className="px-3 py-1.5 rounded-md hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent transition-colors dark:hover:bg-zinc-700"
+                    >
+                      ‹ Prev
+                    </button>
+                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                      const start = Math.max(0, Math.min(safePage - 2, totalPages - 5));
+                      const pg = start + i;
+                      return (
+                        <button
+                          key={pg}
+                          onClick={() => setPage(pg)}
+                          className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                            pg === safePage
+                              ? "bg-blue-600 text-white"
+                              : "hover:bg-gray-200 text-gray-700 dark:text-gray-300 dark:hover:bg-zinc-700"
+                          }`}
+                        >
+                          {pg + 1}
+                        </button>
+                      );
+                    })}
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                      disabled={safePage >= totalPages - 1}
+                      className="px-3 py-1.5 rounded-md hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent transition-colors dark:hover:bg-zinc-700"
+                    >
+                      Next ›
+                    </button>
+                  </div>
+                </>
+              )}
+              {totalPages <= 1 && (
+                <span className="text-gray-500 dark:text-gray-400">
+                  {filtered.length} flight{filtered.length !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
           </>
         )}
       </div>

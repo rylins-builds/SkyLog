@@ -44,6 +44,7 @@ export interface SettingsData {
   pageVisibility: PageVisibility;
   columnVisibility: ColumnVisibility;
   username: string;
+  pageSize: number;
 }
 
 export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
@@ -86,6 +87,8 @@ export const DEFAULT_PAGE_VISIBILITY: PageVisibility = {
   FAA8710: true,
 };
 
+const DEFAULT_PAGE_SIZE = 15;
+
 /** Load settings from localStorage */
 export function loadSettings(): SettingsData {
   try {
@@ -96,6 +99,7 @@ export function loadSettings(): SettingsData {
         pageVisibility: { ...DEFAULT_PAGE_VISIBILITY, ...parsed.pageVisibility },
         columnVisibility: { ...DEFAULT_COLUMN_VISIBILITY, ...parsed.columnVisibility },
         username: parsed.username ?? "",
+        pageSize: parsed.pageSize ?? DEFAULT_PAGE_SIZE,
       };
     }
   } catch {
@@ -105,6 +109,7 @@ export function loadSettings(): SettingsData {
     pageVisibility: { ...DEFAULT_PAGE_VISIBILITY },
     columnVisibility: { ...DEFAULT_COLUMN_VISIBILITY },
     username: "",
+    pageSize: DEFAULT_PAGE_SIZE,
   };
 }
 
