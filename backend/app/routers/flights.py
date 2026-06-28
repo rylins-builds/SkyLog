@@ -27,6 +27,7 @@ def row_to_flight_response(row) -> dict:
         "mes_time": row["mes_time"],
         "helicopter_time": row["helicopter_time"],
         "glider_time": row["glider_time"],
+        "solo_time": row["solo_time"],
         "pic_time": row["pic_time"],
         "sic_time": row["sic_time"],
         "dual_time": row["dual_time"],
@@ -84,11 +85,11 @@ async def create_flight(flight: FlightCreate):
             """INSERT INTO flights 
                (date, aircraft_type, aircraft_reg, departure, arrival, 
                 departure_time, arrival_time, total_time, sel_time, ses_time, mel_time, mes_time, 
-                helicopter_time, glider_time, pic_time, sic_time, dual_time, instructor_time, 
+                helicopter_time, glider_time, solo_time, pic_time, sic_time, dual_time, instructor_time, 
                 xcountry_time, night_time, act_instrument_time, sim_instrument_time, sim_time, 
                 pilot_in_command, remarks, takeoffs_day, takeoffs_night, landings_day, 
                 landings_night, cross_country)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 flight.date.isoformat(),
                 flight.aircraft_type,
@@ -104,6 +105,7 @@ async def create_flight(flight: FlightCreate):
                 flight.mes_time,
                 flight.helicopter_time,
                 flight.glider_time,
+                flight.solo_time,
                 flight.pic_time,
                 flight.sic_time,
                 flight.dual_time,

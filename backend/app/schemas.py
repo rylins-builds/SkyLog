@@ -21,6 +21,7 @@ class FlightCreate(BaseModel):
     mes_time: Optional[float] = Field(default=0, ge=0)
     helicopter_time: Optional[float] = Field(default=0, ge=0)
     glider_time: Optional[float] = Field(default=0, ge=0)
+    solo_time: Optional[float] = Field(default=0, ge=0)
     pic_time: Optional[float] = Field(default=0, ge=0)
     sic_time: Optional[float] = Field(default=0, ge=0)
     dual_time: Optional[float] = Field(default=0, ge=0)
@@ -54,6 +55,7 @@ class FlightUpdate(BaseModel):
     mes_time: Optional[float] = Field(default=None, ge=0)
     helicopter_time: Optional[float] = Field(default=None, ge=0)
     glider_time: Optional[float] = Field(default=None, ge=0)
+    solo_time: Optional[float] = Field(default=None, ge=0)
     pic_time: Optional[float] = Field(default=None, ge=0)
     sic_time: Optional[float] = Field(default=None, ge=0)
     dual_time: Optional[float] = Field(default=None, ge=0)
@@ -89,6 +91,7 @@ class FlightResponse(BaseModel):
     mes_time: float = 0
     helicopter_time: float = 0
     glider_time: float = 0
+    solo_time: float = 0
     pic_time: float = 0
     sic_time: float = 0
     dual_time: float = 0
