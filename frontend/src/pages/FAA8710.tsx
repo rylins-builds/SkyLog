@@ -309,7 +309,7 @@ export default function FAA8710() {
 
         {/* Add new mapping — dropdown of unmapped aircraft types */}
         <div className="flex flex-wrap items-end gap-3 mb-4">
-          <div className="flex-1 min-w-[220px]">
+          <div className="flex-1 min-w-0">
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Aircraft type</label>
             <select
               value={selectedAircraft}
@@ -325,7 +325,7 @@ export default function FAA8710() {
               )}
             </select>
           </div>
-          <div className="min-w-[180px]">
+          <div className="flex-1 min-w-0">
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">FAA Category</label>
             <select
               value={selectedCategory}
