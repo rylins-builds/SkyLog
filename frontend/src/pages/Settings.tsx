@@ -390,18 +390,6 @@ export default function Settings() {
     <div className="p-4 sm:p-8 max-w-6xl mx-auto animate-fade-in dark:bg-zinc-800">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Settings</h1>
 
-      {error && (
-        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg dark:bg-red-900 dark:text-red-300 animate-fade-in">
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="mb-4 p-4 bg-green-100 text-green-700 rounded-lg dark:bg-green-900 dark:text-green-300 animate-fade-in">
-          {success}
-        </div>
-      )}
-
       {/* Page Visibility */}
       <div className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100 dark:bg-zinc-900 dark:border-zinc-600 animate-slide-up">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Page Visibility</h2>
@@ -634,6 +622,18 @@ export default function Settings() {
           </p>
         </div>
       </div>
+
+      {error && (
+        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg dark:bg-red-900 dark:text-red-300 animate-fade-in">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="mb-4 p-4 bg-green-100 text-green-700 rounded-lg dark:bg-green-900 dark:text-green-300 animate-fade-in">
+          {success}
+        </div>
+      )}
 
       {/* Save All Settings */}
       <button
