@@ -92,10 +92,12 @@ export default function Settings() {
   const [isLoading, setIsLoading] = useState(false);
   const [importErrors, setImportErrors] = useState<{row: number; error: string}[]>([]);
   const [showImportErrors, setShowImportErrors] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Load settings on mount
   useEffect(() => {
     loadSettings();
+    api.isAdmin().then(({ isAdmin: admin }) => setIsAdmin(admin)).catch(() => {});
   }, []);
 
   const loadSettings = async () => {
@@ -669,28 +671,30 @@ export default function Settings() {
         </div>
 
         {/* Welcome Page Toggle (admin only) */}
-        <div className="pt-4 border-t border-gray-200 dark:border-zinc-700">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Welcome / Login Page
-          </label>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              Show welcome page on app launch (requires re-login)
-            </span>
-            <button
-              onClick={handleToggleShowWelcome}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                showWelcomePage ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
-              }`}
-            >
-              <span
-                className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                  showWelcomePage ? "left-7" : "left-1"
+        {isAdmin && (
+          <div className="pt-4 border-t border-gray-200 dark:border-zinc-700">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Welcome / Login Page
+            </label>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                Show welcome page on app launch (requires re-login)
+              </span>
+              <button
+                onClick={handleToggleShowWelcome}
+                className={`relative w-12 h-6 rounded-full transition-colors ${
+                  showWelcomePage ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
                 }`}
-              />
-            </button>
+              >
+                <span
+                  className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                    showWelcomePage ? "left-7" : "left-1"
+                  }`}
+                />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* CSV Import/Export */}

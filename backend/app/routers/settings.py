@@ -322,6 +322,32 @@ async def login(data: LoginRequest):
         conn.close()
 
 
+@router.get("/auth/is-admin")
+async def is_admin(authorization: str = Header(None)):
+    """Check if the currently authenticated user is the admin."""
+    try:
+        user_id = _get_user_id(authorization)
+    except HTTPException:
+        return {"isAdmin": False}
+
+    conn = get_connection()
+    try:
+        # Get the admin username from settings
+        admin_user = conn.execute(
+            "SELECT value FROM settings WHERE key = 'username'"
+        ).fetchone()
+        if not admin_user:
+            return {"isAdmin": False}
+
+        # Get the current user
+        user_row = conn.execute(
+            "SELECT username FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        return {"isAdmin": user_row is not None and user_row["username"] == admin_user["value"]}
+    finally:
+        conn.close()
+
+
 @router.get("/auth/has-user")
 async def has_user():
     """Check if any admin user exists."""

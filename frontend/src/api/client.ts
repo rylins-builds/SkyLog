@@ -78,6 +78,9 @@ export const api = {
       body: JSON.stringify({ current_password, new_password }),
     }),
 
+  /** Check if the current authenticated user is the admin */
+  isAdmin: () => request<{ isAdmin: boolean }>("/auth/is-admin"),
+
   /** Check if any admin user exists */
   hasUser: () => request<{ hasUser: boolean }>("/auth/has-user"),
 
