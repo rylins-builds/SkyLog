@@ -37,7 +37,6 @@ interface FormState {
   precision_approaches: string;
   non_precision_approaches: string;
   holding_patterns: string;
-  cross_country: boolean;
 }
 
 const initialForm = (): FormState => ({
@@ -74,7 +73,6 @@ const initialForm = (): FormState => ({
   precision_approaches: "0",
   non_precision_approaches: "0",
   holding_patterns: "0",
-  cross_country: false,
 });
 
 /** Convert a Flight object from the API into form state. */
@@ -112,7 +110,6 @@ const flightToForm = (flight: Flight): FormState => ({
   precision_approaches: flight.precision_approaches.toString(),
   non_precision_approaches: flight.non_precision_approaches.toString(),
   holding_patterns: flight.holding_patterns.toString(),
-  cross_country: flight.cross_country,
 });
 
 export default function EntryForm({ editFlightId }: { editFlightId?: number | null }) {
@@ -243,7 +240,6 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
       precision_approaches: parseInt(form.precision_approaches) || 0,
       non_precision_approaches: parseInt(form.non_precision_approaches) || 0,
       holding_patterns: parseInt(form.holding_patterns) || 0,
-      cross_country: form.cross_country,
     };
 
     try {

@@ -39,8 +39,6 @@ export interface ColumnVisibility {
   precisionApproaches: boolean;
   nonPrecisionApproaches: boolean;
   holdingPatterns: boolean;
-  crossCountry: boolean;
-  actions: boolean;
 }
 
 export interface SettingsData {
@@ -84,8 +82,6 @@ export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   precisionApproaches: true,
   nonPrecisionApproaches: true,
   holdingPatterns: true,
-  crossCountry: true,
-  actions: true,
 };
 
 export const DEFAULT_PAGE_VISIBILITY: PageVisibility = {
@@ -168,7 +164,6 @@ export const COLUMN_TO_FORM_FIELD: Record<string, string> = {
   precisionApproaches: "precision_approaches",
   nonPrecisionApproaches: "non_precision_approaches",
   holdingPatterns: "holding_patterns",
-  crossCountry: "cross_country",
 };
 
 /** ColumnVisibility keys whose corresponding form fields are in the 2-column grid section (not standalone) */

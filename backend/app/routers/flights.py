@@ -46,7 +46,6 @@ def row_to_flight_response(row) -> dict:
         "precision_approaches": row["precision_approaches"],
         "non_precision_approaches": row["non_precision_approaches"],
         "holding_patterns": row["holding_patterns"],
-        "cross_country": bool(row["cross_country"]),
         "created_at": row["created_at"],
     }
 
@@ -91,8 +90,8 @@ async def create_flight(flight: FlightCreate):
                 helicopter_time, glider_time, solo_time, pic_time, sic_time, dual_time, instructor_time, 
                 xcountry_time, night_time, act_instrument_time, sim_instrument_time, sim_time, 
                 pilot_in_command, remarks, takeoffs_day, takeoffs_night, landings_day, 
-                landings_night, precision_approaches, non_precision_approaches, holding_patterns, cross_country)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                landings_night, precision_approaches, non_precision_approaches, holding_patterns)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 flight.date.isoformat(),
                 flight.aircraft_type,
@@ -127,7 +126,6 @@ async def create_flight(flight: FlightCreate):
                 flight.precision_approaches or 0,
                 flight.non_precision_approaches or 0,
                 flight.holding_patterns or 0,
-                1 if flight.cross_country else 0,
             ),
         )
         conn.commit()
@@ -160,8 +158,6 @@ async def update_flight(flight_id: int, flight: FlightUpdate):
             value = getattr(flight, field)
             if field == "date" and value is not None:
                 updates["date"] = value.isoformat()
-            elif field == "cross_country":
-                updates["cross_country"] = 1 if value else 0
             else:
                 updates[field] = value
 

@@ -52,8 +52,6 @@ export default function Settings() {
       precisionApproaches: true,
       nonPrecisionApproaches: true,
       holdingPatterns: true,
-      crossCountry: true,
-      actions: true,
     },
     username: "",
   });
@@ -166,7 +164,7 @@ export default function Settings() {
         "Simulated Instrument", "Flight Simulator", "Pilot in Command",
         "Remarks", "Takeoffs Day", "Takeoffs Night", "Landings Day", 
         "Landings Night", "Precision Approaches", "Non-Precision Approaches",
-        "Holding Patterns", "Cross Country Flight"
+        "Holding Patterns"
       ];
       
       const rows = flights.map((flight: Flight) => [
@@ -203,7 +201,6 @@ export default function Settings() {
         flight.precision_approaches || 0,
         flight.non_precision_approaches || 0,
         flight.holding_patterns || 0,
-        flight.cross_country ? "Yes" : "No"
       ]);
       
       const csvContent = [
@@ -318,7 +315,6 @@ export default function Settings() {
             precision_approaches: parseInt(values[30]) || 0,
             non_precision_approaches: parseInt(values[31]) || 0,
             holding_patterns: parseInt(values[32]) || 0,
-            cross_country: values[33]?.toLowerCase() === "yes",
           });
           imported++;
         } catch (e) {
@@ -422,7 +418,6 @@ export default function Settings() {
         { key: "actInstrumentTime", label: "Actual Instrument" },
         { key: "simInstrumentTime", label: "Simulated Instrument" },
         { key: "simTime", label: "Flight Simulator" },
-        { key: "crossCountry", label: "Cross Country Flight" },
       ]
     },
     {
@@ -446,7 +441,6 @@ export default function Settings() {
       title: "Other",
       columns: [
         { key: "remarks", label: "Remarks" },
-        { key: "actions", label: "Actions" },
       ]
     }
   ];
@@ -692,7 +686,7 @@ export default function Settings() {
             Solo, PIC, SIC, Dual Received, Instructor, Cross Country, Night, Actual Instrument, 
             Simulated Instrument, Flight Simulator, Pilot in Command, Remarks, Takeoffs Day, 
             Takeoffs Night, Landings Day, Landings Night, Precision Approaches, Non-Precision 
-            Approaches, Holding Patterns, Cross Country Flight
+            Approaches, Holding Patterns
           </p>
         </div>
       </div>
