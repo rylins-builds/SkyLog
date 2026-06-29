@@ -121,7 +121,12 @@ export default function App() {
 
   // Show welcome/login page
   if (authState !== "authenticated") {
-    return <WelcomePage onAuthenticated={handleAuthenticated} />;
+    return (
+      <WelcomePage
+        onAuthenticated={handleAuthenticated}
+        initialMode={authState === "login" ? "login" : "welcome"}
+      />
+    );
   }
 
   const pages: { key: Page; label: string; icon: string; alwaysVisible: boolean }[] = [

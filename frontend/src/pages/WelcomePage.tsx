@@ -3,12 +3,13 @@ import { api } from "../api/client";
 
 interface WelcomePageProps {
   onAuthenticated: () => void;
+  initialMode?: "welcome" | "login";
 }
 
 type PageMode = "welcome" | "login";
 
-export default function WelcomePage({ onAuthenticated }: WelcomePageProps) {
-  const [mode, setMode] = useState<PageMode>("welcome");
+export default function WelcomePage({ onAuthenticated, initialMode = "welcome" }: WelcomePageProps) {
+  const [mode, setMode] = useState<PageMode>(initialMode);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -34,9 +35,12 @@ export default function WelcomePage({ onAuthenticated }: WelcomePageProps) {
 
     setLoading(true);
     try {
-      const res = await api.register(username.trim(), password);
-      localStorage.setItem("skylog_token", res.token);
-      onAuthenticated();
+      await api.register(username.trim(), password);
+      // Don't auto-login — switch to login page so the user can sign in
+      setUsername("");
+      setPassword("");
+      setConfirmPassword("");
+      setMode("login");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -64,10 +68,6 @@ export default function WelcomePage({ onAuthenticated }: WelcomePageProps) {
       setLoading(false);
     }
   };
-
-  // We need to know whether to show "welcome" (register) or "login" mode.
-  // The parent passes the mode after checking hasUser.
-  // The component receives it via internal state determined on mount.
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center p-4">
