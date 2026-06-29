@@ -8,10 +8,10 @@ type SortDir = "asc" | "desc";
 type FilterKey = "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "solo_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time" | "takeoffs_day" | "takeoffs_night" | "landings_day" | "landings_night" | "precision_approaches" | "non_precision_approaches" | "holding_patterns" | "";
 
 interface ColumnDef {
-  key: keyof ColumnVisibility;
+  key: string;
   label: string;
   render: (flight: Flight) => React.ReactNode;
-  isActions?: boolean;
+  alwaysVisible?: boolean;
 }
 
 const PAGE_SIZE_OPTIONS = [10, 15, 25, 50, 100, 0] as const; // 0 means "All"
@@ -232,7 +232,7 @@ export default function Logbook() {
   const activeSortLabel = sortOptions.find((o) => o.field === sortField)?.label ?? "Date";
   const activeFilterLabel = filterOptions.find((o) => o.key === activeFilter)?.label;
 
-  // Define all columns once
+  // Define all columns once — Actions is always visible, independent of settings
   const allColumns: ColumnDef[] = [
     { key: "date", label: "Date", render: (f) => f.date },
     { key: "aircraftType", label: "Aircraft Type", render: (f) => f.aircraft_type },
@@ -267,7 +267,7 @@ export default function Logbook() {
     {
       key: "actions",
       label: "Actions",
-      isActions: true,
+      alwaysVisible: true,
       render: (f) => (
         <div className="flex items-center gap-1">
           <button
@@ -293,8 +293,10 @@ export default function Logbook() {
     },
   ];
 
-  // Only show visible columns
-  const visibleColumns = allColumns.filter((col) => columnVisibility[col.key]);
+  // Only show visible columns — the Actions column is always visible regardless of settings
+  const visibleColumns = allColumns.filter(
+    (col) => col.alwaysVisible || columnVisibility[col.key as keyof ColumnVisibility]
+  );
 
   // Empty state — no flights at all
   if (flights.length === 0) {
@@ -516,7 +518,7 @@ export default function Logbook() {
                         <td
                           key={col.key}
                           className={`px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white ${
-                            col.isActions ? "row-actions" : ""
+                            col.key === "actions" ? "row-actions" : ""
                           }`}
                         >
                           {col.render(flight)}

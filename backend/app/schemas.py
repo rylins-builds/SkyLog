@@ -40,7 +40,6 @@ class FlightCreate(BaseModel):
     precision_approaches: Optional[int] = Field(default=0, ge=0)
     non_precision_approaches: Optional[int] = Field(default=0, ge=0)
     holding_patterns: Optional[int] = Field(default=0, ge=0)
-    cross_country: Optional[bool] = Field(default=False)
 
 
 class FlightUpdate(BaseModel):
@@ -77,7 +76,6 @@ class FlightUpdate(BaseModel):
     precision_approaches: Optional[int] = Field(default=None, ge=0)
     non_precision_approaches: Optional[int] = Field(default=None, ge=0)
     holding_patterns: Optional[int] = Field(default=None, ge=0)
-    cross_country: Optional[bool] = None
 
 
 class FlightResponse(BaseModel):
@@ -116,7 +114,6 @@ class FlightResponse(BaseModel):
     precision_approaches: int = 0
     non_precision_approaches: int = 0
     holding_patterns: int = 0
-    cross_country: bool = False
     created_at: str
 
     class Config:

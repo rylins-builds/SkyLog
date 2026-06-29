@@ -75,7 +75,6 @@ def init_db() -> None:
                 precision_approaches     INTEGER DEFAULT 0 CHECK(precision_approaches >= 0),
                 non_precision_approaches INTEGER DEFAULT 0 CHECK(non_precision_approaches >= 0),
                 holding_patterns         INTEGER DEFAULT 0 CHECK(holding_patterns >= 0),
-                cross_country        INTEGER DEFAULT 0,
                 created_at      TEXT    DEFAULT (datetime('now'))
             );
 

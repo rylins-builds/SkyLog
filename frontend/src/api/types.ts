@@ -35,7 +35,6 @@ export interface Flight {
   precision_approaches: number;
   non_precision_approaches: number;
   holding_patterns: number;
-  cross_country: boolean;
   created_at: string;
 }
 
@@ -73,7 +72,6 @@ export interface FlightCreate {
   precision_approaches?: number;
   non_precision_approaches?: number;
   holding_patterns?: number;
-  cross_country?: boolean;
 }
 
 export interface DashboardStats {
