@@ -131,6 +131,46 @@ async def change_password(data: PasswordUpdate):
 
 # ── Auth endpoints ──
 
+@router.post("/auth/create-user", response_model=TokenResponse)
+async def create_user(data: RegisterRequest):
+    """Create an additional (non-admin) user. Requires an admin to already exist."""
+    if not data.username.strip():
+        raise HTTPException(status_code=400, detail="Username cannot be empty")
+    if len(data.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+
+    _init_settings_table()
+    conn = get_connection()
+    try:
+        # Make sure an admin exists first
+        existing_admin = conn.execute(
+            "SELECT value FROM settings WHERE key = 'password_hash'"
+        ).fetchone()
+        if not existing_admin:
+            raise HTTPException(status_code=400, detail="No admin account exists. Create an admin account first.")
+
+        # Check for duplicate username
+        dup = conn.execute(
+            "SELECT id FROM users WHERE username = ?", (data.username.strip(),)
+        ).fetchone()
+        if dup:
+            raise HTTPException(status_code=409, detail="Username already taken")
+
+        token = secrets.token_hex(32)
+        conn.execute(
+            "INSERT INTO users (username, password) VALUES (?, ?)",
+            (data.username.strip(), _hash_password(data.password)),
+        )
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('auth_token', ?)",
+            (token,),
+        )
+        conn.commit()
+        return {"token": token, "username": data.username.strip()}
+    finally:
+        conn.close()
+
+
 @router.post("/auth/register", response_model=TokenResponse)
 async def register(data: RegisterRequest):
     """Create the first admin user. Only works if no user exists yet."""
@@ -172,31 +212,53 @@ async def register(data: RegisterRequest):
 
 @router.post("/auth/login", response_model=TokenResponse)
 async def login(data: LoginRequest):
-    """Login with username and password. Returns a session token."""
+    """Login with username and password. Returns a session token.
+
+    Supports both the admin account (stored in settings) and
+    additional users (stored in the users table).
+    """
+    if not data.username.strip():
+        raise HTTPException(status_code=400, detail="Username and password are required")
+    if not data.password:
+        raise HTTPException(status_code=400, detail="Username and password are required")
+
     _init_settings_table()
     conn = get_connection()
     try:
-        row = conn.execute(
+        token = secrets.token_hex(32)
+
+        # Try admin account first
+        admin_row = conn.execute(
             "SELECT value FROM settings WHERE key = 'password_hash'"
         ).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="No user found. Please create an account.")
+        if admin_row:
+            admin_username = conn.execute(
+                "SELECT value FROM settings WHERE key = 'username'"
+            ).fetchone()
+            admin_username = admin_username["value"] if admin_username else "pilot"
 
-        if not _verify_password(data.password, row["value"]):
-            raise HTTPException(status_code=403, detail="Invalid username or password")
+            if data.username.strip() == admin_username and _verify_password(data.password, admin_row["value"]):
+                conn.execute(
+                    "INSERT OR REPLACE INTO settings (key, value) VALUES ('auth_token', ?)",
+                    (token,),
+                )
+                conn.commit()
+                return {"token": token, "username": admin_username}
 
-        token = secrets.token_hex(32)
-        conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES ('auth_token', ?)",
-            (token,),
-        )
-        conn.commit()
-
-        username_row = conn.execute(
-            "SELECT value FROM settings WHERE key = 'username'"
+        # Try users table
+        user_row = conn.execute(
+            "SELECT id, username, password FROM users WHERE username = ?",
+            (data.username.strip(),),
         ).fetchone()
+        if user_row and _verify_password(data.password, user_row["password"]):
+            conn.execute(
+                "INSERT OR REPLACE INTO settings (key, value) VALUES ('auth_token', ?)",
+                (token,),
+            )
+            conn.commit()
+            return {"token": token, "username": user_row["username"]}
 
-        return {"token": token, "username": username_row["value"] if username_row else "pilot"}
+        raise HTTPException(status_code=403, detail="Invalid username or password")
     finally:
         conn.close()
 

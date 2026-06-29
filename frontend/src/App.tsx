@@ -125,6 +125,7 @@ export default function App() {
       <WelcomePage
         onAuthenticated={handleAuthenticated}
         initialMode={authState === "login" ? "login" : "welcome"}
+        isFirstUser={authState === "welcome"}
       />
     );
   }

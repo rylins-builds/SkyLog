@@ -4,17 +4,21 @@ import { api } from "../api/client";
 interface WelcomePageProps {
   onAuthenticated: () => void;
   initialMode?: "welcome" | "login";
+  /** True if this is the very first admin account setup (no user exists yet) */
+  isFirstUser?: boolean;
 }
 
 type PageMode = "welcome" | "login";
 
-export default function WelcomePage({ onAuthenticated, initialMode = "welcome" }: WelcomePageProps) {
+export default function WelcomePage({ onAuthenticated, initialMode = "welcome", isFirstUser = false }: WelcomePageProps) {
   const [mode, setMode] = useState<PageMode>(initialMode);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const isCreatingAdmin = mode === "welcome" && isFirstUser;
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +39,11 @@ export default function WelcomePage({ onAuthenticated, initialMode = "welcome" }
 
     setLoading(true);
     try {
-      await api.register(username.trim(), password);
+      if (isCreatingAdmin) {
+        await api.register(username.trim(), password);
+      } else {
+        await api.createUser(username.trim(), password);
+      }
       // Don't auto-login — switch to login page so the user can sign in
       setUsername("");
       setPassword("");
@@ -78,7 +86,9 @@ export default function WelcomePage({ onAuthenticated, initialMode = "welcome" }
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white">SkyLog</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-2">
             {mode === "welcome"
-              ? "Welcome! Set up your admin account to get started."
+              ? isCreatingAdmin
+                ? "Welcome! Set up your admin account to get started."
+                : "Create a new user account to access the logbook."
               : "Welcome back. Sign in to continue."}
           </p>
         </div>
@@ -88,7 +98,7 @@ export default function WelcomePage({ onAuthenticated, initialMode = "welcome" }
           {mode === "welcome" ? (
             <>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 text-center">
-                Create Admin Account
+                {isCreatingAdmin ? "Create Admin Account" : "Create New User"}
               </h2>
               <form onSubmit={handleRegister} className="space-y-4">
                 <div>
@@ -140,18 +150,24 @@ export default function WelcomePage({ onAuthenticated, initialMode = "welcome" }
                   disabled={loading}
                   className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
                 >
-                  {loading ? "Creating Account..." : "Create Account"}
+                  {loading
+                    ? "Creating Account..."
+                    : isCreatingAdmin
+                      ? "Create Account"
+                      : "Create New User"}
                 </button>
               </form>
 
-              <div className="mt-4 text-center">
-                <button
-                  onClick={() => { setMode("login"); setError(""); }}
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Already have an account? Sign in
-                </button>
-              </div>
+              {!isCreatingAdmin && (
+                <div className="mt-4 text-center">
+                  <button
+                    onClick={() => { setMode("login"); setError(""); }}
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Already have an account? Sign in
+                  </button>
+                </div>
+              )}
 
               <div className="mt-3 text-center">
                 <button

@@ -75,6 +75,13 @@ export const api = {
       body: JSON.stringify({ username, password }),
     }),
 
+  /** Create an additional (non-admin) user */
+  createUser: (username: string, password: string) =>
+    request<{ token: string; username: string }>("/auth/create-user", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+
   /** Login with username and password */
   login: (username: string, password: string) =>
     request<{ token: string; username: string }>("/auth/login", {
