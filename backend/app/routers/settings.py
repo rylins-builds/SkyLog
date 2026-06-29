@@ -30,19 +30,36 @@ def _verify_password(password: str, stored: str) -> bool:
         return False
 
 
-def _init_settings_table():
-    """Ensure the settings table exists (no default user is created)."""
+def _get_user_id(authorization: str) -> int:
+    """Extract user_id from Authorization header. Raises 401 if invalid."""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization required")
+    token = authorization.replace("Bearer ", "").strip()
     conn = get_connection()
     try:
-        conn.executescript("""
-            CREATE TABLE IF NOT EXISTS settings (
-                key   TEXT PRIMARY KEY,
-                value TEXT NOT NULL
-            );
-        """)
+        row = conn.execute(
+            "SELECT user_id FROM sessions WHERE token = ?", (token,)
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+        return row["user_id"]
+    finally:
+        conn.close()
+
+
+def _create_session(user_id: int) -> str:
+    """Create a session token for the given user_id."""
+    token = secrets.token_hex(32)
+    conn = get_connection()
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO sessions (token, user_id) VALUES (?, ?)",
+            (token, user_id),
+        )
         conn.commit()
     finally:
         conn.close()
+    return token
 
 
 class UsernameUpdate(BaseModel):
@@ -69,31 +86,62 @@ class TokenResponse(BaseModel):
     username: str
 
 
+# ── Auth helpers ──
+
+def _init_tables():
+    """Ensure required tables exist."""
+    conn = get_connection()
+    try:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS settings (
+                key   TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS users (
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT    NOT NULL UNIQUE,
+                password TEXT    NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS sessions (
+                token    TEXT PRIMARY KEY,
+                user_id  INTEGER NOT NULL,
+                created  TEXT DEFAULT (datetime('now'))
+            );
+        """)
+        conn.commit()
+    finally:
+        conn.close()
+
+
 @router.get("/settings/user")
-async def get_user():
+async def get_user(authorization: str = Header(None)):
     """Get the current username."""
-    _init_settings_table()
+    user_id = _get_user_id(authorization)
     conn = get_connection()
     try:
         row = conn.execute(
-            "SELECT value FROM settings WHERE key = 'username'"
+            "SELECT username FROM users WHERE id = ?", (user_id,)
         ).fetchone()
-        return {"username": row["value"] if row else "pilot"}
+        return {"username": row["username"] if row else "pilot"}
     finally:
         conn.close()
 
 
 @router.put("/settings/username")
-async def update_username(data: UsernameUpdate):
+async def update_username(data: UsernameUpdate, authorization: str = Header(None)):
     """Update the username."""
+    user_id = _get_user_id(authorization)
     if not data.username.strip():
         raise HTTPException(status_code=400, detail="Username cannot be empty")
     if len(data.username) > 100:
         raise HTTPException(status_code=400, detail="Username too long")
 
-    _init_settings_table()
     conn = get_connection()
     try:
+        conn.execute(
+            "UPDATE users SET username = ? WHERE id = ?",
+            (data.username.strip(), user_id),
+        )
         conn.execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES ('username', ?)",
             (data.username.strip(),),
@@ -105,20 +153,26 @@ async def update_username(data: UsernameUpdate):
 
 
 @router.put("/settings/password")
-async def change_password(data: PasswordUpdate):
+async def change_password(data: PasswordUpdate, authorization: str = Header(None)):
     """Change the password."""
+    user_id = _get_user_id(authorization)
     if len(data.new_password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
 
-    _init_settings_table()
     conn = get_connection()
     try:
         row = conn.execute(
-            "SELECT value FROM settings WHERE key = 'password_hash'"
+            "SELECT password FROM users WHERE id = ?", (user_id,)
         ).fetchone()
-        if row and not _verify_password(data.current_password, row["value"]):
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+        if not _verify_password(data.current_password, row["password"]):
             raise HTTPException(status_code=403, detail="Current password is incorrect")
 
+        conn.execute(
+            "UPDATE users SET password = ? WHERE id = ?",
+            (_hash_password(data.new_password), user_id),
+        )
         conn.execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES ('password_hash', ?)",
             (_hash_password(data.new_password),),
@@ -131,46 +185,6 @@ async def change_password(data: PasswordUpdate):
 
 # ── Auth endpoints ──
 
-@router.post("/auth/create-user", response_model=TokenResponse)
-async def create_user(data: RegisterRequest):
-    """Create an additional (non-admin) user. Requires an admin to already exist."""
-    if not data.username.strip():
-        raise HTTPException(status_code=400, detail="Username cannot be empty")
-    if len(data.password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
-
-    _init_settings_table()
-    conn = get_connection()
-    try:
-        # Make sure an admin exists first
-        existing_admin = conn.execute(
-            "SELECT value FROM settings WHERE key = 'password_hash'"
-        ).fetchone()
-        if not existing_admin:
-            raise HTTPException(status_code=400, detail="No admin account exists. Create an admin account first.")
-
-        # Check for duplicate username
-        dup = conn.execute(
-            "SELECT id FROM users WHERE username = ?", (data.username.strip(),)
-        ).fetchone()
-        if dup:
-            raise HTTPException(status_code=409, detail="Username already taken")
-
-        token = secrets.token_hex(32)
-        conn.execute(
-            "INSERT INTO users (username, password) VALUES (?, ?)",
-            (data.username.strip(), _hash_password(data.password)),
-        )
-        conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES ('auth_token', ?)",
-            (token,),
-        )
-        conn.commit()
-        return {"token": token, "username": data.username.strip()}
-    finally:
-        conn.close()
-
-
 @router.post("/auth/register", response_model=TokenResponse)
 async def register(data: RegisterRequest):
     """Create the first admin user. Only works if no user exists yet."""
@@ -179,15 +193,23 @@ async def register(data: RegisterRequest):
     if len(data.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
 
-    _init_settings_table()
+    _init_tables()
     conn = get_connection()
     try:
-        existing = conn.execute(
+        existing_admin = conn.execute(
             "SELECT value FROM settings WHERE key = 'password_hash'"
         ).fetchone()
-        if existing:
+        if existing_admin:
             raise HTTPException(status_code=409, detail="An admin user already exists")
 
+        # Create user entry
+        cursor = conn.execute(
+            "INSERT INTO users (username, password) VALUES (?, ?)",
+            (data.username.strip(), _hash_password(data.password)),
+        )
+        user_id = cursor.lastrowid
+
+        # Store admin in settings (legacy reference)
         token = secrets.token_hex(32)
         conn.execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES ('username', ?)",
@@ -198,11 +220,53 @@ async def register(data: RegisterRequest):
             (_hash_password(data.password),),
         )
         conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES ('auth_token', ?)",
-            (token,),
-        )
-        conn.execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES ('show_welcome_page', 'true')",
+        )
+
+        # Create session
+        conn.execute(
+            "INSERT OR REPLACE INTO sessions (token, user_id) VALUES (?, ?)",
+            (token, user_id),
+        )
+        conn.commit()
+        return {"token": token, "username": data.username.strip()}
+    finally:
+        conn.close()
+
+
+@router.post("/auth/create-user", response_model=TokenResponse)
+async def create_user(data: RegisterRequest):
+    """Create an additional (non-admin) user. Requires an admin to already exist."""
+    if not data.username.strip():
+        raise HTTPException(status_code=400, detail="Username cannot be empty")
+    if len(data.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+
+    _init_tables()
+    conn = get_connection()
+    try:
+        existing_admin = conn.execute(
+            "SELECT value FROM settings WHERE key = 'password_hash'"
+        ).fetchone()
+        if not existing_admin:
+            raise HTTPException(status_code=400, detail="No admin account exists. Create an admin account first.")
+
+        dup = conn.execute(
+            "SELECT id FROM users WHERE username = ?", (data.username.strip(),)
+        ).fetchone()
+        if dup:
+            raise HTTPException(status_code=409, detail="Username already taken")
+
+        cursor = conn.execute(
+            "INSERT INTO users (username, password) VALUES (?, ?)",
+            (data.username.strip(), _hash_password(data.password)),
+        )
+        user_id = cursor.lastrowid
+
+        token = secrets.token_hex(32)
+        conn.execute(
+            "INSERT OR REPLACE INTO sessions (token, user_id) VALUES (?, ?)",
+            (token, user_id),
         )
         conn.commit()
         return {"token": token, "username": data.username.strip()}
@@ -212,53 +276,48 @@ async def register(data: RegisterRequest):
 
 @router.post("/auth/login", response_model=TokenResponse)
 async def login(data: LoginRequest):
-    """Login with username and password. Returns a session token.
-
-    Supports both the admin account (stored in settings) and
-    additional users (stored in the users table).
-    """
+    """Login with username and password. Returns a session token."""
     if not data.username.strip():
         raise HTTPException(status_code=400, detail="Username and password are required")
     if not data.password:
         raise HTTPException(status_code=400, detail="Username and password are required")
 
-    _init_settings_table()
+    _init_tables()
     conn = get_connection()
     try:
-        token = secrets.token_hex(32)
-
-        # Try admin account first
-        admin_row = conn.execute(
-            "SELECT value FROM settings WHERE key = 'password_hash'"
-        ).fetchone()
-        if admin_row:
-            admin_username = conn.execute(
-                "SELECT value FROM settings WHERE key = 'username'"
-            ).fetchone()
-            admin_username = admin_username["value"] if admin_username else "pilot"
-
-            if data.username.strip() == admin_username and _verify_password(data.password, admin_row["value"]):
-                conn.execute(
-                    "INSERT OR REPLACE INTO settings (key, value) VALUES ('auth_token', ?)",
-                    (token,),
-                )
-                conn.commit()
-                return {"token": token, "username": admin_username}
-
-        # Try users table
+        # Try users table first (covers both admin and regular users)
         user_row = conn.execute(
             "SELECT id, username, password FROM users WHERE username = ?",
             (data.username.strip(),),
         ).fetchone()
-        if user_row and _verify_password(data.password, user_row["password"]):
-            conn.execute(
-                "INSERT OR REPLACE INTO settings (key, value) VALUES ('auth_token', ?)",
-                (token,),
-            )
-            conn.commit()
-            return {"token": token, "username": user_row["username"]}
 
-        raise HTTPException(status_code=403, detail="Invalid username or password")
+        # Fallback: try admin account in settings (legacy)
+        if not user_row:
+            admin_row = conn.execute(
+                "SELECT value FROM settings WHERE key = 'password_hash'"
+            ).fetchone()
+            if admin_row:
+                admin_user = conn.execute(
+                    "SELECT value FROM settings WHERE key = 'username'"
+                ).fetchone()
+                admin_username = admin_user["value"] if admin_user else "pilot"
+                if data.username.strip() == admin_username and _verify_password(data.password, admin_row["value"]):
+                    # Migrate admin to users table
+                    cursor = conn.execute(
+                        "INSERT OR REPLACE INTO users (username, password) VALUES (?, ?)",
+                        (admin_username, admin_row["value"]),
+                    )
+                    user_id = cursor.lastrowid
+                    token = _create_session(user_id)
+                    return {"token": token, "username": admin_username}
+
+            raise HTTPException(status_code=403, detail="Invalid username or password")
+
+        if not _verify_password(data.password, user_row["password"]):
+            raise HTTPException(status_code=403, detail="Invalid username or password")
+
+        token = _create_session(user_row["id"])
+        return {"token": token, "username": user_row["username"]}
     finally:
         conn.close()
 
@@ -266,7 +325,7 @@ async def login(data: LoginRequest):
 @router.get("/auth/has-user")
 async def has_user():
     """Check if any admin user exists."""
-    _init_settings_table()
+    _init_tables()
     conn = get_connection()
     try:
         row = conn.execute(
@@ -280,7 +339,7 @@ async def has_user():
 @router.get("/auth/show-welcome")
 async def get_show_welcome():
     """Get whether the welcome/login page should be shown on app load."""
-    _init_settings_table()
+    _init_tables()
     conn = get_connection()
     try:
         row = conn.execute(

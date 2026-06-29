@@ -4,13 +4,26 @@ import type { Flight, FlightCreate, DashboardStats } from "./types";
 
 const API_BASE = "/api";
 
+function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem("skylog_token");
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${url}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: { ...getAuthHeaders(), ...(options?.headers as Record<string, string> | undefined) },
     ...options,
   });
   if (!response.ok) {
     const error = await response.text();
+    // If 401 unauthorized, clear token
+    if (response.status === 401) {
+      localStorage.removeItem("skylog_token");
+    }
     throw new Error(`API Error: ${response.status} ${error}`);
   }
   if (response.status === 204) return undefined as T;
@@ -18,7 +31,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  /** Get all flights */
+  /** Get all flights for the current user */
   listFlights: () => request<Flight[]>("/flights"),
 
   /** Get a flight by ID */
@@ -42,7 +55,7 @@ export const api = {
   deleteFlight: (id: number) =>
     request<void>(`/flights/${id}`, { method: "DELETE" }),
 
-  /** Get dashboard stats */
+  /** Get dashboard stats for the current user */
   getDashboardStats: () => request<DashboardStats>("/dashboard/stats"),
 
   /** Health check */
