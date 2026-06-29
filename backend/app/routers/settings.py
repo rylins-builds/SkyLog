@@ -384,7 +384,7 @@ async def set_show_welcome(data: dict = Body(...)):
     try:
         conn.execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES ('show_welcome_page', ?)",
-            ("true" if show else "false"),
+            ("true" if show else "false",),
         )
         conn.commit()
         return {"showWelcomePage": show}
