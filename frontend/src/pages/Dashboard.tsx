@@ -62,7 +62,7 @@ export default function Dashboard() {
           </p>
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("navigate", { detail: "add" }))}
-            className="inline-flex items-center gap-2 bg-blue-600 dark:bg-blue-800 dark:text-gray-900 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors btn-primary"
+            className="inline-flex items-center gap-2 bg-blue-600 dark:bg-blue-800 dark:text-white text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors btn-primary"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

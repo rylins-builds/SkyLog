@@ -69,10 +69,13 @@ def init_db() -> None:
                 pilot_in_command TEXT   NOT NULL,
                 remarks         TEXT,
                 takeoffs_day    INTEGER DEFAULT 0 CHECK(takeoffs_day >= 0),
-                takeoffs_night  INTEGER DEFAULT 0 CHECK(takeoffs_night >= 0),
-                landings_day    INTEGER DEFAULT 0 CHECK(landings_day >= 0),
-                landings_night  INTEGER DEFAULT 0 CHECK(landings_night >= 0),
-                cross_country   INTEGER DEFAULT 0,
+                takeoffs_night       INTEGER DEFAULT 0 CHECK(takeoffs_night >= 0),
+                landings_day         INTEGER DEFAULT 0 CHECK(landings_day >= 0),
+                landings_night       INTEGER DEFAULT 0 CHECK(landings_night >= 0),
+                precision_approaches     INTEGER DEFAULT 0 CHECK(precision_approaches >= 0),
+                non_precision_approaches INTEGER DEFAULT 0 CHECK(non_precision_approaches >= 0),
+                holding_patterns         INTEGER DEFAULT 0 CHECK(holding_patterns >= 0),
+                cross_country        INTEGER DEFAULT 0,
                 created_at      TEXT    DEFAULT (datetime('now'))
             );
 

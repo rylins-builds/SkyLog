@@ -1,55 +1,987 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { api } from "../api/client";
 import type { Flight } from "../api/types";
 
+// ── Types ──
+
+type CategoryId =
+  | "dayTakeoffs"
+  | "dayLandings"
+  | "nightTakeoffs"
+  | "nightLandings"
+  | "ifrApproaches"
+  | "holdingProcedures";
+
+interface CurrencyThreshold {
+  minCount: number;
+  daysWindow: number;
+}
+
+interface CurrencyEntry {
+  id: number;
+  category: "ifrApproaches" | "holdingProcedures";
+  date: string;
+  description: string;
+}
+
+interface CurrencyState {
+  entries: CurrencyEntry[];
+  entryCounter: number;
+}
+
+type CurrencyStatus = "current" | "expiring" | "notCurrent";
+
+// ── Defaults ──
+
+const DEFAULT_THRESHOLDS: Record<CategoryId, CurrencyThreshold> = {
+  dayTakeoffs: { minCount: 3, daysWindow: 90 },
+  dayLandings: { minCount: 3, daysWindow: 90 },
+  nightTakeoffs: { minCount: 3, daysWindow: 90 },
+  nightLandings: { minCount: 3, daysWindow: 90 },
+  ifrApproaches: { minCount: 6, daysWindow: 180 },
+  holdingProcedures: { minCount: 1, daysWindow: 180 },
+};
+
+const CATEGORY_LABELS: Record<CategoryId, string> = {
+  dayTakeoffs: "Day Takeoffs",
+  dayLandings: "Day Landings",
+  nightTakeoffs: "Night Takeoffs",
+  nightLandings: "Night Landings",
+  ifrApproaches: "IFR Approaches",
+  holdingProcedures: "Holding Procedures",
+};
+
+const CATEGORY_ICONS: Record<CategoryId, string> = {
+  dayTakeoffs: "🛫",
+  dayLandings: "🛬",
+  nightTakeoffs: "🌙",
+  nightLandings: "🌃",
+  ifrApproaches: "📡",
+  holdingProcedures: "🔄",
+};
+
+// ── localStorage helpers ──
+
+function loadThresholds(): Record<CategoryId, CurrencyThreshold> {
+  try {
+    const raw = localStorage.getItem("currencyThresholds");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return { ...DEFAULT_THRESHOLDS, ...parsed };
+    }
+  } catch {
+    /* ignore */
+  }
+  return { ...DEFAULT_THRESHOLDS };
+}
+
+function saveThresholds(
+  thresholds: Record<CategoryId, CurrencyThreshold>
+): void {
+  localStorage.setItem("currencyThresholds", JSON.stringify(thresholds));
+  window.dispatchEvent(new CustomEvent("currencyThresholdsUpdated"));
+}
+
+function loadCurrencyState(): CurrencyState {
+  try {
+    const raw = localStorage.getItem("currencyEntries");
+    if (raw) return JSON.parse(raw);
+  } catch {
+    /* ignore */
+  }
+  return { entries: [], entryCounter: 0 };
+}
+
+function saveCurrencyState(state: CurrencyState): void {
+  localStorage.setItem("currencyEntries", JSON.stringify(state));
+}
+
+// ── Helpers ──
+
+function getStatus(
+  count: number,
+  minCount: number,
+  daysWindow: number,
+  today: Date,
+  lastDate: Date | null
+): CurrencyStatus {
+  if (count >= minCount) {
+    if (lastDate) {
+      const elapsed =
+        (today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+      if (elapsed > daysWindow * 0.75) return "expiring";
+    }
+    return "current";
+  }
+  return "notCurrent";
+}
+
+function statusBadgeClass(status: CurrencyStatus): string {
+  switch (status) {
+    case "current":
+      return "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 ring-1 ring-green-300 dark:ring-green-700";
+    case "expiring":
+      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300 ring-1 ring-yellow-300 dark:ring-yellow-700";
+    case "notCurrent":
+      return "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 ring-1 ring-red-300 dark:ring-red-700";
+  }
+}
+
+function statusLabel(status: CurrencyStatus): string {
+  switch (status) {
+    case "current":
+      return "Current";
+    case "expiring":
+      return "Expiring Soon";
+    case "notCurrent":
+      return "Not Current";
+  }
+}
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+// ── Sub-components ──
+
+function StatusBadge({ status }: { status: CurrencyStatus }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusBadgeClass(status)}`}
+    >
+      {status === "current" && (
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      )}
+      {status === "expiring" && (
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      )}
+      {status === "notCurrent" && (
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      )}
+      {statusLabel(status)}
+    </span>
+  );
+}
+
+function ProgressBar({
+  count,
+  min,
+}: {
+  count: number;
+  min: number;
+}) {
+  const pct = min > 0 ? Math.min((count / min) * 100, 100) : 0;
+  const isMet = count >= min;
+  return (
+    <div className="w-full">
+      <div className="flex items-center justify-between text-sm mb-1">
+        <span className="text-gray-500 dark:text-gray-400 font-medium">
+          {count} / {min}
+        </span>
+        <span className={`font-semibold ${isMet ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"}`}>
+          {isMet ? "Met" : `${Math.round(pct)}%`}
+        </span>
+      </div>
+      <div className="w-full h-2 bg-gray-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${
+            pct >= 100
+              ? "bg-green-500"
+              : pct >= 75
+                ? "bg-yellow-500"
+                : "bg-red-500"
+          }`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Main Component ──
+
 export default function Currency() {
   const [flights, setFlights] = useState<Flight[]>([]);
+  const [thresholds, setThresholds] = useState<
+    Record<CategoryId, CurrencyThreshold>
+  >(loadThresholds);
+  const [currencyState, setCurrencyState] =
+    useState<CurrencyState>(loadCurrencyState);
+  const [editingThreshold, setEditingThreshold] =
+    useState<CategoryId | null>(null);
+  const [editMin, setEditMin] = useState<number>(0);
+  const [editDays, setEditDays] = useState<number>(0);
+  const [showAddIfr, setShowAddIfr] = useState(false);
+  const [newIfrCategory, setNewIfrCategory] = useState<
+    "ifrApproaches" | "holdingProcedures"
+  >("ifrApproaches");
+  const [newIfrDate, setNewIfrDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+  const [newIfrDesc, setNewIfrDesc] = useState("");
   const [error, setError] = useState("");
 
+  // Load flights
   useEffect(() => {
-    api.listFlights().then(setFlights).catch((e) => setError(e.message));
+    api
+      .listFlights()
+      .then(setFlights)
+      .catch((e) => setError(e.message));
   }, []);
 
+  // Recalculate when thresholds change from another tab
+  useEffect(() => {
+    const handler = () => setThresholds(loadThresholds());
+    window.addEventListener("currencyThresholdsUpdated", handler);
+    return () => window.removeEventListener("currencyThresholdsUpdated", handler);
+  }, []);
+
+  // ── Compute counters per category ──
+  const counters = useMemo(() => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    function sumForCategory(
+      threshold: CurrencyThreshold,
+      flightPredicate: (f: Flight) => number
+    ): { count: number; lastDate: Date | null } {
+      const cutoff = new Date(
+        today.getTime() - threshold.daysWindow * 24 * 60 * 60 * 1000
+      );
+      let count = 0;
+      let lastDate: Date | null = null;
+      for (const f of flights) {
+        const fd = new Date(f.date + "T00:00:00");
+        if (fd >= cutoff && fd <= today) {
+          count += flightPredicate(f);
+          if (!lastDate || fd > lastDate) lastDate = fd;
+        }
+      }
+      return { count, lastDate };
+    }
+
+    const dayTakeoffs = sumForCategory(
+      thresholds.dayTakeoffs,
+      (f) => f.takeoffs_day
+    );
+    const dayLandings = sumForCategory(
+      thresholds.dayLandings,
+      (f) => f.landings_day
+    );
+    const nightTakeoffs = sumForCategory(
+      thresholds.nightTakeoffs,
+      (f) => f.takeoffs_night
+    );
+    const nightLandings = sumForCategory(
+      thresholds.nightLandings,
+      (f) => f.landings_night
+    );
+
+    // Approaches and holds from stored entries
+    const cutoffIfr = new Date(
+      today.getTime() -
+        thresholds.ifrApproaches.daysWindow * 24 * 60 * 60 * 1000
+    );
+    const cutoffHolding = new Date(
+      today.getTime() -
+        thresholds.holdingProcedures.daysWindow * 24 * 60 * 60 * 1000
+    );
+
+    let ifrCount = 0;
+    let ifrLast: Date | null = null;
+    let holdCount = 0;
+    let holdLast: Date | null = null;
+
+    for (const e of currencyState.entries) {
+      const ed = new Date(e.date + "T00:00:00");
+      if (e.category === "ifrApproaches" && ed >= cutoffIfr) {
+        ifrCount++;
+        if (!ifrLast || ed > ifrLast) ifrLast = ed;
+      }
+      if (e.category === "holdingProcedures" && ed >= cutoffHolding) {
+        holdCount++;
+        if (!holdLast || ed > holdLast) holdLast = ed;
+      }
+    }
+
+    return {
+      dayTakeoffs: {
+        count: dayTakeoffs.count,
+        lastDate: dayTakeoffs.lastDate,
+      },
+      dayLandings: {
+        count: dayLandings.count,
+        lastDate: dayLandings.lastDate,
+      },
+      nightTakeoffs: {
+        count: nightTakeoffs.count,
+        lastDate: nightTakeoffs.lastDate,
+      },
+      nightLandings: {
+        count: nightLandings.count,
+        lastDate: nightLandings.lastDate,
+      },
+      ifrApproaches: { count: ifrCount, lastDate: ifrLast },
+      holdingProcedures: { count: holdCount, lastDate: holdLast },
+    };
+  }, [flights, thresholds, currencyState.entries]);
+
+  // ── Status for each category ──
+  const statuses = useMemo(() => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    const result = {} as Record<CategoryId, CurrencyStatus>;
+    for (const cat of Object.keys(thresholds) as CategoryId[]) {
+      const c = counters[cat];
+      const t = thresholds[cat];
+      result[cat] = getStatus(c.count, t.minCount, t.daysWindow, today, c.lastDate);
+    }
+    return result;
+  }, [counters, thresholds]);
+
+  // IFR combined
+  const ifrCombined = useMemo(() => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    const totalCount =
+      counters.ifrApproaches.count + counters.holdingProcedures.count;
+    const minCount =
+      thresholds.ifrApproaches.minCount +
+      thresholds.holdingProcedures.minCount;
+
+    const lastDates = [
+      counters.ifrApproaches.lastDate,
+      counters.holdingProcedures.lastDate,
+    ].filter(Boolean) as Date[];
+    const lastDate =
+      lastDates.length > 0
+        ? new Date(Math.max(...lastDates.map((d) => d.getTime())))
+        : null;
+
+    const daysWindow = thresholds.ifrApproaches.daysWindow;
+    const status = getStatus(totalCount, minCount, daysWindow, today, lastDate);
+
+    const expiresDate = lastDate
+      ? new Date(lastDate.getTime() + daysWindow * 24 * 60 * 60 * 1000)
+      : null;
+
+    return { totalCount, minCount, lastDate, expiresDate, status };
+  }, [counters, thresholds]);
+
+  // ── Threshold editing ──
+  const openThresholdEdit = useCallback((cat: CategoryId) => {
+    const t = loadThresholds()[cat];
+    setEditMin(t.minCount);
+    setEditDays(t.daysWindow);
+    setEditingThreshold(cat);
+  }, []);
+
+  const saveThresholdEdit = useCallback(() => {
+    if (!editingThreshold) return;
+    const next = {
+      ...thresholds,
+      [editingThreshold]: { minCount: editMin, daysWindow: editDays },
+    };
+    setThresholds(next);
+    saveThresholds(next);
+    setEditingThreshold(null);
+  }, [editingThreshold, editMin, editDays, thresholds]);
+
+  const cancelThresholdEdit = useCallback(() => {
+    setEditingThreshold(null);
+  }, []);
+
+  // ── Add entry ──
+  const handleAddEntry = useCallback(() => {
+    if (!newIfrDate) return;
+    const next: CurrencyState = {
+      entries: [
+        ...currencyState.entries,
+        {
+          id: currencyState.entryCounter + 1,
+          category: newIfrCategory,
+          date: newIfrDate,
+          description: newIfrDesc,
+        },
+      ],
+      entryCounter: currencyState.entryCounter + 1,
+    };
+    setCurrencyState(next);
+    saveCurrencyState(next);
+    setNewIfrDesc("");
+    setNewIfrDate(new Date().toISOString().split("T")[0]);
+    setShowAddIfr(false);
+  }, [currencyState, newIfrCategory, newIfrDate, newIfrDesc]);
+
+  // ── Delete entry ──
+  const handleDeleteEntry = useCallback(
+    (id: number) => {
+      const next: CurrencyState = {
+        ...currencyState,
+        entries: currencyState.entries.filter((e) => e.id !== id),
+      };
+      setCurrencyState(next);
+      saveCurrencyState(next);
+    },
+    [currencyState]
+  );
+
+  // All entries merged for recent list
+  const allEntries = useMemo(() => {
+    const result: {
+      date: string;
+      category: CategoryId;
+      description: string;
+      source: "flight" | "manual";
+      entryId?: number;
+    }[] = [];
+
+    for (const f of flights) {
+      if (f.takeoffs_day > 0)
+        result.push({
+          date: f.date,
+          category: "dayTakeoffs",
+          description: `${f.takeoffs_day} day takeoff${f.takeoffs_day !== 1 ? "s" : ""} — ${f.aircraft_reg}`,
+          source: "flight",
+        });
+      if (f.landings_day > 0)
+        result.push({
+          date: f.date,
+          category: "dayLandings",
+          description: `${f.landings_day} day landing${f.landings_day !== 1 ? "s" : ""} — ${f.aircraft_reg}`,
+          source: "flight",
+        });
+      if (f.takeoffs_night > 0)
+        result.push({
+          date: f.date,
+          category: "nightTakeoffs",
+          description: `${f.takeoffs_night} night takeoff${f.takeoffs_night !== 1 ? "s" : ""} — ${f.aircraft_reg}`,
+          source: "flight",
+        });
+      if (f.landings_night > 0)
+        result.push({
+          date: f.date,
+          category: "nightLandings",
+          description: `${f.landings_night} night landing${f.landings_night !== 1 ? "s" : ""} — ${f.aircraft_reg}`,
+          source: "flight",
+        });
+    }
+
+    for (const e of currencyState.entries) {
+      result.push({
+        date: e.date,
+        category: e.category,
+        description:
+          e.description ||
+          (e.category === "ifrApproaches"
+            ? "IFR Approach"
+            : "Holding Procedure"),
+        source: "manual",
+        entryId: e.id,
+      });
+    }
+
+    result.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    return result;
+  }, [flights, currencyState.entries]);
+
+  // ── Render helpers ──
+  function renderCategoryCard(cat: CategoryId) {
+    const c = counters[cat];
+    const t = thresholds[cat];
+    const st = statuses[cat];
+    const isEditing = editingThreshold === cat;
+
+    return (
+      <div
+        key={cat}
+        className="bg-white dark:bg-zinc-900 rounded-xl shadow-md border border-gray-100 dark:border-zinc-700 p-5 animate-slide-up relative"
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">{CATEGORY_ICONS[cat]}</span>
+            <h3 className="font-semibold text-gray-900 dark:text-white">
+              {CATEGORY_LABELS[cat]}
+            </h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <StatusBadge status={st} />
+            <button
+              onClick={() =>
+                isEditing ? cancelThresholdEdit() : openThresholdEdit(cat)
+              }
+              className={`p-1 rounded-md transition-colors ${
+                isEditing
+                  ? "bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300"
+                  : "text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-zinc-800"
+              }`}
+              title={isEditing ? "Close settings" : "Threshold settings"}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Last event info */}
+        <div className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+          {c.lastDate
+            ? `Last: ${c.lastDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+            : "No entries in range"}
+        </div>
+
+        {/* Progress bar */}
+        <ProgressBar count={c.count} min={t.minCount} />
+
+        {/* Inline edit panel */}
+        {isEditing && (
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-700 animate-fade-in">
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  Min {cat === "ifrApproaches" || cat === "holdingProcedures" ? "Entries" : "Count"}
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={editMin}
+                  onChange={(e) => setEditMin(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full rounded-lg border border-gray-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  Days Window
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={editDays}
+                  onChange={(e) => setEditDays(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full rounded-lg border border-gray-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={cancelThresholdEdit}
+                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-zinc-700 dark:text-gray-300 dark:hover:bg-zinc-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveThresholdEdit}
+                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Delete button for manual entries only - show count of entries contributing */}
+        {cat !== "ifrApproaches" && cat !== "holdingProcedures" && (
+          <div className="mt-3 text-xs text-gray-400 dark:text-gray-500">
+            Populated from flight log entries
+          </div>
+        )}
+        {cat === "ifrApproaches" || cat === "holdingProcedures" ? (
+          <div className="mt-3 text-xs text-gray-400 dark:text-gray-500">
+            {(cat === "ifrApproaches" ? currencyState.entries.filter(e => e.category === "ifrApproaches") : currencyState.entries.filter(e => e.category === "holdingProcedures")).length}{" "}
+            logged entries
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  // ── Error state ──
   if (error) {
     return (
       <div className="p-8 text-center animate-fade-in">
-        <div className="inline-flex items-center gap-2 bg-red-100 text-red-700 px-4 py-3 rounded-lg">
-            <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          <span>Failed to load flights: {error}</span>
+        <div className="inline-flex items-center gap-2 bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 px-4 py-3 rounded-lg">
+          <svg
+            className="w-5 h-5 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <span>Failed to load flight data: {error}</span>
         </div>
       </div>
     );
   }
-    
-  // Empty state — no flights at all
-  if (flights.length === 0) {
+
+  // ── Empty state ──
+  if (flights.length === 0 && currencyState.entries.length === 0) {
     return (
       <div className="p-8 text-center animate-fade-in">
         <div className="max-w-md mx-auto py-16">
-          <div className="text-6xl mb-4">📖</div>
-          <h2 className="text-xl font-semibold text-gray-700 mb-2 dark:text-white">No flights logged yet</h2>
+          <div className="text-6xl mb-4">🛡️</div>
+          <h2 className="text-xl font-semibold text-gray-700 mb-2 dark:text-white">
+            No currency data yet
+          </h2>
           <p className="text-gray-500 mb-6 dark:text-white">
-            Ready for takeoff? Add your first flight to get started.
+            Start by logging flights or adding IFR approaches and holding
+            procedures to track your currency.
           </p>
-          <button
-            onClick={() => window.dispatchEvent(new CustomEvent("navigate", { detail: "add" }))}
-            className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors btn-primary"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Your First Flight
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() =>
+                window.dispatchEvent(
+                  new CustomEvent("navigate", { detail: "add" })
+                )
+              }
+              className="inline-flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors btn-primary"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              Log Your First Flight
+            </button>
+            <button
+              onClick={() => setShowAddIfr(true)}
+              className="inline-flex items-center justify-center gap-2 bg-gray-200 dark:bg-zinc-700 text-gray-700 dark:text-white px-6 py-2.5 rounded-lg font-medium hover:bg-gray-300 dark:hover:bg-zinc-600 transition-colors"
+            >
+              Add IFR Entry
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-      <div className="p-8 max-w-[80%] mx-auto animate-fade-in">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6 dark:text-white">Currency</h1>
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto animate-fade-in">
+      {/* ═══ Header ═══ */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Currency
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Track your flight currency requirements across all categories
+          </p>
+        </div>
       </div>
+
+      {/* ═══ IFR Currency Tracker (combined) ═══ */}
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl shadow-md border border-blue-100 dark:border-blue-900/50 p-6 mb-8 animate-slide-up">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-2xl">📡</span>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                IFR Currency
+              </h2>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Combined instrument approach and holding procedure currency
+            </p>
+          </div>
+          <StatusBadge status={ifrCombined.status} />
+        </div>
+
+        {/* Stats row */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+          <div className="bg-white/70 dark:bg-zinc-900/70 rounded-lg p-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium">
+              Approaches
+            </p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {counters.ifrApproaches.count}
+            </p>
+            <div className="mt-1">
+              <ProgressBar
+                count={counters.ifrApproaches.count}
+                min={thresholds.ifrApproaches.minCount}
+              />
+            </div>
+          </div>
+          <div className="bg-white/70 dark:bg-zinc-900/70 rounded-lg p-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium">
+              Holds
+            </p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {counters.holdingProcedures.count}
+            </p>
+            <div className="mt-1">
+              <ProgressBar
+                count={counters.holdingProcedures.count}
+                min={thresholds.holdingProcedures.minCount}
+              />
+            </div>
+          </div>
+          <div className="bg-white/70 dark:bg-zinc-900/70 rounded-lg p-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium">
+              Combined Total
+            </p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {ifrCombined.totalCount}
+              <span className="text-base font-normal text-gray-400">
+                {" "}
+                / {ifrCombined.minCount}
+              </span>
+            </p>
+          </div>
+          <div className="bg-white/70 dark:bg-zinc-900/70 rounded-lg p-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium">
+              Expires
+            </p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {ifrCombined.expiresDate
+                ? ifrCombined.expiresDate.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })
+                : "—"}
+            </p>
+            {ifrCombined.expiresDate && (
+              <p className="text-xs text-gray-400 dark:text-gray-500">
+                {ifrCombined.expiresDate.toLocaleDateString("en-US", {
+                  year: "numeric",
+                })}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Quick-add buttons */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              setNewIfrCategory("ifrApproaches");
+              setNewIfrDate(new Date().toISOString().split("T")[0]);
+              setShowAddIfr(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Approach
+          </button>
+          <button
+            onClick={() => {
+              setNewIfrCategory("holdingProcedures");
+              setNewIfrDate(new Date().toISOString().split("T")[0]);
+              setShowAddIfr(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Hold
+          </button>
+        </div>
+      </div>
+
+      {/* ═══ Currency Cards Grid ═══ */}
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        All Categories
+      </h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        {(
+          [
+            "dayTakeoffs",
+            "dayLandings",
+            "nightTakeoffs",
+            "nightLandings",
+            "ifrApproaches",
+            "holdingProcedures",
+          ] as CategoryId[]
+        ).map(renderCategoryCard)}
+      </div>
+
+      {/* ═══ Add IFR Entry Modal ═══ */}
+      {showAddIfr && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 animate-fade-in">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl border border-gray-200 dark:border-zinc-700 p-6 w-full max-w-md mx-4 animate-slide-up">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Log {newIfrCategory === "ifrApproaches" ? "IFR Approach" : "Holding Procedure"}
+            </h3>
+
+            <div className="space-y-4">
+              {/* Category toggle */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Category
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setNewIfrCategory("ifrApproaches")}
+                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                      newIfrCategory === "ifrApproaches"
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-zinc-700 dark:text-gray-300 dark:hover:bg-zinc-600"
+                    }`}
+                  >
+                    Approach
+                  </button>
+                  <button
+                    onClick={() => setNewIfrCategory("holdingProcedures")}
+                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                      newIfrCategory === "holdingProcedures"
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-zinc-700 dark:text-gray-300 dark:hover:bg-zinc-600"
+                    }`}
+                  >
+                    Hold
+                  </button>
+                </div>
+              </div>
+
+              {/* Date */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={newIfrDate}
+                  onChange={(e) => setNewIfrDate(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Description (optional)
+                </label>
+                <input
+                  type="text"
+                  value={newIfrDesc}
+                  onChange={(e) => setNewIfrDesc(e.target.value)}
+                  placeholder={newIfrCategory === "ifrApproaches" ? "e.g. ILS RWY 17R, VOR-A" : "e.g. Hold at ABC VOR"}
+                  className="w-full rounded-lg border border-gray-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400"
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowAddIfr(false)}
+                className="flex-1 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-zinc-700 dark:text-gray-300 dark:hover:bg-zinc-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddEntry}
+                className="flex-1 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              >
+                Log Entry
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Recent Entries Timeline ═══ */}
+      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md border border-gray-100 dark:border-zinc-700 overflow-hidden animate-slide-up">
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-zinc-700 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Recent Entries
+          </h2>
+          <span className="text-xs text-gray-400 dark:text-gray-500">
+            {allEntries.length} total
+          </span>
+        </div>
+
+        {allEntries.length === 0 ? (
+          <div className="px-6 py-12 text-center text-gray-400 dark:text-gray-500 text-sm">
+            No qualifying entries in any category
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100 dark:divide-zinc-800 max-h-[400px] overflow-y-auto">
+            {allEntries.slice(0, 50).map((entry, idx) => (
+              <div
+                key={`${entry.date}-${entry.category}-${idx}`}
+                className="px-6 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors"
+              >
+                {/* Date */}
+                <span className="text-sm text-gray-600 dark:text-gray-400 font-mono w-24 shrink-0">
+                  {formatDate(entry.date)}
+                </span>
+
+                {/* Icon */}
+                <span className="text-lg shrink-0">
+                  {CATEGORY_ICONS[entry.category]}
+                </span>
+
+                {/* Category label */}
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 w-32 shrink-0">
+                  {CATEGORY_LABELS[entry.category]}
+                </span>
+
+                {/* Description */}
+                <span className="text-sm text-gray-500 dark:text-gray-400 truncate flex-1">
+                  {entry.description}
+                </span>
+
+                {/* Source badge */}
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${
+                    entry.source === "flight"
+                      ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                      : "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300"
+                  }`}
+                >
+                  {entry.source === "flight" ? "Flight" : "Manual"}
+                </span>
+
+                {/* Delete for manual entries */}
+                {entry.source === "manual" && entry.entryId != null && (
+                  <button
+                    onClick={() => handleDeleteEntry(entry.entryId!)}
+                    className="p-1 text-gray-400 hover:text-red-500 transition-colors shrink-0"
+                    title="Delete entry"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

@@ -34,7 +34,9 @@ interface FormState {
   takeoffs_night: string;
   landings_day: string;
   landings_night: string;
-  cross_country: boolean;
+  precision_approaches: string;
+  non_precision_approaches: string;
+  holding_patterns: string;
 }
 
 const initialForm = (): FormState => ({
@@ -68,7 +70,9 @@ const initialForm = (): FormState => ({
   takeoffs_night: "0",
   landings_day: "0",
   landings_night: "0",
-  cross_country: false,
+  precision_approaches: "0",
+  non_precision_approaches: "0",
+  holding_patterns: "0",
 });
 
 /** Convert a Flight object from the API into form state. */
@@ -103,7 +107,9 @@ const flightToForm = (flight: Flight): FormState => ({
   takeoffs_night: flight.takeoffs_night.toString(),
   landings_day: flight.landings_day.toString(),
   landings_night: flight.landings_night.toString(),
-  cross_country: flight.cross_country,
+  precision_approaches: flight.precision_approaches.toString(),
+  non_precision_approaches: flight.non_precision_approaches.toString(),
+  holding_patterns: flight.holding_patterns.toString(),
 });
 
 export default function EntryForm({ editFlightId }: { editFlightId?: number | null }) {
@@ -231,7 +237,9 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
       takeoffs_night: parseInt(form.takeoffs_night) || 0,
       landings_day: parseInt(form.landings_day) || 0,
       landings_night: parseInt(form.landings_night) || 0,
-      cross_country: form.cross_country,
+      precision_approaches: parseInt(form.precision_approaches) || 0,
+      non_precision_approaches: parseInt(form.non_precision_approaches) || 0,
+      holding_patterns: parseInt(form.holding_patterns) || 0,
     };
 
     try {
@@ -638,6 +646,36 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
               type="number"
               min="0"
               value={form.landings_night}
+              onChange={handleChange}
+            />
+          )}
+          {isFieldVisible("precisionApproaches") && (
+            <Field
+              label="Precision Approaches"
+              name="precision_approaches"
+              type="number"
+              min="0"
+              value={form.precision_approaches}
+              onChange={handleChange}
+            />
+          )}
+          {isFieldVisible("nonPrecisionApproaches") && (
+            <Field
+              label="Non-Precision Approaches"
+              name="non_precision_approaches"
+              type="number"
+              min="0"
+              value={form.non_precision_approaches}
+              onChange={handleChange}
+            />
+          )}
+          {isFieldVisible("holdingPatterns") && (
+            <Field
+              label="Holding Patterns"
+              name="holding_patterns"
+              type="number"
+              min="0"
+              value={form.holding_patterns}
               onChange={handleChange}
             />
           )}

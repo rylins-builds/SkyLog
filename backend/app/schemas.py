@@ -37,6 +37,9 @@ class FlightCreate(BaseModel):
     takeoffs_night: Optional[int] = Field(default=0, ge=0)
     landings_day: Optional[int] = Field(default=0, ge=0)
     landings_night: Optional[int] = Field(default=0, ge=0)
+    precision_approaches: Optional[int] = Field(default=0, ge=0)
+    non_precision_approaches: Optional[int] = Field(default=0, ge=0)
+    holding_patterns: Optional[int] = Field(default=0, ge=0)
     cross_country: Optional[bool] = Field(default=False)
 
 
@@ -71,6 +74,9 @@ class FlightUpdate(BaseModel):
     takeoffs_night: Optional[int] = Field(default=None, ge=0)
     landings_day: Optional[int] = Field(default=None, ge=0)
     landings_night: Optional[int] = Field(default=None, ge=0)
+    precision_approaches: Optional[int] = Field(default=None, ge=0)
+    non_precision_approaches: Optional[int] = Field(default=None, ge=0)
+    holding_patterns: Optional[int] = Field(default=None, ge=0)
     cross_country: Optional[bool] = None
 
 
@@ -107,6 +113,9 @@ class FlightResponse(BaseModel):
     takeoffs_night: int = 0
     landings_day: int = 0
     landings_night: int = 0
+    precision_approaches: int = 0
+    non_precision_approaches: int = 0
+    holding_patterns: int = 0
     cross_country: bool = False
     created_at: str
 

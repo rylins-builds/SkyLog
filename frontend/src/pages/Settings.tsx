@@ -49,8 +49,9 @@ export default function Settings() {
       takeoffsNight: true,
       landingsDay: true,
       landingsNight: true,
-      crossCountry: true,
-      actions: true,
+      precisionApproaches: true,
+      nonPrecisionApproaches: true,
+      holdingPatterns: true,
     },
     username: "",
   });
@@ -162,7 +163,8 @@ export default function Settings() {
         "Instructor", "Cross Country", "Night", "Actual Instrument", 
         "Simulated Instrument", "Flight Simulator", "Pilot in Command",
         "Remarks", "Takeoffs Day", "Takeoffs Night", "Landings Day", 
-        "Landings Night", "Cross Country Flight"
+        "Landings Night", "Precision Approaches", "Non-Precision Approaches",
+        "Holding Patterns"
       ];
       
       const rows = flights.map((flight: Flight) => [
@@ -196,7 +198,9 @@ export default function Settings() {
         flight.takeoffs_night || 0,
         flight.landings_day || 0,
         flight.landings_night || 0,
-        flight.cross_country ? "Yes" : "No"
+        flight.precision_approaches || 0,
+        flight.non_precision_approaches || 0,
+        flight.holding_patterns || 0,
       ]);
       
       const csvContent = [
@@ -267,11 +271,11 @@ export default function Settings() {
         let values: string[] = [];
         try {
           values = parseCSVLine(line);
-          if (values.length < 31) {
+          if (values.length < 34) {
             const dateHint = values[0] ? ` (date: ${values[0]})` : "";
             errors.push({
               row: csvLineNumber,
-              error: `Too few columns (got ${values.length}, need 31).${dateHint}`,
+              error: `Too few columns (got ${values.length}, need 34).${dateHint}`,
             });
             failed++;
             continue;
@@ -308,7 +312,9 @@ export default function Settings() {
             takeoffs_night: parseInt(values[27]) || 0,
             landings_day: parseInt(values[28]) || 0,
             landings_night: parseInt(values[29]) || 0,
-            cross_country: values[30]?.toLowerCase() === "yes",
+            precision_approaches: parseInt(values[30]) || 0,
+            non_precision_approaches: parseInt(values[31]) || 0,
+            holding_patterns: parseInt(values[32]) || 0,
           });
           imported++;
         } catch (e) {
@@ -412,7 +418,6 @@ export default function Settings() {
         { key: "actInstrumentTime", label: "Actual Instrument" },
         { key: "simInstrumentTime", label: "Simulated Instrument" },
         { key: "simTime", label: "Flight Simulator" },
-        { key: "crossCountry", label: "Cross Country Flight" },
       ]
     },
     {
@@ -425,10 +430,17 @@ export default function Settings() {
       ]
     },
     {
+      title: "Instrument Procedures",
+      columns: [
+        { key: "precisionApproaches", label: "Precision Approaches" },
+        { key: "nonPrecisionApproaches", label: "Non-Precision Approaches" },
+        { key: "holdingPatterns", label: "Holding Patterns" },
+      ]
+    },
+    {
       title: "Other",
       columns: [
         { key: "remarks", label: "Remarks" },
-        { key: "actions", label: "Actions" },
       ]
     }
   ];
@@ -673,7 +685,8 @@ export default function Settings() {
             Departure Time, Arrival Time, Total Time, SEL, SES, MEL, MES, Helicopter, Glider, 
             Solo, PIC, SIC, Dual Received, Instructor, Cross Country, Night, Actual Instrument, 
             Simulated Instrument, Flight Simulator, Pilot in Command, Remarks, Takeoffs Day, 
-            Takeoffs Night, Landings Day, Landings Night, Cross Country Flight
+            Takeoffs Night, Landings Day, Landings Night, Precision Approaches, Non-Precision 
+            Approaches, Holding Patterns
           </p>
         </div>
       </div>
