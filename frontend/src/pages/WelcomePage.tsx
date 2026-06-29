@@ -75,7 +75,7 @@ export default function WelcomePage({ onAuthenticated }: WelcomePageProps) {
           <p className="text-gray-500 dark:text-gray-400 mt-2">
             {mode === "login"
               ? "Welcome back. Sign in to continue."
-              : "Create a new user account to access the logbook."}
+              : "Create a new user account to access the SkyLog."}
           </p>
         </div>
 
