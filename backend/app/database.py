@@ -105,18 +105,18 @@ def init_db() -> None:
             conn.execute("ALTER TABLE flights ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0")
             conn.commit()
 
-        # Migration: add sessions table if it doesn't exist
-        cursor = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'"
-        )
-        if not cursor.fetchone():
-            conn.execute("""
-                CREATE TABLE sessions (
-                    token    TEXT PRIMARY KEY,
-                    user_id  INTEGER NOT NULL,
-                    created  TEXT DEFAULT (datetime('now'))
-                )
-            """)
+        # Auto-create admin user (id=1) if no users exist
+        user_count = conn.execute("SELECT COUNT(*) as cnt FROM users").fetchone()["cnt"]
+        if user_count == 0:
+            conn.execute(
+                "INSERT INTO users (id, username, password) VALUES (1, 'admin', '')"
+            )
+            conn.execute(
+                "INSERT OR REPLACE INTO settings (key, value) VALUES ('multi_user_mode', 'false')"
+            )
+            conn.execute(
+                "INSERT OR REPLACE INTO settings (key, value) VALUES ('username', 'admin')"
+            )
             conn.commit()
 
     finally:

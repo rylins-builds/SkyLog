@@ -4,8 +4,6 @@ import type { Flight } from "../api/types";
 import {
   type PageVisibility,
   type ColumnVisibility,
-  loadSettings as loadSettingsFromStorage,
-  saveSettings as saveSettingsToStorage,
 } from "../api/settings";
 
 interface SettingsState {
@@ -57,32 +55,15 @@ export default function Settings() {
       holdingPatterns: true,
     },
     username: "",
-    showWelcomePage: true,
+    showWelcomePage: false,
   });
 
-  const [showWelcomePage, setShowWelcomePage] = useState<boolean>(() => {
-    const saved = localStorage.getItem("flightLogbookSettings");
-    if (saved) {
-      try {
-        return JSON.parse(saved).showWelcomePage ?? true;
-      } catch {}
-    }
-    return true;
-  });
-
-  const handleToggleShowWelcome = async () => {
-    const next = !showWelcomePage;
-    setShowWelcomePage(next);
-    try {
-      await api.setShowWelcome(next);
-      const s = loadSettingsFromStorage();
-      s.showWelcomePage = next;
-      saveSettingsToStorage(s);
-    } catch (e) {
-      setError("Failed to update welcome page setting");
-      setShowWelcomePage(!next);
-    }
-  };
+  // Multi-user mode state
+  const [multiUserMode, setMultiUserMode] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [pendingMultiUser, setPendingMultiUser] = useState(false);
+  const [modalPassword, setModalPassword] = useState("");
+  const [modalConfirmPassword, setModalConfirmPassword] = useState("");
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -98,18 +79,19 @@ export default function Settings() {
   useEffect(() => {
     loadSettings();
     api.isAdmin().then(({ isAdmin: admin }) => setIsAdmin(admin)).catch(() => {});
+    api.getMultiUserMode().then(({ multiUserMode: mum }) => {
+      setMultiUserMode(mum);
+    }).catch(() => {});
   }, []);
 
   const loadSettings = async () => {
     try {
-      // Load from localStorage or API
       const savedSettings = localStorage.getItem("flightLogbookSettings");
       if (savedSettings) {
         const parsed = JSON.parse(savedSettings);
         setSettings(prev => ({ ...prev, ...parsed }));
       }
       
-      // Load username from session
       const user = await api.getCurrentUser();
       setSettings(prev => ({ ...prev, username: user.username }));
     } catch (e) {
@@ -122,7 +104,6 @@ export default function Settings() {
       setIsLoading(true);
       localStorage.setItem("flightLogbookSettings", JSON.stringify(settings));
       
-      // Broadcast settings change to other components
       window.dispatchEvent(new CustomEvent("settingsUpdated", { 
         detail: settings 
       }));
@@ -180,12 +161,77 @@ export default function Settings() {
     }
   };
 
+  // ── Multi-user mode toggle ──
+
+  const handleToggleMultiUser = async () => {
+    const next = !multiUserMode;
+    if (next) {
+      // Enabling — show password modal
+      setPendingMultiUser(true);
+      setModalPassword("");
+      setModalConfirmPassword("");
+      setShowPasswordModal(true);
+    } else {
+      // Disabling — show password modal
+      setPendingMultiUser(false);
+      setModalPassword("");
+      setModalConfirmPassword("");
+      setShowPasswordModal(true);
+    }
+  };
+
+  const confirmPasswordModal = async () => {
+    if (!modalPassword) {
+      setError("Password is required");
+      setTimeout(() => setError(""), 3000);
+      return;
+    }
+    if (pendingMultiUser && modalPassword.length < 6) {
+      setError("Password must be at least 6 characters");
+      setTimeout(() => setError(""), 3000);
+      return;
+    }
+
+    setShowPasswordModal(false);
+    setIsLoading(true);
+    try {
+      const result = await api.setMultiUserMode(pendingMultiUser, modalPassword);
+      setMultiUserMode(result.multiUserMode);
+      
+      if (!result.multiUserMode) {
+        // Multi-user was turned off — redirect to auto-login
+        window.dispatchEvent(new CustomEvent("multiUserModeChanged"));
+        // Clear token so auto-login picks it up
+        localStorage.removeItem("skylog_token");
+        window.location.reload();
+      } else {
+        setSuccess("Multi-user mode enabled! Redirecting to login...");
+        setTimeout(() => {
+          // Force re-login by clearing token and reloading
+          localStorage.removeItem("skylog_token");
+          window.dispatchEvent(new CustomEvent("multiUserModeChanged"));
+          window.location.reload();
+        }, 1500);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update multi-user mode");
+      setTimeout(() => setError(""), 3000);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const cancelPasswordModal = () => {
+    setShowPasswordModal(false);
+    setModalPassword("");
+    setModalConfirmPassword("");
+  };
+
   const handleExportCSV = async () => {
     try {
       setIsLoading(true);
       const flights = await api.listFlights();
       
-      // Convert flights to CSV - include all columns
       const headers = [
         "Date", "Aircraft Type", "Registration", "Departure", "Arrival",
         "Departure Time", "Arrival Time", "Total Time", "SEL", "SES", "MEL", 
@@ -238,7 +284,6 @@ export default function Settings() {
         ...rows.map(row => row.join(","))
       ].join("\n");
       
-      // Download CSV
       const blob = new Blob([csvContent], { type: "text/csv" });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -259,7 +304,6 @@ export default function Settings() {
     }
   };
 
-  // Parse a single CSV line into fields, handling quoted values with commas
   const parseCSVLine = (line: string): string[] => {
     const fields: string[] = [];
     let current = "";
@@ -297,7 +341,7 @@ export default function Settings() {
 
       for (let idx = 0; idx < rows.length; idx++) {
         const line = rows[idx];
-        const csvLineNumber = idx + 2; // +2 because line 1 is the header, and idx is 0-based
+        const csvLineNumber = idx + 2;
         let values: string[] = [];
         try {
           values = parseCSVLine(line);
@@ -358,7 +402,7 @@ export default function Settings() {
         }
       }
 
-      event.target.value = ""; // Reset input
+      event.target.value = "";
       setImportErrors(errors);
 
       if (failed > 0) {
@@ -369,7 +413,6 @@ export default function Settings() {
       }
       setTimeout(() => setSuccess(""), 5000);
       
-      // Refresh the flight list
       const updatedFlights = await api.listFlights();
       window.dispatchEvent(new CustomEvent("flightsUpdated", { 
         detail: updatedFlights 
@@ -403,7 +446,6 @@ export default function Settings() {
     }));
   };
 
-  // Column groups for better organization
   const columnGroups = [
     {
       title: "Basic Information",
@@ -475,7 +517,6 @@ export default function Settings() {
     }
   ];
 
-  // Define core pages that should always be visible
   const corePages = [
     { key: "dashboard", label: "Dashboard" },
     { key: "logbook", label: "Logbook" },
@@ -491,7 +532,6 @@ export default function Settings() {
       <div className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100 dark:bg-zinc-900 dark:border-zinc-600 animate-slide-up">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Page Visibility</h2>
         
-        {/* Core Pages - Always Visible (non-configurable) */}
         <div className="mb-4">
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
             Core Pages (always visible)
@@ -508,7 +548,6 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Optional Pages - Configurable */}
         <div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
             Optional Pages (toggle visibility)
@@ -578,7 +617,6 @@ export default function Settings() {
           </div>
         ))}
 
-        {/* Quick Actions */}
         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-700 flex flex-wrap gap-3">
           <button
             onClick={() => {
@@ -670,25 +708,27 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Welcome Page Toggle (admin only) */}
+        {/* Multi-User Mode Toggle (admin only) */}
         {isAdmin && (
           <div className="pt-4 border-t border-gray-200 dark:border-zinc-700">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Welcome / Login Page
+              Multi-User Mode
             </label>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500 dark:text-gray-400">
-                Show welcome page on app launch (requires re-login)
+                {multiUserMode
+                  ? "Login page is active. Users sign in to access the logbook."
+                  : "Login page is disabled. You are automatically signed in as admin."}
               </span>
               <button
-                onClick={handleToggleShowWelcome}
+                onClick={handleToggleMultiUser}
                 className={`relative w-12 h-6 rounded-full transition-colors ${
-                  showWelcomePage ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
+                  multiUserMode ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
                 }`}
               >
                 <span
                   className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                    showWelcomePage ? "left-7" : "left-1"
+                    multiUserMode ? "left-7" : "left-1"
                   }`}
                 />
               </button>
@@ -696,6 +736,65 @@ export default function Settings() {
           </div>
         )}
       </div>
+
+      {/* Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl border-2 border-black p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+              {pendingMultiUser ? "Enable Multi-User Mode" : "Disable Multi-User Mode"}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              {pendingMultiUser
+                ? "Set an admin password to secure the login page. Other users can create their own accounts."
+                : "Enter your admin password to disable multi-user mode."}
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Admin Password
+                </label>
+                <input
+                  type="password"
+                  value={modalPassword}
+                  onChange={(e) => setModalPassword(e.target.value)}
+                  placeholder="Enter password"
+                  className="w-full px-4 py-2 border-2 border-black rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:text-white dark:border-zinc-500"
+                  autoFocus
+                />
+              </div>
+              {pendingMultiUser && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Confirm Password
+                  </label>
+                  <input
+                    type="password"
+                    value={modalConfirmPassword}
+                    onChange={(e) => setModalConfirmPassword(e.target.value)}
+                    placeholder="Confirm password"
+                    className="w-full px-4 py-2 border-2 border-black rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:text-white dark:border-zinc-500"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={cancelPasswordModal}
+                className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors dark:bg-zinc-600 dark:text-white dark:hover:bg-zinc-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmPasswordModal}
+                className="flex-1 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CSV Import/Export */}
       <div className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100 dark:bg-zinc-900 dark:border-zinc-600 animate-slide-up" style={{ animationDelay: "300ms" }}>

@@ -19,27 +19,43 @@ export default function App() {
   );
 
   // Auth gate state
-  const [authState, setAuthState] = useState<"loading" | "welcome" | "login" | "authenticated">("loading");
+  const [authState, setAuthState] = useState<"loading" | "login" | "authenticated">("loading");
 
-  // On mount, check if a user exists and if welcome page should be shown
+  // On mount, try auto-login if multi-user mode is disabled, else show login
   useEffect(() => {
     (async () => {
       try {
-        const { hasUser } = await api.hasUser();
-        if (!hasUser) {
-          setAuthState("welcome");
-        } else {
-          const { showWelcomePage } = await api.getShowWelcome();
+        const { multiUserMode } = await api.getMultiUserMode();
+        if (multiUserMode) {
+          // Multi-user mode enabled — user must login
           const token = localStorage.getItem("skylog_token");
-          if (showWelcomePage && !token) {
-            setAuthState("login");
-          } else {
-            setAuthState("authenticated");
+          if (token) {
+            // Check if the token is still valid by making a light request
+            try {
+              await api.getCurrentUser();
+              setAuthState("authenticated");
+              return;
+            } catch {
+              // Token expired — show login
+              localStorage.removeItem("skylog_token");
+            }
           }
+          setAuthState("login");
+        } else {
+          // Multi-user mode disabled — auto-login as admin
+          const res = await api.autoLogin();
+          localStorage.setItem("skylog_token", res.token);
+          setAuthState("authenticated");
         }
       } catch {
-        // If backend isn't reachable, just go to authenticated
-        setAuthState("authenticated");
+        // Backend unreachable — still try auto-login as fallback
+        try {
+          const res = await api.autoLogin();
+          localStorage.setItem("skylog_token", res.token);
+          setAuthState("authenticated");
+        } catch {
+          setAuthState("login");
+        }
       }
     })();
   }, []);
@@ -92,6 +108,24 @@ export default function App() {
     return () => window.removeEventListener("edit-flight", handler);
   }, []);
 
+  // When multi-user mode is toggled off, re-auth automatically
+  useEffect(() => {
+    const handler = async () => {
+      try {
+        const { multiUserMode } = await api.getMultiUserMode();
+        if (!multiUserMode && authState === "login") {
+          const res = await api.autoLogin();
+          localStorage.setItem("skylog_token", res.token);
+          setAuthState("authenticated");
+        }
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener("multiUserModeChanged", handler);
+    return () => window.removeEventListener("multiUserModeChanged", handler);
+  }, [authState]);
+
   // Navigate to dashboard if current page becomes hidden
   useEffect(() => {
     if (
@@ -119,13 +153,11 @@ export default function App() {
     );
   }
 
-  // Show welcome/login page
+  // Show login page (always "login" mode — users either auth or create account)
   if (authState !== "authenticated") {
     return (
       <WelcomePage
         onAuthenticated={handleAuthenticated}
-        initialMode={authState === "login" ? "login" : "welcome"}
-        isFirstUser={authState === "welcome"}
       />
     );
   }

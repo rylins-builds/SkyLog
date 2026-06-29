@@ -24,7 +24,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     if (response.status === 401) {
       localStorage.removeItem("skylog_token");
     }
-    throw new Error(`API Error: ${response.status} ${error}`);
+    throw new Error(error);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
@@ -84,9 +84,9 @@ export const api = {
   /** Check if any admin user exists */
   hasUser: () => request<{ hasUser: boolean }>("/auth/has-user"),
 
-  /** Register the first admin user */
-  register: (username: string, password: string) =>
-    request<{ token: string; username: string }>("/auth/register", {
+  /** Login with username and password */
+  login: (username: string, password: string) =>
+    request<{ token: string; username: string }>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ username, password }),
     }),
@@ -98,20 +98,22 @@ export const api = {
       body: JSON.stringify({ username, password }),
     }),
 
-  /** Login with username and password */
-  login: (username: string, password: string) =>
-    request<{ token: string; username: string }>("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-    }),
+  /** Auto-login as admin (only works when multi-user mode is disabled) */
+  autoLogin: () =>
+    request<{ token: string; username: string }>("/auth/auto-login"),
 
-  /** Get whether the welcome page should be shown */
-  getShowWelcome: () => request<{ showWelcomePage: boolean }>("/auth/show-welcome"),
+  /** Get whether multi-user mode is enabled */
+  getMultiUserMode: () =>
+    request<{ multiUserMode: boolean }>("/auth/multi-user-mode"),
 
-  /** Set whether the welcome page should be shown (admin only) */
-  setShowWelcome: (show: boolean) =>
-    request<{ showWelcomePage: boolean }>("/auth/show-welcome", {
+  /** Set multi-user mode (enable or disable). Requires admin + password. */
+  setMultiUserMode: (enabled: boolean, password: string) =>
+    request<{ multiUserMode: boolean }>("/auth/multi-user-mode", {
       method: "PUT",
-      body: JSON.stringify({ showWelcomePage: show }),
+      body: JSON.stringify({ enabled, password }),
     }),
+
+  /** Get whether the login page should be shown */
+  getShowWelcome: () =>
+    request<{ showWelcomePage: boolean }>("/auth/show-welcome"),
 };

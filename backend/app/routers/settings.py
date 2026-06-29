@@ -47,18 +47,28 @@ def _get_user_id(authorization: str) -> int:
         conn.close()
 
 
-def _create_session(user_id: int) -> str:
-    """Create a session token for the given user_id."""
+def _create_session(user_id: int, conn=None) -> str:
+    """Create a session token for the given user_id.
+    
+    Can accept an existing connection (to avoid nested connection issues)
+    or create its own.
+    """
     token = secrets.token_hex(32)
-    conn = get_connection()
-    try:
+    if conn is not None:
         conn.execute(
             "INSERT OR REPLACE INTO sessions (token, user_id) VALUES (?, ?)",
             (token, user_id),
         )
-        conn.commit()
-    finally:
-        conn.close()
+    else:
+        own_conn = get_connection()
+        try:
+            own_conn.execute(
+                "INSERT OR REPLACE INTO sessions (token, user_id) VALUES (?, ?)",
+                (token, user_id),
+            )
+            own_conn.commit()
+        finally:
+            own_conn.close()
     return token
 
 
@@ -79,6 +89,16 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+
+class MultiUserModeRequest(BaseModel):
+    enabled: bool
+    password: str | None = None
+
+
+class SetAdminPasswordRequest(BaseModel):
+    password: str
+    current_password: str | None = None
 
 
 class TokenResponse(BaseModel):
@@ -185,72 +205,44 @@ async def change_password(data: PasswordUpdate, authorization: str = Header(None
 
 # ── Auth endpoints ──
 
-@router.post("/auth/register", response_model=TokenResponse)
-async def register(data: RegisterRequest):
-    """Create the first admin user. Only works if no user exists yet."""
+@router.post("/auth/login", response_model=TokenResponse)
+async def login(data: LoginRequest):
+    """Login with username and password. Returns a session token."""
     if not data.username.strip():
-        raise HTTPException(status_code=400, detail="Username cannot be empty")
-    if len(data.password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+        raise HTTPException(status_code=400, detail="Username and password are required")
+    if not data.password:
+        raise HTTPException(status_code=400, detail="Username and password are required")
 
-    _init_tables()
     conn = get_connection()
     try:
-        existing_admin = conn.execute(
-            "SELECT value FROM settings WHERE key = 'password_hash'"
-        ).fetchone()
-        if existing_admin:
-            raise HTTPException(status_code=409, detail="An admin user already exists")
-
-        # Create user entry
-        cursor = conn.execute(
-            "INSERT INTO users (username, password) VALUES (?, ?)",
-            (data.username.strip(), _hash_password(data.password)),
-        )
-        user_id = cursor.lastrowid
-
-        # Store admin in settings (legacy reference)
-        token = secrets.token_hex(32)
-        conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES ('username', ?)",
+        user_row = conn.execute(
+            "SELECT id, username, password FROM users WHERE username = ?",
             (data.username.strip(),),
-        )
-        conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES ('password_hash', ?)",
-            (_hash_password(data.password),),
-        )
-        conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES ('show_welcome_page', 'true')",
-        )
+        ).fetchone()
 
-        # Create session
-        conn.execute(
-            "INSERT OR REPLACE INTO sessions (token, user_id) VALUES (?, ?)",
-            (token, user_id),
-        )
+        if not user_row:
+            raise HTTPException(status_code=403, detail="Invalid username or password")
+
+        if not _verify_password(data.password, user_row["password"]):
+            raise HTTPException(status_code=403, detail="Invalid username or password")
+
+        token = _create_session(user_row["id"], conn=conn)
         conn.commit()
-        return {"token": token, "username": data.username.strip()}
+        return {"token": token, "username": user_row["username"]}
     finally:
         conn.close()
 
 
 @router.post("/auth/create-user", response_model=TokenResponse)
 async def create_user(data: RegisterRequest):
-    """Create an additional (non-admin) user. Requires an admin to already exist."""
+    """Create an additional (non-admin) user. Requires multi-user mode to be active."""
     if not data.username.strip():
         raise HTTPException(status_code=400, detail="Username cannot be empty")
     if len(data.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
 
-    _init_tables()
     conn = get_connection()
     try:
-        existing_admin = conn.execute(
-            "SELECT value FROM settings WHERE key = 'password_hash'"
-        ).fetchone()
-        if not existing_admin:
-            raise HTTPException(status_code=400, detail="No admin account exists. Create an admin account first.")
-
         dup = conn.execute(
             "SELECT id FROM users WHERE username = ?", (data.username.strip(),)
         ).fetchone()
@@ -263,130 +255,147 @@ async def create_user(data: RegisterRequest):
         )
         user_id = cursor.lastrowid
 
-        token = secrets.token_hex(32)
-        conn.execute(
-            "INSERT OR REPLACE INTO sessions (token, user_id) VALUES (?, ?)",
-            (token, user_id),
-        )
+        token = _create_session(user_id, conn=conn)
         conn.commit()
         return {"token": token, "username": data.username.strip()}
     finally:
         conn.close()
 
 
-@router.post("/auth/login", response_model=TokenResponse)
-async def login(data: LoginRequest):
-    """Login with username and password. Returns a session token."""
-    if not data.username.strip():
-        raise HTTPException(status_code=400, detail="Username and password are required")
-    if not data.password:
-        raise HTTPException(status_code=400, detail="Username and password are required")
-
-    _init_tables()
-    conn = get_connection()
-    try:
-        # Try users table first (covers both admin and regular users)
-        user_row = conn.execute(
-            "SELECT id, username, password FROM users WHERE username = ?",
-            (data.username.strip(),),
-        ).fetchone()
-
-        # Fallback: try admin account in settings (legacy)
-        if not user_row:
-            admin_row = conn.execute(
-                "SELECT value FROM settings WHERE key = 'password_hash'"
-            ).fetchone()
-            if admin_row:
-                admin_user = conn.execute(
-                    "SELECT value FROM settings WHERE key = 'username'"
-                ).fetchone()
-                admin_username = admin_user["value"] if admin_user else "pilot"
-                if data.username.strip() == admin_username and _verify_password(data.password, admin_row["value"]):
-                    # Migrate admin to users table
-                    cursor = conn.execute(
-                        "INSERT OR REPLACE INTO users (username, password) VALUES (?, ?)",
-                        (admin_username, admin_row["value"]),
-                    )
-                    user_id = cursor.lastrowid
-                    token = _create_session(user_id)
-                    return {"token": token, "username": admin_username}
-
-            raise HTTPException(status_code=403, detail="Invalid username or password")
-
-        if not _verify_password(data.password, user_row["password"]):
-            raise HTTPException(status_code=403, detail="Invalid username or password")
-
-        token = _create_session(user_row["id"])
-        return {"token": token, "username": user_row["username"]}
-    finally:
-        conn.close()
-
-
 @router.get("/auth/is-admin")
 async def is_admin(authorization: str = Header(None)):
-    """Check if the currently authenticated user is the admin."""
+    """Check if the currently authenticated user is the admin (user id 1)."""
     try:
         user_id = _get_user_id(authorization)
     except HTTPException:
         return {"isAdmin": False}
 
-    conn = get_connection()
-    try:
-        # Get the admin username from settings
-        admin_user = conn.execute(
-            "SELECT value FROM settings WHERE key = 'username'"
-        ).fetchone()
-        if not admin_user:
-            return {"isAdmin": False}
-
-        # Get the current user
-        user_row = conn.execute(
-            "SELECT username FROM users WHERE id = ?", (user_id,)
-        ).fetchone()
-        return {"isAdmin": user_row is not None and user_row["username"] == admin_user["value"]}
-    finally:
-        conn.close()
+    # Admin is always user id 1
+    return {"isAdmin": user_id == 1}
 
 
 @router.get("/auth/has-user")
 async def has_user():
-    """Check if any admin user exists."""
-    _init_tables()
+    """Check if any admin user exists — always true since admin is auto-created."""
+    return {"hasUser": True}
+
+
+@router.get("/auth/multi-user-mode")
+async def get_multi_user_mode():
+    """Get whether multi-user mode is enabled."""
     conn = get_connection()
     try:
         row = conn.execute(
-            "SELECT value FROM settings WHERE key = 'password_hash'"
+            "SELECT value FROM settings WHERE key = 'multi_user_mode'"
         ).fetchone()
-        return {"hasUser": row is not None}
+        return {"multiUserMode": row is not None and row["value"] == "true"}
     finally:
         conn.close()
 
 
 @router.get("/auth/show-welcome")
 async def get_show_welcome():
-    """Get whether the welcome/login page should be shown on app load."""
-    _init_tables()
+    """Get whether the welcome/login page should be shown (mirrors multi-user mode)."""
     conn = get_connection()
     try:
         row = conn.execute(
-            "SELECT value FROM settings WHERE key = 'show_welcome_page'"
+            "SELECT value FROM settings WHERE key = 'multi_user_mode'"
         ).fetchone()
-        return {"showWelcomePage": row is None or row["value"] == "true"}
+        show = row is not None and row["value"] == "true"
+        return {"showWelcomePage": show}
     finally:
         conn.close()
 
 
-@router.put("/auth/show-welcome")
-async def set_show_welcome(data: dict = Body(...)):
-    """Set whether the welcome/login page should be shown (admin-only toggle)."""
-    show = data.get("showWelcomePage", True)
+@router.put("/auth/multi-user-mode")
+async def set_multi_user_mode(data: MultiUserModeRequest, authorization: str = Header(None)):
+    """Enable or disable multi-user mode.
+    
+    When enabling: requires admin auth. Password is required for first-time setup
+    or to verify existing password.
+    When disabling: requires admin auth + current password.
+    """
+    user_id = _get_user_id(authorization)
+    if user_id != 1:
+        raise HTTPException(status_code=403, detail="Only admin can change multi-user mode")
+
     conn = get_connection()
     try:
-        conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES ('show_welcome_page', ?)",
-            ("true" if show else "false",),
-        )
+        if data.enabled:
+            # Enabling multi-user mode — password must be provided
+            if not data.password:
+                raise HTTPException(status_code=400, detail="Password is required to enable multi-user mode")
+            if len(data.password) < 6:
+                raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+
+            # Check if admin already has a password set
+            admin_row = conn.execute(
+                "SELECT password FROM users WHERE id = 1"
+            ).fetchone()
+
+            if admin_row and admin_row["password"]:
+                # Admin already has a password — verify current password
+                if not _verify_password(data.password, admin_row["password"]):
+                    raise HTTPException(status_code=403, detail="Incorrect password")
+            else:
+                # First time — set the password
+                conn.execute(
+                    "UPDATE users SET password = ? WHERE id = 1",
+                    (_hash_password(data.password),),
+                )
+                conn.execute(
+                    "INSERT OR REPLACE INTO settings (key, value) VALUES ('password_hash', ?)",
+                    (_hash_password(data.password),),
+                )
+
+            conn.execute(
+                "INSERT OR REPLACE INTO settings (key, value) VALUES ('multi_user_mode', 'true')",
+            )
+            conn.commit()
+            return {"multiUserMode": True}
+
+        else:
+            # Disabling multi-user mode — require password
+            if not data.password:
+                raise HTTPException(status_code=400, detail="Password is required to disable multi-user mode")
+
+            admin_row = conn.execute(
+                "SELECT password FROM users WHERE id = 1"
+            ).fetchone()
+            if admin_row and admin_row["password"]:
+                if not _verify_password(data.password, admin_row["password"]):
+                    raise HTTPException(status_code=403, detail="Incorrect password")
+
+            conn.execute(
+                "INSERT OR REPLACE INTO settings (key, value) VALUES ('multi_user_mode', 'false')",
+            )
+            conn.commit()
+            return {"multiUserMode": False}
+    finally:
+        conn.close()
+
+
+@router.get("/auth/auto-login")
+async def auto_login():
+    """Auto-login as admin when multi-user mode is disabled. Creates a session if needed."""
+    conn = get_connection()
+    try:
+        # Check if multi-user mode is disabled
+        row = conn.execute(
+            "SELECT value FROM settings WHERE key = 'multi_user_mode'"
+        ).fetchone()
+        if row and row["value"] == "true":
+            raise HTTPException(status_code=403, detail="Multi-user mode is enabled, use login instead")
+
+        # Get or create a session for admin (user id 1)
+        user_row = conn.execute(
+            "SELECT id, username FROM users WHERE id = 1"
+        ).fetchone()
+        if not user_row:
+            raise HTTPException(status_code=500, detail="Admin user not found")
+
+        token = _create_session(user_row["id"], conn=conn)
         conn.commit()
-        return {"showWelcomePage": show}
+        return {"token": token, "username": user_row["username"]}
     finally:
         conn.close()
