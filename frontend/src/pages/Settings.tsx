@@ -717,7 +717,7 @@ export default function Settings() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 {multiUserMode
-                  ? "Login page is active. Users sign in to access the logbook."
+                  ? "Login page is active. Users sign in to access SkyLog."
                   : "Login page is disabled. You are automatically signed in as admin."}
               </span>
               <button
