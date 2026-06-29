@@ -4,12 +4,15 @@ import type { Flight } from "../api/types";
 import {
   type PageVisibility,
   type ColumnVisibility,
+  loadSettings as loadSettingsFromStorage,
+  saveSettings as saveSettingsToStorage,
 } from "../api/settings";
 
 interface SettingsState {
   pageVisibility: PageVisibility;
   columnVisibility: ColumnVisibility;
   username: string;
+  showWelcomePage: boolean;
 }
 
 export default function Settings() {
@@ -54,7 +57,32 @@ export default function Settings() {
       holdingPatterns: true,
     },
     username: "",
+    showWelcomePage: true,
   });
+
+  const [showWelcomePage, setShowWelcomePage] = useState<boolean>(() => {
+    const saved = localStorage.getItem("flightLogbookSettings");
+    if (saved) {
+      try {
+        return JSON.parse(saved).showWelcomePage ?? true;
+      } catch {}
+    }
+    return true;
+  });
+
+  const handleToggleShowWelcome = async () => {
+    const next = !showWelcomePage;
+    setShowWelcomePage(next);
+    try {
+      await api.setShowWelcome(next);
+      const s = loadSettingsFromStorage();
+      s.showWelcomePage = next;
+      saveSettingsToStorage(s);
+    } catch (e) {
+      setError("Failed to update welcome page setting");
+      setShowWelcomePage(!next);
+    }
+  };
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -604,7 +632,7 @@ export default function Settings() {
         </div>
 
         {/* Password Change */}
-        <div>
+        <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Change Password
           </label>
@@ -636,6 +664,30 @@ export default function Settings() {
               className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
               Change Password
+            </button>
+          </div>
+        </div>
+
+        {/* Welcome Page Toggle (admin only) */}
+        <div className="pt-4 border-t border-gray-200 dark:border-zinc-700">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Welcome / Login Page
+          </label>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              Show welcome page on app launch (requires re-login)
+            </span>
+            <button
+              onClick={handleToggleShowWelcome}
+              className={`relative w-12 h-6 rounded-full transition-colors ${
+                showWelcomePage ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
+              }`}
+            >
+              <span
+                className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                  showWelcomePage ? "left-7" : "left-1"
+                }`}
+              />
             </button>
           </div>
         </div>

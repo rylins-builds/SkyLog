@@ -5,7 +5,9 @@ import Currency from "./pages/Currency";
 import FAA8710 from "./pages/FAA8710";
 import Settings from "./pages/Settings";
 import EntryForm from "./pages/EntryForm";
+import WelcomePage from "./pages/WelcomePage";
 import { loadSettings, type PageVisibility, CORE_PAGES } from "./api/settings";
+import { api } from "./api/client";
 
 type Page = "dashboard" | "logbook" | "currency" | "FAA8710" | "settings" | "add";
 
@@ -15,6 +17,32 @@ export default function App() {
   const [pageVisibility, setPageVisibility] = useState<PageVisibility>(
     () => loadSettings().pageVisibility
   );
+
+  // Auth gate state
+  const [authState, setAuthState] = useState<"loading" | "welcome" | "login" | "authenticated">("loading");
+
+  // On mount, check if a user exists and if welcome page should be shown
+  useEffect(() => {
+    (async () => {
+      try {
+        const { hasUser } = await api.hasUser();
+        if (!hasUser) {
+          setAuthState("welcome");
+        } else {
+          const { showWelcomePage } = await api.getShowWelcome();
+          const token = localStorage.getItem("skylog_token");
+          if (showWelcomePage && !token) {
+            setAuthState("login");
+          } else {
+            setAuthState("authenticated");
+          }
+        }
+      } catch {
+        // If backend isn't reachable, just go to authenticated
+        setAuthState("authenticated");
+      }
+    })();
+  }, []);
 
   // Listen for settings updates
   useEffect(() => {
@@ -74,6 +102,27 @@ export default function App() {
       setCurrentPage("dashboard");
     }
   }, [pageVisibility, currentPage]);
+
+  const handleAuthenticated = () => {
+    setAuthState("authenticated");
+  };
+
+  // Show auth gate while loading
+  if (authState === "loading") {
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-5xl mb-4 animate-pulse">✈️</div>
+          <p className="text-gray-500 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show welcome/login page
+  if (authState !== "authenticated") {
+    return <WelcomePage onAuthenticated={handleAuthenticated} />;
+  }
 
   const pages: { key: Page; label: string; icon: string; alwaysVisible: boolean }[] = [
     { key: "dashboard", label: "Dashboard", icon: "house", alwaysVisible: true },

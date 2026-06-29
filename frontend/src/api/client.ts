@@ -64,4 +64,31 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ current_password, new_password }),
     }),
+
+  /** Check if any admin user exists */
+  hasUser: () => request<{ hasUser: boolean }>("/auth/has-user"),
+
+  /** Register the first admin user */
+  register: (username: string, password: string) =>
+    request<{ token: string; username: string }>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+
+  /** Login with username and password */
+  login: (username: string, password: string) =>
+    request<{ token: string; username: string }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+
+  /** Get whether the welcome page should be shown */
+  getShowWelcome: () => request<{ showWelcomePage: boolean }>("/auth/show-welcome"),
+
+  /** Set whether the welcome page should be shown (admin only) */
+  setShowWelcome: (show: boolean) =>
+    request<{ showWelcomePage: boolean }>("/auth/show-welcome", {
+      method: "PUT",
+      body: JSON.stringify({ showWelcomePage: show }),
+    }),
 };
