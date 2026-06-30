@@ -95,6 +95,14 @@ def init_db() -> None:
                 key   TEXT PRIMARY KEY,
                 value TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS currency_thresholds (
+                user_id     INTEGER NOT NULL,
+                category_id TEXT    NOT NULL,
+                min_count   INTEGER NOT NULL DEFAULT 6,
+                days_window INTEGER NOT NULL DEFAULT 180,
+                PRIMARY KEY (user_id, category_id)
+            );
         """)
         conn.commit()
 

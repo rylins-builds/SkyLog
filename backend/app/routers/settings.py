@@ -4,7 +4,7 @@ import hashlib
 import os
 import secrets
 from fastapi import APIRouter, HTTPException, Header, Body
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.database import get_connection
 
@@ -104,6 +104,16 @@ class SetAdminPasswordRequest(BaseModel):
 class TokenResponse(BaseModel):
     token: str
     username: str
+
+
+class CurrencyThresholdEntry(BaseModel):
+    category_id: str
+    min_count: int = Field(ge=1)
+    days_window: int = Field(ge=1)
+
+
+class CurrencyThresholdsSaveRequest(BaseModel):
+    thresholds: list[CurrencyThresholdEntry]
 
 
 # ── Auth helpers ──
@@ -371,6 +381,49 @@ async def set_multi_user_mode(data: MultiUserModeRequest, authorization: str = H
             )
             conn.commit()
             return {"multiUserMode": False}
+    finally:
+        conn.close()
+
+
+@router.get("/currency/thresholds")
+async def get_currency_thresholds(authorization: str = Header(None)):
+    """Get currency thresholds for the authenticated user."""
+    user_id = _get_user_id(authorization)
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            "SELECT category_id, min_count, days_window FROM currency_thresholds WHERE user_id = ?",
+            (user_id,),
+        ).fetchall()
+        thresholds: dict[str, dict[str, int]] = {}
+        for row in rows:
+            thresholds[row["category_id"]] = {
+                "minCount": row["min_count"],
+                "daysWindow": row["days_window"],
+            }
+        return {"thresholds": thresholds}
+    finally:
+        conn.close()
+
+
+@router.put("/currency/thresholds")
+async def save_currency_thresholds(
+    data: CurrencyThresholdsSaveRequest,
+    authorization: str = Header(None),
+):
+    """Save currency thresholds for the authenticated user."""
+    user_id = _get_user_id(authorization)
+    conn = get_connection()
+    try:
+        for entry in data.thresholds:
+            conn.execute(
+                """INSERT OR REPLACE INTO currency_thresholds
+                   (user_id, category_id, min_count, days_window)
+                   VALUES (?, ?, ?, ?)""",
+                (user_id, entry.category_id, entry.min_count, entry.days_window),
+            )
+        conn.commit()
+        return {"status": "ok"}
     finally:
         conn.close()
 

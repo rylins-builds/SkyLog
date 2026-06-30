@@ -30,6 +30,15 @@ const DEFAULT_THRESHOLDS: Record<CategoryId, CurrencyThreshold> = {
   holdingProcedures: { minCount: 1, daysWindow: 180 },
 };
 
+const ALL_CATEGORY_IDS: CategoryId[] = [
+  "dayTakeoffs",
+  "dayLandings",
+  "nightTakeoffs",
+  "nightLandings",
+  "ifrApproaches",
+  "holdingProcedures",
+];
+
 const CATEGORY_LABELS: Record<CategoryId, string> = {
   dayTakeoffs: "Day Takeoffs",
   dayLandings: "Day Landings",
@@ -47,28 +56,6 @@ const CATEGORY_ICONS: Record<CategoryId, string> = {
   ifrApproaches: "📡",
   holdingProcedures: "🔄",
 };
-
-// ── localStorage helpers ──
-
-function loadThresholds(): Record<CategoryId, CurrencyThreshold> {
-  try {
-    const raw = localStorage.getItem("currencyThresholds");
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return { ...DEFAULT_THRESHOLDS, ...parsed };
-    }
-  } catch {
-    /* ignore */
-  }
-  return { ...DEFAULT_THRESHOLDS };
-}
-
-function saveThresholds(
-  thresholds: Record<CategoryId, CurrencyThreshold>
-): void {
-  localStorage.setItem("currencyThresholds", JSON.stringify(thresholds));
-  window.dispatchEvent(new CustomEvent("currencyThresholdsUpdated"));
-}
 
 // ── Helpers ──
 
@@ -183,13 +170,29 @@ function ProgressBar({
   );
 }
 
+// ── Merges API thresholds over defaults ──
+
+function mergeThresholds(
+  apiData: Record<string, { minCount: number; daysWindow: number } | undefined>
+): Record<CategoryId, CurrencyThreshold> {
+  const result = { ...DEFAULT_THRESHOLDS };
+  for (const cat of ALL_CATEGORY_IDS) {
+    const entry = apiData[cat];
+    if (entry) {
+      result[cat] = { minCount: entry.minCount, daysWindow: entry.daysWindow };
+    }
+  }
+  return result;
+}
+
 // ── Main Component ──
 
 export default function Currency() {
   const [flights, setFlights] = useState<Flight[]>([]);
   const [thresholds, setThresholds] = useState<
     Record<CategoryId, CurrencyThreshold>
-  >(loadThresholds);
+  >(DEFAULT_THRESHOLDS);
+  const [thresholdsLoaded, setThresholdsLoaded] = useState(false);
   const [editingThreshold, setEditingThreshold] =
     useState<CategoryId | null>(null);
   const [editMin, setEditMin] = useState<number>(0);
@@ -204,11 +207,19 @@ export default function Currency() {
       .catch((e) => setError(e.message));
   }, []);
 
-  // Recalculate when thresholds change from another tab
+  // Load thresholds from API
   useEffect(() => {
-    const handler = () => setThresholds(loadThresholds());
-    window.addEventListener("currencyThresholdsUpdated", handler);
-    return () => window.removeEventListener("currencyThresholdsUpdated", handler);
+    api
+      .getCurrencyThresholds()
+      .then((res) => {
+        setThresholds(mergeThresholds(res.thresholds));
+        setThresholdsLoaded(true);
+      })
+      .catch(() => {
+        // Fall back to defaults if API unavailable
+        setThresholds(DEFAULT_THRESHOLDS);
+        setThresholdsLoaded(true);
+      });
   }, []);
 
   // ── Compute counters per category ──
@@ -279,7 +290,7 @@ export default function Currency() {
     const today = new Date();
     today.setHours(23, 59, 59, 999);
     const result = {} as Record<CategoryId, CurrencyStatus>;
-    for (const cat of Object.keys(thresholds) as CategoryId[]) {
+    for (const cat of ALL_CATEGORY_IDS) {
       const c = counters[cat];
       const t = thresholds[cat];
       result[cat] = getStatus(c.count, t.minCount, t.daysWindow, today, c.lastDate);
@@ -318,20 +329,32 @@ export default function Currency() {
 
   // ── Threshold editing ──
   const openThresholdEdit = useCallback((cat: CategoryId) => {
-    const t = loadThresholds()[cat];
+    const t = thresholds[cat];
     setEditMin(t.minCount);
     setEditDays(t.daysWindow);
     setEditingThreshold(cat);
-  }, []);
+  }, [thresholds]);
 
-  const saveThresholdEdit = useCallback(() => {
+  const saveThresholdEdit = useCallback(async () => {
     if (!editingThreshold) return;
     const next = {
       ...thresholds,
       [editingThreshold]: { minCount: editMin, daysWindow: editDays },
     };
     setThresholds(next);
-    saveThresholds(next);
+
+    // Persist to backend (all categories)
+    const payload = ALL_CATEGORY_IDS.map((cat) => ({
+      category_id: cat,
+      min_count: next[cat].minCount,
+      days_window: next[cat].daysWindow,
+    }));
+    try {
+      await api.saveCurrencyThresholds(payload);
+    } catch {
+      setError("Failed to save thresholds");
+      setTimeout(() => setError(""), 3000);
+    }
     setEditingThreshold(null);
   }, [editingThreshold, editMin, editDays, thresholds]);
 
@@ -494,8 +517,18 @@ export default function Currency() {
     );
   }
 
+  // ── Loading state ──
+  if (!thresholdsLoaded) {
+    return (
+      <div className="p-8 text-center animate-fade-in">
+        <div className="text-5xl mb-4 animate-pulse">✈️</div>
+        <p className="text-gray-500 dark:text-gray-400">Loading currency data...</p>
+      </div>
+    );
+  }
+
   // ── Error state ──
-  if (error) {
+  if (error && flights.length === 0) {
     return (
       <div className="p-8 text-center animate-fade-in">
         <div className="inline-flex items-center gap-2 bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 px-4 py-3 rounded-lg">
@@ -661,16 +694,7 @@ export default function Currency() {
         All Categories
       </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        {(
-          [
-            "dayTakeoffs",
-            "dayLandings",
-            "nightTakeoffs",
-            "nightLandings",
-            "ifrApproaches",
-            "holdingProcedures",
-          ] as CategoryId[]
-        ).map(renderCategoryCard)}
+        {ALL_CATEGORY_IDS.map(renderCategoryCard)}
       </div>
 
       {/* ═══ Recent Entries Timeline ═══ */}

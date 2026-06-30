@@ -116,4 +116,15 @@ export const api = {
   /** Get whether the login page should be shown */
   getShowLogin: () =>
     request<{ showLoginPage: boolean }>("/auth/show-welcome"),
+
+  /** Get currency thresholds for the current user */
+  getCurrencyThresholds: () =>
+    request<{ thresholds: Record<string, { minCount: number; daysWindow: number }> }>("/currency/thresholds"),
+
+  /** Save currency thresholds for the current user */
+  saveCurrencyThresholds: (thresholds: { category_id: string; min_count: number; days_window: number }[]) =>
+    request<{ status: string }>("/currency/thresholds", {
+      method: "PUT",
+      body: JSON.stringify({ thresholds }),
+    }),
 };
