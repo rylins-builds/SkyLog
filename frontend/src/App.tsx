@@ -5,7 +5,9 @@ import Currency from "./pages/Currency";
 import FAA8710 from "./pages/FAA8710";
 import Settings from "./pages/Settings";
 import EntryForm from "./pages/EntryForm";
+import WelcomePage from "./pages/WelcomePage";
 import { loadSettings, type PageVisibility, CORE_PAGES } from "./api/settings";
+import { api } from "./api/client";
 
 type Page = "dashboard" | "logbook" | "currency" | "FAA8710" | "settings" | "add";
 
@@ -15,6 +17,48 @@ export default function App() {
   const [pageVisibility, setPageVisibility] = useState<PageVisibility>(
     () => loadSettings().pageVisibility
   );
+
+  // Auth gate state
+  const [authState, setAuthState] = useState<"loading" | "login" | "authenticated">("loading");
+
+  // On mount, try auto-login if multi-user mode is disabled, else show login
+  useEffect(() => {
+    (async () => {
+      try {
+        const { multiUserMode } = await api.getMultiUserMode();
+        if (multiUserMode) {
+          // Multi-user mode enabled — user must login
+          const token = localStorage.getItem("skylog_token");
+          if (token) {
+            // Check if the token is still valid by making a light request
+            try {
+              await api.getCurrentUser();
+              setAuthState("authenticated");
+              return;
+            } catch {
+              // Token expired — show login
+              localStorage.removeItem("skylog_token");
+            }
+          }
+          setAuthState("login");
+        } else {
+          // Multi-user mode disabled — auto-login as admin
+          const res = await api.autoLogin();
+          localStorage.setItem("skylog_token", res.token);
+          setAuthState("authenticated");
+        }
+      } catch {
+        // Backend unreachable — still try auto-login as fallback
+        try {
+          const res = await api.autoLogin();
+          localStorage.setItem("skylog_token", res.token);
+          setAuthState("authenticated");
+        } catch {
+          setAuthState("login");
+        }
+      }
+    })();
+  }, []);
 
   // Listen for settings updates
   useEffect(() => {
@@ -64,6 +108,24 @@ export default function App() {
     return () => window.removeEventListener("edit-flight", handler);
   }, []);
 
+  // When multi-user mode is toggled off, re-auth automatically
+  useEffect(() => {
+    const handler = async () => {
+      try {
+        const { multiUserMode } = await api.getMultiUserMode();
+        if (!multiUserMode && authState === "login") {
+          const res = await api.autoLogin();
+          localStorage.setItem("skylog_token", res.token);
+          setAuthState("authenticated");
+        }
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener("multiUserModeChanged", handler);
+    return () => window.removeEventListener("multiUserModeChanged", handler);
+  }, [authState]);
+
   // Navigate to dashboard if current page becomes hidden
   useEffect(() => {
     if (
@@ -74,6 +136,31 @@ export default function App() {
       setCurrentPage("dashboard");
     }
   }, [pageVisibility, currentPage]);
+
+  const handleAuthenticated = () => {
+    setAuthState("authenticated");
+  };
+
+  // Show auth gate while loading
+  if (authState === "loading") {
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-5xl mb-4 animate-pulse">✈️</div>
+          <p className="text-gray-500 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login page (always "login" mode — users either auth or create account)
+  if (authState !== "authenticated") {
+    return (
+      <WelcomePage
+        onAuthenticated={handleAuthenticated}
+      />
+    );
+  }
 
   const pages: { key: Page; label: string; icon: string; alwaysVisible: boolean }[] = [
     { key: "dashboard", label: "Dashboard", icon: "house", alwaysVisible: true },

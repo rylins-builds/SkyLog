@@ -1,12 +1,29 @@
-"""Flight CRUD API routes."""
+"""Flight CRUD API routes — scoped to authenticated user."""
 
 from typing import List
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 
 from app.database import get_connection
 from app.schemas import FlightCreate, FlightUpdate, FlightResponse, DashboardStats
 
 router = APIRouter()
+
+
+def _get_user_id(authorization: str) -> int:
+    """Extract user_id from Authorization header. Raises 401 if invalid."""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization required")
+    token = authorization.replace("Bearer ", "").strip()
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT user_id FROM sessions WHERE token = ?", (token,)
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+        return row["user_id"]
+    finally:
+        conn.close()
 
 
 def row_to_flight_response(row) -> dict:
@@ -51,12 +68,14 @@ def row_to_flight_response(row) -> dict:
 
 
 @router.get("/flights", response_model=List[FlightResponse])
-async def list_flights():
-    """Get all flight entries, ordered by date descending."""
+async def list_flights(authorization: str = Header(None)):
+    """Get all flight entries for the authenticated user, ordered by date descending."""
+    user_id = _get_user_id(authorization)
     conn = get_connection()
     try:
         rows = conn.execute(
-            "SELECT * FROM flights ORDER BY date DESC, id DESC"
+            "SELECT * FROM flights WHERE user_id = ? ORDER BY date DESC, id DESC",
+            (user_id,),
         ).fetchall()
         return [row_to_flight_response(r) for r in rows]
     finally:
@@ -64,12 +83,13 @@ async def list_flights():
 
 
 @router.get("/flights/{flight_id}", response_model=FlightResponse)
-async def get_flight(flight_id: int):
-    """Get a single flight entry by ID."""
+async def get_flight(flight_id: int, authorization: str = Header(None)):
+    """Get a single flight entry by ID (must belong to the authenticated user)."""
+    user_id = _get_user_id(authorization)
     conn = get_connection()
     try:
         row = conn.execute(
-            "SELECT * FROM flights WHERE id = ?", (flight_id,)
+            "SELECT * FROM flights WHERE id = ? AND user_id = ?", (flight_id, user_id)
         ).fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Flight not found")
@@ -79,20 +99,22 @@ async def get_flight(flight_id: int):
 
 
 @router.post("/flights", response_model=FlightResponse, status_code=201)
-async def create_flight(flight: FlightCreate):
-    """Create a new flight entry."""
+async def create_flight(flight: FlightCreate, authorization: str = Header(None)):
+    """Create a new flight entry for the authenticated user."""
+    user_id = _get_user_id(authorization)
     conn = get_connection()
     try:
         cursor = conn.execute(
             """INSERT INTO flights 
-               (date, aircraft_type, aircraft_reg, departure, arrival, 
+               (user_id, date, aircraft_type, aircraft_reg, departure, arrival, 
                 departure_time, arrival_time, total_time, sel_time, ses_time, mel_time, mes_time, 
                 helicopter_time, glider_time, solo_time, pic_time, sic_time, dual_time, instructor_time, 
                 xcountry_time, night_time, act_instrument_time, sim_instrument_time, sim_time, 
                 pilot_in_command, remarks, takeoffs_day, takeoffs_night, landings_day, 
                 landings_night, precision_approaches, non_precision_approaches, holding_patterns)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
+                user_id,
                 flight.date.isoformat(),
                 flight.aircraft_type,
                 flight.aircraft_reg,
@@ -139,20 +161,17 @@ async def create_flight(flight: FlightCreate):
 
 
 @router.put("/flights/{flight_id}", response_model=FlightResponse)
-async def update_flight(flight_id: int, flight: FlightUpdate):
-    """Update an existing flight entry."""
+async def update_flight(flight_id: int, flight: FlightUpdate, authorization: str = Header(None)):
+    """Update an existing flight entry (must belong to the authenticated user)."""
+    user_id = _get_user_id(authorization)
     conn = get_connection()
     try:
-        # Check flight exists
         existing = conn.execute(
-            "SELECT * FROM flights WHERE id = ?", (flight_id,)
+            "SELECT * FROM flights WHERE id = ? AND user_id = ?", (flight_id, user_id)
         ).fetchone()
         if not existing:
             raise HTTPException(status_code=404, detail="Flight not found")
 
-        # Build update fields dynamically using model_fields_set so that fields
-        # omitted from the request payload are never touched, even if they
-        # default to None on the Pydantic model.
         updates = {}
         for field in flight.model_fields_set:
             value = getattr(flight, field)
@@ -182,12 +201,13 @@ async def update_flight(flight_id: int, flight: FlightUpdate):
 
 
 @router.delete("/flights/{flight_id}", status_code=204)
-async def delete_flight(flight_id: int):
-    """Delete a flight entry."""
+async def delete_flight(flight_id: int, authorization: str = Header(None)):
+    """Delete a flight entry (must belong to the authenticated user)."""
+    user_id = _get_user_id(authorization)
     conn = get_connection()
     try:
         cursor = conn.execute(
-            "DELETE FROM flights WHERE id = ?", (flight_id,)
+            "DELETE FROM flights WHERE id = ? AND user_id = ?", (flight_id, user_id)
         )
         conn.commit()
         if cursor.rowcount == 0:
@@ -197,33 +217,37 @@ async def delete_flight(flight_id: int):
 
 
 @router.get("/dashboard/stats", response_model=DashboardStats)
-async def get_dashboard_stats():
-    """Get aggregated dashboard statistics."""
+async def get_dashboard_stats(authorization: str = Header(None)):
+    """Get aggregated dashboard statistics for the authenticated user."""
+    user_id = _get_user_id(authorization)
     conn = get_connection()
     try:
         total_flights = conn.execute(
-            "SELECT COUNT(*) FROM flights"
+            "SELECT COUNT(*) FROM flights WHERE user_id = ?", (user_id,)
         ).fetchone()[0]
 
         total_hours = conn.execute(
-            "SELECT COALESCE(SUM(total_time), 0) FROM flights"
+            "SELECT COALESCE(SUM(total_time), 0) FROM flights WHERE user_id = ?", (user_id,)
         ).fetchone()[0]
 
         total_night_hours = conn.execute(
-            "SELECT COALESCE(SUM(night_time), 0) FROM flights"
+            "SELECT COALESCE(SUM(night_time), 0) FROM flights WHERE user_id = ?", (user_id,)
         ).fetchone()[0]
 
         hours_last_30_days = conn.execute(
             """SELECT COALESCE(SUM(total_time), 0) FROM flights 
-               WHERE date >= date('now', '-30 days')"""
+               WHERE user_id = ? AND date >= date('now', '-30 days')""",
+            (user_id,),
         ).fetchone()[0]
 
         total_landings = conn.execute(
-            "SELECT COALESCE(SUM(landings_day + landings_night), 0) FROM flights"
+            "SELECT COALESCE(SUM(landings_day + landings_night), 0) FROM flights WHERE user_id = ?",
+            (user_id,),
         ).fetchone()[0]
 
         unique_aircraft = conn.execute(
-            "SELECT COUNT(DISTINCT aircraft_reg) FROM flights"
+            "SELECT COUNT(DISTINCT aircraft_reg) FROM flights WHERE user_id = ?",
+            (user_id,),
         ).fetchone()[0]
 
         return DashboardStats(

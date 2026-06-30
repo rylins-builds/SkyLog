@@ -4,21 +4,34 @@ import type { Flight, FlightCreate, DashboardStats } from "./types";
 
 const API_BASE = "/api";
 
+function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem("skylog_token");
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${url}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: { ...getAuthHeaders(), ...(options?.headers as Record<string, string> | undefined) },
     ...options,
   });
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`API Error: ${response.status} ${error}`);
+    // If 401 unauthorized, clear token
+    if (response.status === 401) {
+      localStorage.removeItem("skylog_token");
+    }
+    throw new Error(error);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
 export const api = {
-  /** Get all flights */
+  /** Get all flights for the current user */
   listFlights: () => request<Flight[]>("/flights"),
 
   /** Get a flight by ID */
@@ -42,7 +55,7 @@ export const api = {
   deleteFlight: (id: number) =>
     request<void>(`/flights/${id}`, { method: "DELETE" }),
 
-  /** Get dashboard stats */
+  /** Get dashboard stats for the current user */
   getDashboardStats: () => request<DashboardStats>("/dashboard/stats"),
 
   /** Health check */
@@ -64,4 +77,43 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ current_password, new_password }),
     }),
+
+  /** Check if the current authenticated user is the admin */
+  isAdmin: () => request<{ isAdmin: boolean }>("/auth/is-admin"),
+
+  /** Check if any admin user exists */
+  hasUser: () => request<{ hasUser: boolean }>("/auth/has-user"),
+
+  /** Login with username and password */
+  login: (username: string, password: string) =>
+    request<{ token: string; username: string }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+
+  /** Create an additional (non-admin) user */
+  createUser: (username: string, password: string) =>
+    request<{ token: string; username: string }>("/auth/create-user", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+
+  /** Auto-login as admin (only works when multi-user mode is disabled) */
+  autoLogin: () =>
+    request<{ token: string; username: string }>("/auth/auto-login"),
+
+  /** Get whether multi-user mode is enabled */
+  getMultiUserMode: () =>
+    request<{ multiUserMode: boolean }>("/auth/multi-user-mode"),
+
+  /** Set multi-user mode (enable or disable). Requires admin + password. */
+  setMultiUserMode: (enabled: boolean, password: string) =>
+    request<{ multiUserMode: boolean }>("/auth/multi-user-mode", {
+      method: "PUT",
+      body: JSON.stringify({ enabled, password }),
+    }),
+
+  /** Get whether the login page should be shown */
+  getShowWelcome: () =>
+    request<{ showWelcomePage: boolean }>("/auth/show-welcome"),
 };

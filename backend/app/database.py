@@ -36,12 +36,13 @@ def get_connection() -> sqlite3.Connection:
 
 
 def init_db() -> None:
-    """Initialize database tables."""
+    """Initialize database tables and run migrations."""
     conn = get_connection()
     try:
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS flights (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id         INTEGER NOT NULL DEFAULT 0,
                 date            TEXT    NOT NULL,
                 aircraft_type   TEXT    NOT NULL,
                 aircraft_reg    TEXT    NOT NULL,
@@ -83,7 +84,40 @@ def init_db() -> None:
                 username TEXT    NOT NULL UNIQUE,
                 password TEXT    NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS sessions (
+                token    TEXT PRIMARY KEY,
+                user_id  INTEGER NOT NULL,
+                created  TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS settings (
+                key   TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
         """)
         conn.commit()
+
+        # Migration: add user_id column to flights if it doesn't exist
+        cursor = conn.execute("PRAGMA table_info(flights)")
+        columns = [row["name"] for row in cursor.fetchall()]
+        if "user_id" not in columns:
+            conn.execute("ALTER TABLE flights ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0")
+            conn.commit()
+
+        # Auto-create admin user (id=1) if no users exist
+        user_count = conn.execute("SELECT COUNT(*) as cnt FROM users").fetchone()["cnt"]
+        if user_count == 0:
+            conn.execute(
+                "INSERT INTO users (id, username, password) VALUES (1, 'admin', '')"
+            )
+            conn.execute(
+                "INSERT OR REPLACE INTO settings (key, value) VALUES ('multi_user_mode', 'false')"
+            )
+            conn.execute(
+                "INSERT OR REPLACE INTO settings (key, value) VALUES ('username', 'admin')"
+            )
+            conn.commit()
+
     finally:
         conn.close()
