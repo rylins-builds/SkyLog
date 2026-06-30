@@ -106,8 +106,8 @@ export default function Dashboard() {
                 <tr className="bg-gray-50 dark:bg-zinc-800">
                   <th className="px-6 py-3 text-sm font-semibold text-gray-600 dark:text-white">Date</th>
                   <th className="px-6 py-3 text-sm font-semibold text-gray-600 dark:text-white">Aircraft</th>
+                  <th className="px-6 py-3 text-sm font-semibold text-gray-600 dark:text-white">Registration</th>
                   <th className="px-6 py-3 text-sm font-semibold text-gray-600 dark:text-white">From → To</th>
-                  <th className="px-6 py-3 text-sm font-semibold text-gray-600 dark:text-white">Duration</th>
                   <th className="px-6 py-3 text-sm font-semibold text-gray-600 dark:text-white">Total</th>
                   <th className="px-6 py-3 text-sm font-semibold text-gray-600 dark:text-white">PIC</th>
                   <th className="px-6 py-3 text-sm font-semibold text-gray-600 dark:text-white">SIC</th>

@@ -256,7 +256,7 @@ export default function App() {
 
         {/* Logout button — only visible when multi-user mode is enabled, offset to the far right */}
         {multiUserMode && (
-          <div className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2">
+          <div className="absolute right-4 sm:right-12 top-1/2 -translate-y-1/2">
             <button
               onClick={handleLogout}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950"
