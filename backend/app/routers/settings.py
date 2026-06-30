@@ -116,6 +116,11 @@ class CurrencyThresholdsSaveRequest(BaseModel):
     thresholds: list[CurrencyThresholdEntry]
 
 
+class VisibilitySaveRequest(BaseModel):
+    page_visibility: str
+    column_visibility: str
+
+
 # ── Auth helpers ──
 
 def _init_tables():
@@ -422,6 +427,47 @@ async def save_currency_thresholds(
                    VALUES (?, ?, ?, ?)""",
                 (user_id, entry.category_id, entry.min_count, entry.days_window),
             )
+        conn.commit()
+        return {"status": "ok"}
+    finally:
+        conn.close()
+
+
+@router.get("/settings/visibility")
+async def get_visibility(authorization: str = Header(None)):
+    """Get page and column visibility for the authenticated user."""
+    user_id = _get_user_id(authorization)
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT page_visibility, column_visibility FROM user_visibility WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+        if row:
+            return {
+                "pageVisibility": row["page_visibility"],
+                "columnVisibility": row["column_visibility"],
+            }
+        return {"pageVisibility": "{}", "columnVisibility": "{}"}
+    finally:
+        conn.close()
+
+
+@router.put("/settings/visibility")
+async def save_visibility(
+    data: VisibilitySaveRequest,
+    authorization: str = Header(None),
+):
+    """Save page and column visibility for the authenticated user."""
+    user_id = _get_user_id(authorization)
+    conn = get_connection()
+    try:
+        conn.execute(
+            """INSERT OR REPLACE INTO user_visibility
+               (user_id, page_visibility, column_visibility)
+               VALUES (?, ?, ?)""",
+            (user_id, data.page_visibility, data.column_visibility),
+        )
         conn.commit()
         return {"status": "ok"}
     finally:

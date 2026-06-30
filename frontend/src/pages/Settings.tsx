@@ -4,6 +4,8 @@ import type { Flight } from "../api/types";
 import {
   type PageVisibility,
   type ColumnVisibility,
+  saveVisibilityToApi,
+  loadVisibilityFromApi,
 } from "../api/settings";
 
 interface SettingsState {
@@ -86,15 +88,27 @@ export default function Settings() {
 
   const loadSettings = async () => {
     try {
-      const savedSettings = localStorage.getItem("flightLogbookSettings");
-      if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        setSettings(prev => ({ ...prev, ...parsed }));
-      }
+      // Try to load visibility from the API first (survives cache clear)
+      const { pageVisibility, columnVisibility } = await loadVisibilityFromApi();
+      setSettings(prev => ({
+        ...prev,
+        pageVisibility,
+        columnVisibility,
+      }));
       
       const user = await api.getCurrentUser();
       setSettings(prev => ({ ...prev, username: user.username }));
     } catch (e) {
+      // Fallback: load from localStorage
+      try {
+        const savedSettings = localStorage.getItem("flightLogbookSettings");
+        if (savedSettings) {
+          const parsed = JSON.parse(savedSettings);
+          setSettings(prev => ({ ...prev, ...parsed }));
+        }
+      } catch {
+        // ignore
+      }
       console.error("Failed to load settings:", e);
     }
   };
@@ -103,6 +117,9 @@ export default function Settings() {
     try {
       setIsLoading(true);
       localStorage.setItem("flightLogbookSettings", JSON.stringify(settings));
+      
+      // Persist visibility to backend API (per-user, survives cache clear)
+      await saveVisibilityToApi(settings.pageVisibility, settings.columnVisibility);
       
       window.dispatchEvent(new CustomEvent("settingsUpdated", { 
         detail: settings 

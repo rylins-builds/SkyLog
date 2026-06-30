@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { api } from "../api/client";
 import type { Flight } from "../api/types";
-import { loadSettings, saveSettings, type ColumnVisibility } from "../api/settings";
+import { loadSettings, saveSettings, loadVisibilityFromApi, type ColumnVisibility } from "../api/settings";
 
 type SortField = "date" | "total_time" | "aircraft_type" | "aircraft_reg" | "departure" | "arrival" | "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "solo_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time" | "takeoffs_day" | "takeoffs_night" | "landings_day" | "landings_night" | "precision_approaches" | "non_precision_approaches" | "holding_patterns";
 type SortDir = "asc" | "desc";
@@ -42,7 +42,7 @@ export default function Logbook() {
     saveSettings(s);
   };
 
-  // Column visibility from settings
+  // Column visibility from settings (loaded from API on mount)
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(() => loadSettings().columnVisibility);
   useEffect(() => {
     const handler = () => setColumnVisibility(loadSettings().columnVisibility);
@@ -52,6 +52,17 @@ export default function Logbook() {
 
   useEffect(() => {
     api.listFlights().then(setFlights).catch((e) => setError(e.message));
+  }, []);
+
+  // Load visibility from backend API (per-user, survives cache clear)
+  useEffect(() => {
+    loadVisibilityFromApi().then(({ columnVisibility: cv }) => {
+      setColumnVisibility(cv);
+      // Also sync to localStorage so loadSettings() is consistent
+      const s = loadSettings();
+      s.columnVisibility = cv;
+      saveSettings(s);
+    });
   }, []);
 
   // Close menus on outside click

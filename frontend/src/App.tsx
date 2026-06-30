@@ -6,7 +6,7 @@ import FAA8710 from "./pages/FAA8710";
 import Settings from "./pages/Settings";
 import EntryForm from "./pages/EntryForm";
 import LoginPage from "./pages/LoginPage";
-import { loadSettings, type PageVisibility, CORE_PAGES } from "./api/settings";
+import { loadSettings, loadVisibilityFromApi, type PageVisibility, CORE_PAGES } from "./api/settings";
 import { api } from "./api/client";
 
 type Page = "dashboard" | "logbook" | "currency" | "FAA8710" | "settings" | "add";
@@ -60,7 +60,15 @@ export default function App() {
     })();
   }, []);
 
-  // Listen for settings updates
+  // Load visibility from backend API once authenticated, and listen for live updates
+  useEffect(() => {
+    if (authState !== "authenticated") return;
+    loadVisibilityFromApi().then(({ pageVisibility: pv }) => {
+      setPageVisibility(pv);
+    });
+  }, [authState]);
+
+  // Listen for settings updates (from other tabs/windows or from saveVisibilityToApi)
   useEffect(() => {
     const handler = () => {
       setPageVisibility(loadSettings().pageVisibility);

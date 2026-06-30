@@ -124,7 +124,18 @@ export const api = {
   /** Save currency thresholds for the current user */
   saveCurrencyThresholds: (thresholds: { category_id: string; min_count: number; days_window: number }[]) =>
     request<{ status: string }>("/currency/thresholds", {
-      method: "PUT",
+          method: "PUT",
       body: JSON.stringify({ thresholds }),
+    }),
+
+  /** Get page and column visibility for the current user */
+  getVisibility: () =>
+    request<{ pageVisibility: string; columnVisibility: string }>("/settings/visibility"),
+
+  /** Save page and column visibility for the current user */
+  saveVisibility: (pageVisibility: string, columnVisibility: string) =>
+    request<{ status: string }>("/settings/visibility", {
+      method: "PUT",
+      body: JSON.stringify({ page_visibility: pageVisibility, column_visibility: columnVisibility }),
     }),
 };

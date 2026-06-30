@@ -1,5 +1,9 @@
 /** Shared settings types for SkyLog */
 
+import { api } from "./client";
+
+// ── Types ──
+
 export interface PageVisibility {
   currency: boolean;
   FAA8710: boolean;
@@ -92,7 +96,16 @@ export const DEFAULT_PAGE_VISIBILITY: PageVisibility = {
 
 const DEFAULT_PAGE_SIZE = 15;
 
-/** Load settings from localStorage */
+// ── Synchronous helpers (localStorage fallback) ──
+
+function serializeVisibility(pv: PageVisibility, cv: ColumnVisibility): { page_visibility: string; column_visibility: string } {
+  return {
+    page_visibility: JSON.stringify(pv),
+    column_visibility: JSON.stringify(cv),
+  };
+}
+
+/** Load settings from localStorage (fallback for non-auth parts) */
 export function loadSettings(): SettingsData {
   try {
     const raw = localStorage.getItem("flightLogbookSettings");
@@ -118,10 +131,92 @@ export function loadSettings(): SettingsData {
   };
 }
 
-/** Save settings to localStorage and broadcast */
+/** Save full settings object to localStorage and broadcast */
 export function saveSettings(settings: SettingsData): void {
   localStorage.setItem("flightLogbookSettings", JSON.stringify(settings));
   window.dispatchEvent(new CustomEvent("settingsUpdated", { detail: settings }));
+}
+
+/** Save page+column visibility to localStorage and broadcast */
+export function saveVisibilityLocal(
+  pageVisibility: PageVisibility,
+  columnVisibility: ColumnVisibility,
+): void {
+  const current = loadSettings();
+  current.pageVisibility = pageVisibility;
+  current.columnVisibility = columnVisibility;
+  localStorage.setItem("flightLogbookSettings", JSON.stringify(current));
+  window.dispatchEvent(new CustomEvent("settingsUpdated", { detail: current }));
+}
+
+// ── Async API-backed visibility helpers ──
+
+/**
+ * Load visibility settings from the backend API.
+ * Falls back to localStorage if the API is unavailable or unauthenticated.
+ * Returns the merged PageVisibility and ColumnVisibility.
+ * Also syncs the result into localStorage and fires a settingsUpdated event
+ * so that App.tsx, Logbook, EntryForm, and Settings all receive the update.
+ */
+export async function loadVisibilityFromApi(): Promise<{
+  pageVisibility: PageVisibility;
+  columnVisibility: ColumnVisibility;
+}> {
+  try {
+    const res = await api.getVisibility();
+    const pageVisibility: PageVisibility = {
+      ...DEFAULT_PAGE_VISIBILITY,
+      ...JSON.parse(res.pageVisibility || "{}"),
+    };
+    const columnVisibility: ColumnVisibility = {
+      ...DEFAULT_COLUMN_VISIBILITY,
+      ...JSON.parse(res.columnVisibility || "{}"),
+    };
+    // Sync into localStorage so synchronous loadSettings() also sees the API data
+    syncVisibilityToLocal(pageVisibility, columnVisibility);
+    return { pageVisibility, columnVisibility };
+  } catch {
+    // Fall back to localStorage if API call fails
+    const local = loadSettings();
+    return {
+      pageVisibility: local.pageVisibility,
+      columnVisibility: local.columnVisibility,
+    };
+  }
+}
+
+/** Write page+column visibility into localStorage and dispatch a settingsUpdated event
+ *  so that all listeners (App.tsx, Logbook, EntryForm) pick up the change immediately.
+ */
+function syncVisibilityToLocal(
+  pageVisibility: PageVisibility,
+  columnVisibility: ColumnVisibility,
+): void {
+  const current = loadSettings();
+  current.pageVisibility = pageVisibility;
+  current.columnVisibility = columnVisibility;
+  localStorage.setItem("flightLogbookSettings", JSON.stringify(current));
+  window.dispatchEvent(new CustomEvent("settingsUpdated", { detail: current }));
+}
+
+/**
+ * Save page and column visibility to both the backend API and localStorage.
+ * The API call is fire-and-forget; localStorage save is synchronous.
+ */
+export async function saveVisibilityToApi(
+  pageVisibility: PageVisibility,
+  columnVisibility: ColumnVisibility,
+): Promise<void> {
+  // Always save to localStorage first (instant reactivity + event dispatch)
+  syncVisibilityToLocal(pageVisibility, columnVisibility);
+
+  // Then try to persist to the backend API
+  const { page_visibility, column_visibility } = serializeVisibility(pageVisibility, columnVisibility);
+  try {
+    await api.saveVisibility(page_visibility, column_visibility);
+  } catch {
+    console.warn("Failed to save visibility to backend, localStorage fallback is in use");
+  }
 }
 
 /** Core pages that are always visible and cannot be hidden */

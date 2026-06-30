@@ -103,6 +103,12 @@ def init_db() -> None:
                 days_window INTEGER NOT NULL DEFAULT 180,
                 PRIMARY KEY (user_id, category_id)
             );
+
+            CREATE TABLE IF NOT EXISTS user_visibility (
+                user_id           INTEGER PRIMARY KEY,
+                page_visibility   TEXT NOT NULL DEFAULT '{}',
+                column_visibility TEXT NOT NULL DEFAULT '{}'
+            );
         """)
         conn.commit()
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "../api/client";
 import type { Flight } from "../api/types";
-import { loadSettings, type ColumnVisibility } from "../api/settings";
+import { loadSettings, loadVisibilityFromApi, type ColumnVisibility } from "../api/settings";
 
 interface FormState {
   date: string;
@@ -128,6 +128,13 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
     const handler = () => setColumnVisibility(loadSettings().columnVisibility);
     window.addEventListener("settingsUpdated", handler);
     return () => window.removeEventListener("settingsUpdated", handler);
+  }, []);
+
+  // Load visibility from backend API (per-user, survives cache clear)
+  useEffect(() => {
+    loadVisibilityFromApi().then(({ columnVisibility: cv }) => {
+      setColumnVisibility(cv);
+    });
   }, []);
 
   // On mount (or editFlightId change), fetch flight data if editing
