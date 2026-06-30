@@ -17,6 +17,7 @@ export default function App() {
   const [pageVisibility, setPageVisibility] = useState<PageVisibility>(
     () => loadSettings().pageVisibility
   );
+  const [multiUserMode, setMultiUserMode] = useState(false);
 
   // Auth gate state
   const [authState, setAuthState] = useState<"loading" | "login" | "authenticated">("loading");
@@ -25,8 +26,9 @@ export default function App() {
   useEffect(() => {
     (async () => {
       try {
-        const { multiUserMode } = await api.getMultiUserMode();
-        if (multiUserMode) {
+        const { multiUserMode: mum } = await api.getMultiUserMode();
+        setMultiUserMode(mum);
+        if (mum) {
           // Multi-user mode enabled — user must login
           const token = localStorage.getItem("skylog_token");
           if (token) {
@@ -60,7 +62,7 @@ export default function App() {
     })();
   }, []);
 
-  // Load visibility from backend API once authenticated, and listen for live updates
+  // Load visibility from backend API once authenticated
   useEffect(() => {
     if (authState !== "authenticated") return;
     loadVisibilityFromApi().then(({ pageVisibility: pv }) => {
@@ -120,8 +122,9 @@ export default function App() {
   useEffect(() => {
     const handler = async () => {
       try {
-        const { multiUserMode } = await api.getMultiUserMode();
-        if (!multiUserMode && authState === "login") {
+        const { multiUserMode: mum } = await api.getMultiUserMode();
+        setMultiUserMode(mum);
+        if (!mum && authState === "login") {
           const res = await api.autoLogin();
           localStorage.setItem("skylog_token", res.token);
           setAuthState("authenticated");
@@ -149,6 +152,12 @@ export default function App() {
     setAuthState("authenticated");
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("skylog_token");
+    setAuthState("login");
+    setCurrentPage("dashboard");
+  };
+
   // Show auth gate while loading
   if (authState === "loading") {
     return (
@@ -161,7 +170,7 @@ export default function App() {
     );
   }
 
-  // Show login page (always "login" mode — users either auth or create account)
+  // Show login page
   if (authState !== "authenticated") {
     return (
       <LoginPage
@@ -195,53 +204,69 @@ export default function App() {
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">SkyLog</h1>
             </div>
 
-            {/* Navigation */}
-            <nav className="flex gap-1">
-              {visiblePages.map(({ key, label, icon }) => (
-                <NavButton
-                  key={key}
-                  active={currentPage === key}
-                  onClick={() => {
-                    setEditingFlightId(null);
-                    setCurrentPage(key);
-                  }}
-                  highlight={key === "add"}
+            {/* Navigation + Logout */}
+            <div className="flex items-center gap-2">
+              <nav className="flex gap-1">
+                {visiblePages.map(({ key, label, icon }) => (
+                  <NavButton
+                    key={key}
+                    active={currentPage === key}
+                    onClick={() => {
+                      setEditingFlightId(null);
+                      setCurrentPage(key);
+                    }}
+                    highlight={key === "add"}
+                  >
+                    {icon === "house" && (
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                      </svg>
+                    )}
+                    {icon === "book" && (
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    )}
+                    {icon === "check" && (
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m8 13l3 3l5-7m6 3c0 5.523-4.477 10-10 10S2 17.523 2 12S6.477 2 12 2s10 4.477 10 10" />
+                      </svg>
+                    )}
+                    {icon === "clipboard" && (
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                      </svg>
+                    )}
+                    {icon === "gear" && (
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    )}
+                    {icon === "plus" && (
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                    )}
+                    <span className="hidden sm:inline">{label}</span>
+                  </NavButton>
+                ))}
+              </nav>
+
+              {/* Logout button — only visible when multi-user mode is enabled */}
+              {multiUserMode && (
+                <button
+                  onClick={handleLogout}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950"
+                  title="Logout"
                 >
-                  {icon === "house" && (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                    </svg>
-                  )}
-                  {icon === "book" && (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  )}
-                  {icon === "check" && (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m8 13l3 3l5-7m6 3c0 5.523-4.477 10-10 10S2 17.523 2 12S6.477 2 12 2s10 4.477 10 10" />
-                    </svg>
-                  )}
-                  {icon === "clipboard" && (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                    </svg>
-                  )}
-                  {icon === "gear" && (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  )}
-                  {icon === "plus" && (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                  )}
-                  <span className="hidden sm:inline">{label}</span>
-                </NavButton>
-              ))}
-            </nav>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  <span className="hidden sm:inline">Logout</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </header>
