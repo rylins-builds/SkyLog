@@ -17,18 +17,6 @@ interface CurrencyThreshold {
   daysWindow: number;
 }
 
-interface CurrencyEntry {
-  id: number;
-  category: "ifrApproaches" | "holdingProcedures";
-  date: string;
-  description: string;
-}
-
-interface CurrencyState {
-  entries: CurrencyEntry[];
-  entryCounter: number;
-}
-
 type CurrencyStatus = "current" | "expiring" | "notCurrent";
 
 // ── Defaults ──
@@ -80,20 +68,6 @@ function saveThresholds(
 ): void {
   localStorage.setItem("currencyThresholds", JSON.stringify(thresholds));
   window.dispatchEvent(new CustomEvent("currencyThresholdsUpdated"));
-}
-
-function loadCurrencyState(): CurrencyState {
-  try {
-    const raw = localStorage.getItem("currencyEntries");
-    if (raw) return JSON.parse(raw);
-  } catch {
-    /* ignore */
-  }
-  return { entries: [], entryCounter: 0 };
-}
-
-function saveCurrencyState(state: CurrencyState): void {
-  localStorage.setItem("currencyEntries", JSON.stringify(state));
 }
 
 // ── Helpers ──
@@ -216,20 +190,10 @@ export default function Currency() {
   const [thresholds, setThresholds] = useState<
     Record<CategoryId, CurrencyThreshold>
   >(loadThresholds);
-  const [currencyState, setCurrencyState] =
-    useState<CurrencyState>(loadCurrencyState);
   const [editingThreshold, setEditingThreshold] =
     useState<CategoryId | null>(null);
   const [editMin, setEditMin] = useState<number>(0);
   const [editDays, setEditDays] = useState<number>(0);
-  const [showAddIfr, setShowAddIfr] = useState(false);
-  const [newIfrCategory, setNewIfrCategory] = useState<
-    "ifrApproaches" | "holdingProcedures"
-  >("ifrApproaches");
-  const [newIfrDate, setNewIfrDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
-  const [newIfrDesc, setNewIfrDesc] = useState("");
   const [error, setError] = useState("");
 
   // Load flights
@@ -288,54 +252,27 @@ export default function Currency() {
       (f) => f.landings_night
     );
 
-    // Approaches and holds from stored entries
-    const cutoffIfr = new Date(
-      today.getTime() -
-        thresholds.ifrApproaches.daysWindow * 24 * 60 * 60 * 1000
-    );
-    const cutoffHolding = new Date(
-      today.getTime() -
-        thresholds.holdingProcedures.daysWindow * 24 * 60 * 60 * 1000
+    // IFR approaches: sum precision_approaches + non_precision_approaches
+    const ifrApproaches = sumForCategory(
+      thresholds.ifrApproaches,
+      (f) => (f.precision_approaches || 0) + (f.non_precision_approaches || 0)
     );
 
-    let ifrCount = 0;
-    let ifrLast: Date | null = null;
-    let holdCount = 0;
-    let holdLast: Date | null = null;
-
-    for (const e of currencyState.entries) {
-      const ed = new Date(e.date + "T00:00:00");
-      if (e.category === "ifrApproaches" && ed >= cutoffIfr) {
-        ifrCount++;
-        if (!ifrLast || ed > ifrLast) ifrLast = ed;
-      }
-      if (e.category === "holdingProcedures" && ed >= cutoffHolding) {
-        holdCount++;
-        if (!holdLast || ed > holdLast) holdLast = ed;
-      }
-    }
+    // Holding procedures: sum holding_patterns
+    const holdingProcedures = sumForCategory(
+      thresholds.holdingProcedures,
+      (f) => f.holding_patterns || 0
+    );
 
     return {
-      dayTakeoffs: {
-        count: dayTakeoffs.count,
-        lastDate: dayTakeoffs.lastDate,
-      },
-      dayLandings: {
-        count: dayLandings.count,
-        lastDate: dayLandings.lastDate,
-      },
-      nightTakeoffs: {
-        count: nightTakeoffs.count,
-        lastDate: nightTakeoffs.lastDate,
-      },
-      nightLandings: {
-        count: nightLandings.count,
-        lastDate: nightLandings.lastDate,
-      },
-      ifrApproaches: { count: ifrCount, lastDate: ifrLast },
-      holdingProcedures: { count: holdCount, lastDate: holdLast },
+      dayTakeoffs,
+      dayLandings,
+      nightTakeoffs,
+      nightLandings,
+      ifrApproaches,
+      holdingProcedures,
     };
-  }, [flights, thresholds, currencyState.entries]);
+  }, [flights, thresholds]);
 
   // ── Status for each category ──
   const statuses = useMemo(() => {
@@ -402,49 +339,12 @@ export default function Currency() {
     setEditingThreshold(null);
   }, []);
 
-  // ── Add entry ──
-  const handleAddEntry = useCallback(() => {
-    if (!newIfrDate) return;
-    const next: CurrencyState = {
-      entries: [
-        ...currencyState.entries,
-        {
-          id: currencyState.entryCounter + 1,
-          category: newIfrCategory,
-          date: newIfrDate,
-          description: newIfrDesc,
-        },
-      ],
-      entryCounter: currencyState.entryCounter + 1,
-    };
-    setCurrencyState(next);
-    saveCurrencyState(next);
-    setNewIfrDesc("");
-    setNewIfrDate(new Date().toISOString().split("T")[0]);
-    setShowAddIfr(false);
-  }, [currencyState, newIfrCategory, newIfrDate, newIfrDesc]);
-
-  // ── Delete entry ──
-  const handleDeleteEntry = useCallback(
-    (id: number) => {
-      const next: CurrencyState = {
-        ...currencyState,
-        entries: currencyState.entries.filter((e) => e.id !== id),
-      };
-      setCurrencyState(next);
-      saveCurrencyState(next);
-    },
-    [currencyState]
-  );
-
   // All entries merged for recent list
   const allEntries = useMemo(() => {
     const result: {
       date: string;
       category: CategoryId;
       description: string;
-      source: "flight" | "manual";
-      entryId?: number;
     }[] = [];
 
     for (const f of flights) {
@@ -453,50 +353,46 @@ export default function Currency() {
           date: f.date,
           category: "dayTakeoffs",
           description: `${f.takeoffs_day} day takeoff${f.takeoffs_day !== 1 ? "s" : ""} — ${f.aircraft_reg}`,
-          source: "flight",
         });
       if (f.landings_day > 0)
         result.push({
           date: f.date,
           category: "dayLandings",
           description: `${f.landings_day} day landing${f.landings_day !== 1 ? "s" : ""} — ${f.aircraft_reg}`,
-          source: "flight",
         });
       if (f.takeoffs_night > 0)
         result.push({
           date: f.date,
           category: "nightTakeoffs",
           description: `${f.takeoffs_night} night takeoff${f.takeoffs_night !== 1 ? "s" : ""} — ${f.aircraft_reg}`,
-          source: "flight",
         });
       if (f.landings_night > 0)
         result.push({
           date: f.date,
           category: "nightLandings",
           description: `${f.landings_night} night landing${f.landings_night !== 1 ? "s" : ""} — ${f.aircraft_reg}`,
-          source: "flight",
         });
-    }
-
-    for (const e of currencyState.entries) {
-      result.push({
-        date: e.date,
-        category: e.category,
-        description:
-          e.description ||
-          (e.category === "ifrApproaches"
-            ? "IFR Approach"
-            : "Holding Procedure"),
-        source: "manual",
-        entryId: e.id,
-      });
+      const totalApproaches =
+        (f.precision_approaches || 0) + (f.non_precision_approaches || 0);
+      if (totalApproaches > 0)
+        result.push({
+          date: f.date,
+          category: "ifrApproaches",
+          description: `${totalApproaches} approach${totalApproaches !== 1 ? "es" : ""} (${f.precision_approaches || 0} precision, ${f.non_precision_approaches || 0} non-precision) — ${f.aircraft_reg}`,
+        });
+      if ((f.holding_patterns || 0) > 0)
+        result.push({
+          date: f.date,
+          category: "holdingProcedures",
+          description: `${f.holding_patterns} holding pattern${f.holding_patterns !== 1 ? "s" : ""} — ${f.aircraft_reg}`,
+        });
     }
 
     result.sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
     return result;
-  }, [flights, currencyState.entries]);
+  }, [flights]);
 
   // ── Render helpers ──
   function renderCategoryCard(cat: CategoryId) {
@@ -555,7 +451,7 @@ export default function Currency() {
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                  Min {cat === "ifrApproaches" || cat === "holdingProcedures" ? "Entries" : "Count"}
+                  Min Count
                 </label>
                 <input
                   type="number"
@@ -594,19 +490,6 @@ export default function Currency() {
             </div>
           </div>
         )}
-
-        {/* Delete button for manual entries only - show count of entries contributing */}
-        {cat !== "ifrApproaches" && cat !== "holdingProcedures" && (
-          <div className="mt-3 text-xs text-gray-400 dark:text-gray-500">
-            Populated from flight log entries
-          </div>
-        )}
-        {cat === "ifrApproaches" || cat === "holdingProcedures" ? (
-          <div className="mt-3 text-xs text-gray-400 dark:text-gray-500">
-            {(cat === "ifrApproaches" ? currencyState.entries.filter(e => e.category === "ifrApproaches") : currencyState.entries.filter(e => e.category === "holdingProcedures")).length}{" "}
-            logged entries
-          </div>
-        ) : null}
       </div>
     );
   }
@@ -636,7 +519,7 @@ export default function Currency() {
   }
 
   // ── Empty state ──
-  if (flights.length === 0 && currencyState.entries.length === 0) {
+  if (flights.length === 0) {
     return (
       <div className="p-8 text-center animate-fade-in">
         <div className="max-w-md mx-auto py-16">
@@ -645,40 +528,32 @@ export default function Currency() {
             No currency data yet
           </h2>
           <p className="text-gray-500 mb-6 dark:text-white">
-            Start by logging flights or adding IFR approaches and holding
-            procedures to track your currency.
+            Start by logging flights to track your currency. Instrument approach
+            and holding pattern data will be pulled from your logbook entries.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={() =>
-                window.dispatchEvent(
-                  new CustomEvent("navigate", { detail: "add" })
-                )
-              }
-              className="inline-flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors btn-primary"
+          <button
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent("navigate", { detail: "add" })
+              )
+            }
+            className="inline-flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Log Your First Flight
-            </button>
-            <button
-              onClick={() => setShowAddIfr(true)}
-              className="inline-flex items-center justify-center gap-2 bg-gray-200 dark:bg-zinc-700 text-gray-700 dark:text-white px-6 py-2.5 rounded-lg font-medium hover:bg-gray-300 dark:hover:bg-zinc-600 transition-colors"
-            >
-              Add IFR Entry
-            </button>
-          </div>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Log Your First Flight
+          </button>
         </div>
       </div>
     );
@@ -779,35 +654,6 @@ export default function Currency() {
           </div>
         </div>
 
-        {/* Quick-add buttons */}
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => {
-              setNewIfrCategory("ifrApproaches");
-              setNewIfrDate(new Date().toISOString().split("T")[0]);
-              setShowAddIfr(true);
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Add Approach
-          </button>
-          <button
-            onClick={() => {
-              setNewIfrCategory("holdingProcedures");
-              setNewIfrDate(new Date().toISOString().split("T")[0]);
-              setShowAddIfr(true);
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Add Hold
-          </button>
-        </div>
       </div>
 
       {/* ═══ Currency Cards Grid ═══ */}
@@ -826,91 +672,6 @@ export default function Currency() {
           ] as CategoryId[]
         ).map(renderCategoryCard)}
       </div>
-
-      {/* ═══ Add IFR Entry Modal ═══ */}
-      {showAddIfr && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 animate-fade-in">
-          <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl border border-gray-200 dark:border-zinc-700 p-6 w-full max-w-md mx-4 animate-slide-up">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Log {newIfrCategory === "ifrApproaches" ? "IFR Approach" : "Holding Procedure"}
-            </h3>
-
-            <div className="space-y-4">
-              {/* Category toggle */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Category
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setNewIfrCategory("ifrApproaches")}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                      newIfrCategory === "ifrApproaches"
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-zinc-700 dark:text-gray-300 dark:hover:bg-zinc-600"
-                    }`}
-                  >
-                    Approach
-                  </button>
-                  <button
-                    onClick={() => setNewIfrCategory("holdingProcedures")}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                      newIfrCategory === "holdingProcedures"
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-zinc-700 dark:text-gray-300 dark:hover:bg-zinc-600"
-                    }`}
-                  >
-                    Hold
-                  </button>
-                </div>
-              </div>
-
-              {/* Date */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  value={newIfrDate}
-                  onChange={(e) => setNewIfrDate(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Description (optional)
-                </label>
-                <input
-                  type="text"
-                  value={newIfrDesc}
-                  onChange={(e) => setNewIfrDesc(e.target.value)}
-                  placeholder={newIfrCategory === "ifrApproaches" ? "e.g. ILS RWY 17R, VOR-A" : "e.g. Hold at ABC VOR"}
-                  className="w-full rounded-lg border border-gray-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400"
-                />
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowAddIfr(false)}
-                className="flex-1 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-zinc-700 dark:text-gray-300 dark:hover:bg-zinc-600 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddEntry}
-                className="flex-1 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-              >
-                Log Entry
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ═══ Recent Entries Timeline ═══ */}
       <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md border border-gray-100 dark:border-zinc-700 overflow-hidden animate-slide-up">
@@ -953,30 +714,6 @@ export default function Currency() {
                 <span className="text-sm text-gray-500 dark:text-gray-400 truncate flex-1">
                   {entry.description}
                 </span>
-
-                {/* Source badge */}
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${
-                    entry.source === "flight"
-                      ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
-                      : "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300"
-                  }`}
-                >
-                  {entry.source === "flight" ? "Flight" : "Manual"}
-                </span>
-
-                {/* Delete for manual entries */}
-                {entry.source === "manual" && entry.entryId != null && (
-                  <button
-                    onClick={() => handleDeleteEntry(entry.entryId!)}
-                    className="p-1 text-gray-400 hover:text-red-500 transition-colors shrink-0"
-                    title="Delete entry"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                )}
               </div>
             ))}
           </div>
