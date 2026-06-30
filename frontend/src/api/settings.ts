@@ -46,7 +46,7 @@ export interface SettingsData {
   columnVisibility: ColumnVisibility;
   username: string;
   pageSize: number;
-  showWelcomePage: boolean;
+  showLoginPage: boolean;
 }
 
 export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
@@ -103,7 +103,7 @@ export function loadSettings(): SettingsData {
         columnVisibility: { ...DEFAULT_COLUMN_VISIBILITY, ...parsed.columnVisibility },
         username: parsed.username ?? "",
         pageSize: parsed.pageSize ?? DEFAULT_PAGE_SIZE,
-        showWelcomePage: parsed.showWelcomePage ?? true,
+        showLoginPage: parsed.showLoginPage ?? true,
       };
     }
   } catch {
@@ -114,7 +114,7 @@ export function loadSettings(): SettingsData {
     columnVisibility: { ...DEFAULT_COLUMN_VISIBILITY },
     username: "",
     pageSize: DEFAULT_PAGE_SIZE,
-    showWelcomePage: true,
+    showLoginPage: true,
   };
 }
 

@@ -5,7 +5,7 @@ import Currency from "./pages/Currency";
 import FAA8710 from "./pages/FAA8710";
 import Settings from "./pages/Settings";
 import EntryForm from "./pages/EntryForm";
-import WelcomePage from "./pages/WelcomePage";
+import LoginPage from "./pages/LoginPage";
 import { loadSettings, type PageVisibility, CORE_PAGES } from "./api/settings";
 import { api } from "./api/client";
 
@@ -156,7 +156,7 @@ export default function App() {
   // Show login page (always "login" mode — users either auth or create account)
   if (authState !== "authenticated") {
     return (
-      <WelcomePage
+      <LoginPage
         onAuthenticated={handleAuthenticated}
       />
     );

@@ -114,6 +114,6 @@ export const api = {
     }),
 
   /** Get whether the login page should be shown */
-  getShowWelcome: () =>
-    request<{ showWelcomePage: boolean }>("/auth/show-welcome"),
+  getShowLogin: () =>
+    request<{ showLoginPage: boolean }>("/auth/show-welcome"),
 };

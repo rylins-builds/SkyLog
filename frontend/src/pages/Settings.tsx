@@ -10,7 +10,7 @@ interface SettingsState {
   pageVisibility: PageVisibility;
   columnVisibility: ColumnVisibility;
   username: string;
-  showWelcomePage: boolean;
+  showLoginPage: boolean;
 }
 
 export default function Settings() {
@@ -55,7 +55,7 @@ export default function Settings() {
       holdingPatterns: true,
     },
     username: "",
-    showWelcomePage: false,
+    showLoginPage: false,
   });
 
   // Multi-user mode state

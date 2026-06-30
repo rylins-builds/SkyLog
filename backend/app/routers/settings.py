@@ -295,14 +295,14 @@ async def get_multi_user_mode():
 
 @router.get("/auth/show-welcome")
 async def get_show_welcome():
-    """Get whether the welcome/login page should be shown (mirrors multi-user mode)."""
+    """Get whether the login page should be shown (mirrors multi-user mode)."""
     conn = get_connection()
     try:
         row = conn.execute(
             "SELECT value FROM settings WHERE key = 'multi_user_mode'"
         ).fetchone()
         show = row is not None and row["value"] == "true"
-        return {"showWelcomePage": show}
+        return {"showLoginPage": show}
     finally:
         conn.close()
 

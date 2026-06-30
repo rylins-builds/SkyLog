@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { api } from "../api/client";
 
-interface WelcomePageProps {
+interface LoginPageProps {
   onAuthenticated: () => void;
 }
 
 type PageMode = "login" | "register";
 
-export default function WelcomePage({ onAuthenticated }: WelcomePageProps) {
+export default function LoginPage({ onAuthenticated }: LoginPageProps) {
   const [mode, setMode] = useState<PageMode>("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
