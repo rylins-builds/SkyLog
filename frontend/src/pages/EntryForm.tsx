@@ -1,8 +1,33 @@
+/**
+ * SkyLog Flight Entry Form (Create / Edit)
+ *
+ * This page provides a comprehensive form for logging a new flight or
+ * editing an existing one. It supports:
+ *
+ *   1. **Create mode** — all fields start empty (date defaults to today).
+ *   2. **Edit mode** — loads an existing flight by ID and pre-fills all fields.
+ *
+ * The form layout respects the user's **column visibility** settings: if a
+ * column is hidden in the Logbook, its corresponding form field is also
+ * hidden here. This lets pilots declutter the form to only show the
+ * categories they care about.
+ *
+ * Validation is performed client-side before submission:
+ *   - Required fields: date, aircraft_type, aircraft_reg, departure,
+ *     arrival, pilot_in_command, total_time (> 0).
+ *   - Numeric fields must not be negative.
+ *   - night_time cannot exceed total_time.
+ *
+ * @module pages/EntryForm
+ */
+
 import { useState, useEffect } from "react";
 import { api } from "../api/client";
 import type { Flight } from "../api/types";
 import { loadSettings, loadVisibilityFromApi, type ColumnVisibility } from "../api/settings";
 
+/** All form field values are stored as strings (even numerics) to simplify
+ *  two-way binding with <input> elements. They are parsed on submit. */
 interface FormState {
   date: string;
   aircraft_type: string;
@@ -39,6 +64,7 @@ interface FormState {
   holding_patterns: string;
 }
 
+/** Build the initial (empty) form state with date defaulting to today. */
 const initialForm = (): FormState => ({
   date: new Date().toISOString().split("T")[0],
   aircraft_type: "",
@@ -75,7 +101,7 @@ const initialForm = (): FormState => ({
   holding_patterns: "0",
 });
 
-/** Convert a Flight object from the API into form state. */
+/** Convert a ``Flight`` object (from the API) into form state strings. */
 const flightToForm = (flight: Flight): FormState => ({
   date: flight.date,
   aircraft_type: flight.aircraft_type,
@@ -112,7 +138,13 @@ const flightToForm = (flight: Flight): FormState => ({
   holding_patterns: flight.holding_patterns.toString(),
 });
 
-export default function EntryForm({ editFlightId }: { editFlightId?: number | null }) {
+interface EntryFormProps {
+  /** If provided, the form loads this flight's data for editing.
+   *  If null/undefined, the form starts empty for a new entry. */
+  editFlightId?: number | null;
+}
+
+export default function EntryForm({ editFlightId }: EntryFormProps) {
   const isEditMode = editFlightId != null;
 
   const [form, setForm] = useState<FormState>(initialForm());
@@ -122,7 +154,9 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Column visibility from settings
+  // ═══ Column visibility from settings ═══
+  // We read visibility from both localStorage (synchronous on mount)
+  // and the backend API (async, per-user persistence).
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(() => loadSettings().columnVisibility);
   useEffect(() => {
     const handler = () => setColumnVisibility(loadSettings().columnVisibility);
@@ -137,7 +171,7 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
     });
   }, []);
 
-  // On mount (or editFlightId change), fetch flight data if editing
+  // ═══ Load existing flight data when editing ═══
   useEffect(() => {
     if (editFlightId == null) {
       setForm(initialForm());
@@ -158,6 +192,7 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
       });
   }, [editFlightId]);
 
+  // ═══ Generic change handler for all inputs ═══
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     const checked = type === "checkbox" ? (e.target as HTMLInputElement).checked : undefined;
@@ -165,7 +200,7 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
-    // Clear error on change
+    // Clear the error for this field when the user starts typing again
     if (errors[name]) {
       setErrors((prev) => {
         const next = { ...prev };
@@ -175,6 +210,7 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
     }
   };
 
+  // ═══ Client-side validation ═══
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
     if (!form.date) errs.date = "Date is required";
@@ -184,6 +220,7 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
     if (!form.arrival.trim()) errs.arrival = "Required";
     if (!form.pilot_in_command.trim()) errs.pilot_in_command = "Required";
     if (!form.total_time || parseFloat(form.total_time) <= 0) errs.total_time = "Must be > 0";
+    // Validate all numeric time fields are non-negative
     if (form.sel_time && parseFloat(form.sel_time) < 0) errs.sel_time = "Cannot be negative";
     if (form.ses_time && parseFloat(form.ses_time) < 0) errs.ses_time = "Cannot be negative";
     if (form.mel_time && parseFloat(form.mel_time) < 0) errs.mel_time = "Cannot be negative";
@@ -207,12 +244,14 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
     return Object.keys(errs).length === 0;
   };
 
+  // ═══ Form submission (create or update) ═══
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
     setSaving(true);
     setMessage(null);
 
+    // Build the payload with all fields parsed to their correct types
     const payload = {
       date: form.date,
       aircraft_type: form.aircraft_type.trim(),
@@ -256,7 +295,7 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
       } else {
         await api.createFlight(payload);
         setMessage({ type: "success", text: "Flight logged successfully!" });
-        setForm(initialForm());
+        setForm(initialForm());  // Reset form for another entry
       }
       setErrors({});
     } catch (err) {
@@ -269,12 +308,12 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
     }
   };
 
-  // Helper to check if a ColumnVisibility key maps to a visible form field
+  /** Check whether a given ColumnVisibility key maps to a visible form field. */
   const isFieldVisible = (visKey: string): boolean => {
     return columnVisibility[visKey as keyof ColumnVisibility] ?? true;
   };
 
-  // Loading state when fetching flight for edit
+  // ═══ Loading state (fetching flight for edit) ═══
   if (loadingFlight) {
     return (
       <div className="p-4 sm:p-8 max-w-2xl mx-auto animate-fade-in">
@@ -288,7 +327,7 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
     );
   }
 
-  // Error loading flight for edit
+  // ═══ Error loading flight for edit ═══
   if (loadError) {
     return (
       <div className="p-8 text-center animate-fade-in">
@@ -302,6 +341,7 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
     );
   }
 
+  // ═══ Render the form ═══
   return (
     <div className="p-4 sm:p-8 max-w-2xl mx-auto animate-fade-in">
       <h1 className="text-3xl font-bold text-gray-900 mb-6 dark:text-white">
@@ -309,7 +349,8 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* 2-column grid of fields — each field is conditionally rendered
+            based on columnVisibility */}        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {isFieldVisible("date") && (
             <Field
               label="Date"
@@ -688,7 +729,7 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
           )}
         </div>
 
-        {/* Remarks */}
+        {/* Remarks (spans the full width, not in the grid) */}
         {isFieldVisible("remarks") && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-white">Remarks</label>
@@ -703,7 +744,7 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
           </div>
         )}
 
-        {/* Alert */}
+        {/* Success/Error message banner */}
         {message && (
           <div
             className={`flex items-center gap-2 p-3 rounded-lg animate-slide-up ${
@@ -723,7 +764,7 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
           </div>
         )}
 
-        {/* Submit Button */}
+        {/* Submit button */}
         <button
           type="submit"
           disabled={saving}
@@ -751,6 +792,20 @@ export default function EntryForm({ editFlightId }: { editFlightId?: number | nu
   );
 }
 
+/**
+ * A single labelled form field with optional validation error display.
+ *
+ * @param label - The human-readable label shown above the input.
+ * @param name - The field name (maps to FormState keys and the backend schema).
+ * @param type - Input type (text, number, date, time).
+ * @param value - Current value from the form state.
+ * @param onChange - Change handler from the parent form.
+ * @param required - Whether the field is required (shows a red asterisk).
+ * @param step - "step" attribute for number inputs (e.g. 0.1 for tenths).
+ * @param min - "min" attribute for number inputs.
+ * @param placeholder - Placeholder text inside the input.
+ * @param error - Validation error message (shown below the input if set).
+ */
 function Field({
   label,
   name,

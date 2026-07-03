@@ -1,14 +1,33 @@
+/* ═════════════════════════════════════════════════════════════════
+   SkyLog Global Styles
+   ═════════════════════════════════════════════════════════════════
+   This stylesheet is the single source of truth for all custom
+   CSS in the application. It uses Tailwind CSS v4 for utility-first
+   styling and defines:
+
+     1. Theme design tokens (@theme) — aviation colour palette.
+     2. Dark mode support via prefers-color-scheme.
+     3. Base layout styles for the #root element.
+     4. Custom keyframe animations (fade-in, slide-up, pulse-soft).
+     5. Utility classes for skeleton loading states.
+     6. Component-level styles for stat cards, table rows, and buttons.
+
+   ═════════════════════════════════════════════════════════════════ */
+
+/* ── Tailwind CSS v4 Entry Point ── */
 @import "tailwindcss";
 
 /* ── Theme Design Tokens (Tailwind v4 @theme) ── */
 @theme {
-  --color-aviation: #0ea5e9;
-  --color-surface: #ffffff;
-  --color-muted: #6b7280;
+  --color-aviation: #0ea5e9;       /* Sky blue accent colour */
+  --color-surface: #ffffff;        /* Default card/panel background */
+  --color-muted: #6b7280;          /* Muted text colour */
 }
 
 @media (prefers-color-scheme: dark) {
   html {
+    /* Inform the UA that we support dark colour schemes natively,
+       so scrollbars and form controls render in dark mode too. */
     color-scheme: dark;
   }
 }
@@ -16,25 +35,32 @@
 /* ── Base Styles ── */
 #root {
   width: 100%;
-  min-height: 100svh;
+  min-height: 100svh;  /* Use small-viewport-height to avoid mobile browser chrome issues */
 }
 
 /* ── Custom Animations ── */
+
+/* Fade-in: used for page transitions and element appearance.
+   The element fades in while translating upward 4px for a subtle "lift" effect. */
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Slide-up: a more pronounced entrance animation, used for cards and sections. */
 @keyframes slide-up {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Soft pulse: used for loading dots / progress indicators. */
 @keyframes pulse-soft {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.6; }
 }
 
+/* Utility classes for the custom animations above.
+   Each uses ``animation-delay`` set via inline styles on individual elements. */
 .animate-fade-in {
   animation: fade-in 0.3s ease-out;
 }
@@ -48,6 +74,8 @@
 }
 
 /* ── Skeleton Loading ── */
+/* A shimmer animation for content placeholders while data is loading.
+   The gradient moves left-to-right across a grey block to simulate activity. */
 .skeleton {
   background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
   background-size: 200% 100%;
@@ -61,6 +89,7 @@
 }
 
 /* ── Stat Card Hover Effect ── */
+/* Dashboard stat cards lift slightly on hover to indicate interactivity. */
 .stat-card {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -70,18 +99,24 @@
 }
 
 /* ── Table Row Actions ── */
+/* Action buttons (edit / delete) in the logbook table.
+   They are fully visible by default on mobile and become visible
+   on hover for desktop users. */
 .logbook-row {
   transition: background-color 0.15s ease;
 }
 .logbook-row .row-actions {
-  opacity: 1;
+  opacity: 1;                      /* Always visible — mobile-friendly */
   transition: opacity 0.15s ease;
 }
+/* On desktop, actions are visible on row hover only (cleaner look). */
 .logbook-row:hover .row-actions {
   opacity: 1;
 }
 
 /* ── Primary Button ── */
+/* The "Log Flight" / "Save" primary action button.
+   A subtle scale-down on active press gives tactile feedback. */
 .btn-primary {
   transition: background-color 0.15s ease, transform 0.1s ease;
 }

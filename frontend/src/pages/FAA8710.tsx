@@ -1,3 +1,17 @@
+/**
+ * SkyLog FAA 8710 Form Page (Stub)
+ *
+ * This page is a placeholder for a future FAA Form 8710 (Airman Certificate
+ * and/or Rating Application) generator. The intent is to automatically
+ * populate the 8710 fields from the pilot's logbook data so that applying
+ * for a new certificate or rating requires minimal manual data entry.
+ *
+ * Currently the page only shows a heading — the full form will be built
+ * in a future iteration once the logbook data model stabilises.
+ *
+ * @module pages/FAA8710
+ */
+
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { Flight } from "../api/types";
@@ -6,10 +20,12 @@ export default function FAA8710() {
   const [flights, setFlights] = useState<Flight[]>([]);
   const [error, setError] = useState("");
 
+  // On mount, fetch all flights (will be used to pre-populate the form).
   useEffect(() => {
     api.listFlights().then(setFlights).catch((e) => setError(e.message));
   }, []);
 
+  // ── Error state ──
   if (error) {
     return (
       <div className="p-8 text-center animate-fade-in">
@@ -22,8 +38,8 @@ export default function FAA8710() {
       </div>
     );
   }
-    
-  // Empty state — no flights at all
+
+  // ── Empty state — no flights available to populate the form ──
   if (flights.length === 0) {
     return (
       <div className="p-8 text-center animate-fade-in">
@@ -33,6 +49,7 @@ export default function FAA8710() {
           <p className="text-gray-500 mb-6 dark:text-white">
             Ready for takeoff? Add your first flight to get started.
           </p>
+          {/* Navigate to the Add Flight page via custom event */}
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("navigate", { detail: "add" }))}
             className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors btn-primary"
@@ -47,9 +64,11 @@ export default function FAA8710() {
     );
   }
 
+  // ── Future: the FAA 8710 form will render here ──
   return (
-      <div className="p-8 max-w-[80%] mx-auto animate-fade-in">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6 dark:text-white">FAA 8710</h1>
-      </div>
+    <div className="p-8 max-w-[80%] mx-auto animate-fade-in">
+      <h1 className="text-3xl font-bold text-gray-900 mb-6 dark:text-white">FAA 8710</h1>
+      {/* TODO: Build the 8710 form using flight data */}
+    </div>
   );
 }

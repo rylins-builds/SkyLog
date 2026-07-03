@@ -1,14 +1,39 @@
-/** Shared settings types for SkyLog */
+/**
+ * Shared Settings Types and Helpers
+ *
+ * This module defines the TypeScript types for visibility preferences
+ * (which optional pages appear in the nav bar, which columns appear in
+ * the logbook table) and provides helper functions for loading/saving
+ * those preferences to both ``localStorage`` (for synchronous access)
+ * and the backend API (for per-user persistence).
+ *
+ * Two storage layers exist:
+ *   1. **localStorage** — fast, synchronous, survives page refreshes
+ *      but is local to the browser.
+ *   2. **Backend API** (via ``api.getVisibility`` / ``api.saveVisibility``) —
+ *      per-user, server-side, survives cache clears and device switches.
+ *
+ * The helpers here synchronise both layers so that the app is responsive
+ * (reads from localStorage) while keeping the server as the source of
+ * truth.
+ *
+ * @module api/settings
+ */
 
 import { api } from "./client";
 
-// ── Types ──
+// ═════════════════════════════════════════════════
+// Types
+// ═════════════════════════════════════════════════
 
+/** Which optional pages are visible in the navigation bar. */
 export interface PageVisibility {
   currency: boolean;
   FAA8710: boolean;
 }
 
+/** Which columns are visible in the Logbook table and EntryForm.
+ *  Each key corresponds to a field in the Flight record. */
 export interface ColumnVisibility {
   date: boolean;
   aircraftType: boolean;
@@ -45,6 +70,7 @@ export interface ColumnVisibility {
   holdingPatterns: boolean;
 }
 
+/** Full settings object stored in localStorage. */
 export interface SettingsData {
   pageVisibility: PageVisibility;
   columnVisibility: ColumnVisibility;
@@ -53,6 +79,11 @@ export interface SettingsData {
   showLoginPage: boolean;
 }
 
+// ═════════════════════════════════════════════════
+// Defaults
+// ═════════════════════════════════════════════════
+
+/** Default: all columns visible. */
 export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   date: true,
   aircraftType: true,
@@ -89,6 +120,7 @@ export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   holdingPatterns: true,
 };
 
+/** Default: both optional pages visible. */
 export const DEFAULT_PAGE_VISIBILITY: PageVisibility = {
   currency: true,
   FAA8710: true,
@@ -96,8 +128,12 @@ export const DEFAULT_PAGE_VISIBILITY: PageVisibility = {
 
 const DEFAULT_PAGE_SIZE = 15;
 
-// ── Synchronous helpers (localStorage fallback) ──
+// ═════════════════════════════════════════════════
+// Synchronous localStorage helpers
+// ═════════════════════════════════════════════════
 
+/** Serialise page + column visibility into the JSON string format
+ *  that the backend API expects. */
 function serializeVisibility(pv: PageVisibility, cv: ColumnVisibility): { page_visibility: string; column_visibility: string } {
   return {
     page_visibility: JSON.stringify(pv),
@@ -105,7 +141,14 @@ function serializeVisibility(pv: PageVisibility, cv: ColumnVisibility): { page_v
   };
 }
 
-/** Load settings from localStorage (fallback for non-auth parts) */
+/**
+ * Load settings from localStorage.
+ *
+ * This is a synchronous operation used by components at render time.
+ * If no saved settings exist, returns sensible defaults.
+ * This is a **fallback** — the real source of truth for visibility
+ * is the backend API (loaded asynchronously on mount).
+ */
 export function loadSettings(): SettingsData {
   try {
     const raw = localStorage.getItem("flightLogbookSettings");
@@ -120,7 +163,7 @@ export function loadSettings(): SettingsData {
       };
     }
   } catch {
-    // ignore
+    // Corrupted localStorage — ignore and return defaults
   }
   return {
     pageVisibility: { ...DEFAULT_PAGE_VISIBILITY },
@@ -131,13 +174,22 @@ export function loadSettings(): SettingsData {
   };
 }
 
-/** Save full settings object to localStorage and broadcast */
+/**
+ * Save the full settings object to localStorage and broadcast a
+ * ``settingsUpdated`` custom event so all open tabs/components
+ * that listen for it (App.tsx, Logbook, EntryForm, Settings) pick
+ * up the change immediately.
+ */
 export function saveSettings(settings: SettingsData): void {
   localStorage.setItem("flightLogbookSettings", JSON.stringify(settings));
   window.dispatchEvent(new CustomEvent("settingsUpdated", { detail: settings }));
 }
 
-/** Save page+column visibility to localStorage and broadcast */
+/**
+ * Save only page + column visibility to localStorage and broadcast.
+ * This is a convenience wrapper around ``saveSettings`` that preserves
+ * all other settings fields.
+ */
 export function saveVisibilityLocal(
   pageVisibility: PageVisibility,
   columnVisibility: ColumnVisibility,
@@ -149,14 +201,20 @@ export function saveVisibilityLocal(
   window.dispatchEvent(new CustomEvent("settingsUpdated", { detail: current }));
 }
 
-// ── Async API-backed visibility helpers ──
+// ═════════════════════════════════════════════════
+// Async API-backed visibility helpers
+// ═════════════════════════════════════════════════
 
 /**
  * Load visibility settings from the backend API.
- * Falls back to localStorage if the API is unavailable or unauthenticated.
- * Returns the merged PageVisibility and ColumnVisibility.
- * Also syncs the result into localStorage and fires a settingsUpdated event
- * so that App.tsx, Logbook, EntryForm, and Settings all receive the update.
+ *
+ * Falls back to localStorage if the API call fails (e.g. backend
+ * not running, or the user's session expired).
+ * Also **syncs** the result into localStorage and fires a
+ * ``settingsUpdated`` event so that App.tsx, Logbook, EntryForm,
+ * and Settings all receive the update without needing a page reload.
+ *
+ * This is called by App.tsx and Settings.tsx on mount.
  */
 export async function loadVisibilityFromApi(): Promise<{
   pageVisibility: PageVisibility;
@@ -185,8 +243,9 @@ export async function loadVisibilityFromApi(): Promise<{
   }
 }
 
-/** Write page+column visibility into localStorage and dispatch a settingsUpdated event
- *  so that all listeners (App.tsx, Logbook, EntryForm) pick up the change immediately.
+/**
+ * Write page + column visibility into localStorage and dispatch
+ * a ``settingsUpdated`` event so all listeners pick up the change.
  */
 function syncVisibilityToLocal(
   pageVisibility: PageVisibility,
@@ -200,8 +259,12 @@ function syncVisibilityToLocal(
 }
 
 /**
- * Save page and column visibility to both the backend API and localStorage.
- * The API call is fire-and-forget; localStorage save is synchronous.
+ * Save page and column visibility to **both** the backend API and
+ * localStorage.
+ *
+ * The localStorage save is synchronous (instant UI reactivity).
+ * The API call is async and fire-and-forget — if it fails, the
+ * local data is still correct and will be synced on next ``loadVisibilityFromApi()``.
  */
 export async function saveVisibilityToApi(
   pageVisibility: PageVisibility,
@@ -219,15 +282,18 @@ export async function saveVisibilityToApi(
   }
 }
 
-/** Core pages that are always visible and cannot be hidden */
+/** Pages that are always visible in the navigation and cannot be hidden. */
 export const CORE_PAGES = ["dashboard", "logbook", "add", "settings"] as const;
 
-/** Optional pages that can be toggled via settings */
+/** Optional pages that users can toggle on/off via Settings. */
 export const OPTIONAL_PAGES = ["currency", "FAA 8710"] as const;
 
-/* ── Column ↔ field name mapping ── */
+// ═════════════════════════════════════════════════
+// Column ↔ Form field name mapping
+// ═════════════════════════════════════════════════
 
-/** Map ColumnVisibility key → EntryForm field name for hiding fields */
+/** Maps ColumnVisibility keys (camelCase) to EntryForm field names (snake_case).
+ *  Used by EntryForm to conditionally hide fields based on visibility settings. */
 export const COLUMN_TO_FORM_FIELD: Record<string, string> = {
   date: "date",
   aircraftType: "aircraft_type",
@@ -264,7 +330,9 @@ export const COLUMN_TO_FORM_FIELD: Record<string, string> = {
   holdingPatterns: "holding_patterns",
 };
 
-/** ColumnVisibility keys whose corresponding form fields are in the 2-column grid section (not standalone) */
+/** Set of ColumnVisibility keys whose corresponding form fields are in
+ *  the 2-column grid section of EntryForm. Used to decide whether
+ *  a field should be wrapped in a grid cell. */
 export const FORM_GRID_FIELDS = new Set([
   "date", "aircraftType", "aircraftReg", "departure", "arrival",
   "departureTime", "arrivalTime", "totalTime", "selTime", "sesTime",
