@@ -1,13 +1,33 @@
+/**
+ * SkyLog Login / Registration Page
+ *
+ * This page is shown when multi-user mode is enabled and no valid
+ * session token exists. It toggles between two modes:
+ *
+ *   1. **Sign In** — login with username + password.
+ *   2. **Create Account** — register a new user.
+ *
+ * The UI follows a **cartoon brutalist** design: bold black borders,
+ * chunky drop shadows, and expressive typography. This gives the
+ * auth page a distinctive, memorable look that differentiates it
+ * from typical SaaS login forms.
+ *
+ * @module pages/LoginPage
+ */
+
 import { useState } from "react";
 import { api } from "../api/client";
 
-interface WelcomePageProps {
+interface LoginPageProps {
+  /** Called after a successful login or registration so App.tsx
+   *  can transition from ``login`` to ``authenticated`` state. */
   onAuthenticated: () => void;
 }
 
+/** Which form mode is currently displayed. */
 type PageMode = "login" | "register";
 
-export default function WelcomePage({ onAuthenticated }: WelcomePageProps) {
+export default function LoginPage({ onAuthenticated }: LoginPageProps) {
   const [mode, setMode] = useState<PageMode>("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -15,6 +35,11 @@ export default function WelcomePage({ onAuthenticated }: WelcomePageProps) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  /**
+   * Handle registration form submission.
+   * Validates inputs client-side, calls the create-user API,
+   * stores the returned token, and calls onAuthenticated.
+   */
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -44,6 +69,11 @@ export default function WelcomePage({ onAuthenticated }: WelcomePageProps) {
     }
   };
 
+  /**
+   * Handle login form submission.
+   * Validates inputs, calls the login API, stores the returned token,
+   * and calls onAuthenticated.
+   */
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -68,7 +98,7 @@ export default function WelcomePage({ onAuthenticated }: WelcomePageProps) {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
+        {/* ── Logo / Branding ── */}
         <div className="text-center mb-8">
           <div className="text-7xl mb-4">✈️</div>
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white">SkyLog</h1>
@@ -79,7 +109,7 @@ export default function WelcomePage({ onAuthenticated }: WelcomePageProps) {
           </p>
         </div>
 
-        {/* Card */}
+        {/* ── Auth Card (cartoon brutalist style) ── */}
         <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl border-2 border-black p-8">
           {mode === "login" ? (
             <>
@@ -113,6 +143,7 @@ export default function WelcomePage({ onAuthenticated }: WelcomePageProps) {
                   />
                 </div>
 
+                {/* Error message banner */}
                 {error && (
                   <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm dark:bg-red-900 dark:text-red-300">
                     {error}
@@ -128,6 +159,7 @@ export default function WelcomePage({ onAuthenticated }: WelcomePageProps) {
                 </button>
               </form>
 
+              {/* Toggle to registration mode */}
               <div className="mt-4 text-center">
                 <button
                   onClick={() => { setMode("register"); setError(""); }}
@@ -137,6 +169,7 @@ export default function WelcomePage({ onAuthenticated }: WelcomePageProps) {
                 </button>
               </div>
 
+              {/* Forgot password hint (not yet implemented) */}
               <div className="mt-3 text-center">
                 <button
                   onClick={() => alert("Forgot password feature coming soon. For now, please delete the database file and restart the app to reset.")}
@@ -190,6 +223,7 @@ export default function WelcomePage({ onAuthenticated }: WelcomePageProps) {
                   />
                 </div>
 
+                {/* Error message banner */}
                 {error && (
                   <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm dark:bg-red-900 dark:text-red-300">
                     {error}
@@ -205,6 +239,7 @@ export default function WelcomePage({ onAuthenticated }: WelcomePageProps) {
                 </button>
               </form>
 
+              {/* Toggle to login mode */}
               <div className="mt-4 text-center">
                 <button
                   onClick={() => { setMode("login"); setError(""); }}
@@ -217,6 +252,7 @@ export default function WelcomePage({ onAuthenticated }: WelcomePageProps) {
           )}
         </div>
 
+        {/* Footer */}
         <p className="text-center text-xs text-gray-400 mt-6 dark:text-gray-500">
           SkyLog Flight Logbook v0.1.0
         </p>

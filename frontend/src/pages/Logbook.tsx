@@ -1,39 +1,117 @@
+/**
+ * Logbook.tsx — Main logbook view for SkyLog.
+ *
+ * Displays a sortable, filterable, searchable, paginated table of flight records.
+ * Column visibility is configurable via Settings (stored in localStorage and synced
+ * to the backend API for persistence across sessions). Sort and filter dropdowns
+ * respect hidden columns so users never sort/filter by a column they've chosen to hide.
+ *
+ * Key responsibilities:
+ *  - Fetch all flights from the API on mount
+ *  - Support text search across several fields (type, reg, airports, PIC, remarks)
+ *  - Provide per-category quick filters (e.g. "show only Solo flights")
+ *  - Sort by any flight field in ascending/descending order
+ *  - Paginate results with configurable page size (persisted in settings)
+ *  - Render delete buttons per-row with confirmation
+ *  - Emit custom DOM events to allow parent layout components to respond
+ *    (e.g. "edit-flight" opens the edit modal, "navigate" routes internally)
+ */
+
 import { useEffect, useState, useRef } from "react";
 import { api } from "../api/client";
 import type { Flight } from "../api/types";
-import { loadSettings, saveSettings, type ColumnVisibility } from "../api/settings";
+import { loadSettings, saveSettings, loadVisibilityFromApi, type ColumnVisibility } from "../api/settings";
 
-type SortField = "date" | "total_time" | "aircraft_type" | "aircraft_reg" | "departure" | "arrival" | "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "solo_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time" | "takeoffs_day" | "takeoffs_night" | "landings_day" | "landings_night" | "precision_approaches" | "non_precision_approaches" | "holding_patterns";
+// ── Domain-specific types ────────────────────────────────────────────────────
+
+/** Which flight field to sort by. Each value matches a key on the Flight type. */
+type SortField =
+  | "date" | "total_time" | "aircraft_type" | "aircraft_reg"
+  | "departure" | "arrival"
+  | "sel_time" | "ses_time" | "mel_time" | "mes_time"
+  | "helicopter_time" | "glider_time"
+  | "solo_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time"
+  | "xcountry_time" | "night_time"
+  | "takeoffs_day" | "takeoffs_night"
+  | "landings_day" | "landings_night"
+  | "precision_approaches" | "non_precision_approaches"
+  | "holding_patterns";
+
+/** Ascending or descending sort direction. */
 type SortDir = "asc" | "desc";
-type FilterKey = "sel_time" | "ses_time" | "mel_time" | "mes_time" | "helicopter_time" | "glider_time" | "solo_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time" | "xcountry_time" | "night_time" | "takeoffs_day" | "takeoffs_night" | "landings_day" | "landings_night" | "precision_approaches" | "non_precision_approaches" | "holding_patterns" | "";
 
+/**
+ * Which quick filter is active. The empty string means "no filter".
+ * When a FilterKey is set (e.g. "solo_time"), only flights where that
+ * numeric field is > 0 are shown.
+ */
+type FilterKey =
+  | "sel_time" | "ses_time" | "mel_time" | "mes_time"
+  | "helicopter_time" | "glider_time"
+  | "solo_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time"
+  | "xcountry_time" | "night_time"
+  | "takeoffs_day" | "takeoffs_night"
+  | "landings_day" | "landings_night"
+  | "precision_approaches" | "non_precision_approaches"
+  | "holding_patterns"
+  | "";
+
+/** Describes a single table column: identity key, human-readable label, and rendering function. */
 interface ColumnDef {
   key: string;
   label: string;
+  /** Given a Flight object, return the React node to display in this column's cells. */
   render: (flight: Flight) => React.ReactNode;
+  /** If true, the column is always rendered regardless of the user's visibility settings. */
   alwaysVisible?: boolean;
 }
 
-const PAGE_SIZE_OPTIONS = [10, 15, 25, 50, 100, 0] as const; // 0 means "All"
+/** Available page-size options. 0 is a sentinel meaning "show all rows". */
+const PAGE_SIZE_OPTIONS = [10, 15, 25, 50, 100, 0] as const;
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 export default function Logbook() {
+  // ── Data state ────────────────────────────────────────────────────────────
+
+  /** The full list of flights fetched from the API. */
   const [flights, setFlights] = useState<Flight[]>([]);
+
+  /** If set, the API call failed and this is the error message to display. */
   const [error, setError] = useState("");
+
+  // ── Search & pagination ───────────────────────────────────────────────────
+
+  /** Current free-text search string. Reset to "" to show all results. */
   const [search, setSearch] = useState("");
+
+  /** Current page index (0-based). Reset to 0 whenever search/filter/sort changes. */
   const [page, setPage] = useState(0);
+
+  // ── Sort state ────────────────────────────────────────────────────────────
 
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  /** Whether the sort-column dropdown menu is open. */
   const [showSortMenu, setShowSortMenu] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
+
+  // ── Quick-filter state ────────────────────────────────────────────────────
 
   const [activeFilter, setActiveFilter] = useState<FilterKey>("");
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
 
-  // Page size persisted in settings
+  // ── Persisted settings ────────────────────────────────────────────────────
+
+  /**
+   * Page size (number of rows per page). Initialised from localStorage on mount
+   * so the user's preference survives page reloads. 0 means "All".
+   */
   const [pageSize, setPageSize] = useState<number>(() => loadSettings().pageSize);
 
+  /** Persist a new page size to localStorage and reset to the first page. */
   const persistPageSize = (size: number) => {
     setPageSize(size);
     setPage(0);
@@ -42,19 +120,46 @@ export default function Logbook() {
     saveSettings(s);
   };
 
-  // Column visibility from settings
-  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(() => loadSettings().columnVisibility);
+  /**
+   * Which columns are visible. Loaded from localStorage on initial render.
+   * A custom "settingsUpdated" event keeps this in sync when the user changes
+   * visibility in the Settings page while the Logbook is already open.
+   */
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
+    () => loadSettings().columnVisibility
+  );
+
+  // Listen for settings changes broadcast by the Settings page
   useEffect(() => {
     const handler = () => setColumnVisibility(loadSettings().columnVisibility);
     window.addEventListener("settingsUpdated", handler);
     return () => window.removeEventListener("settingsUpdated", handler);
   }, []);
 
+  // ── Data fetching ─────────────────────────────────────────────────────────
+
+  /** Fetch all flights on mount. */
   useEffect(() => {
     api.listFlights().then(setFlights).catch((e) => setError(e.message));
   }, []);
 
-  // Close menus on outside click
+  /**
+   * Fetch column visibility from the backend API on mount.
+   * The API stores per-user preferences that survive localStorage clears.
+   * Once fetched we merge them into localStorage so loadSettings() stays consistent.
+   */
+  useEffect(() => {
+    loadVisibilityFromApi().then(({ columnVisibility: cv }) => {
+      setColumnVisibility(cv);
+      const s = loadSettings();
+      s.columnVisibility = cv;
+      saveSettings(s);
+    });
+  }, []);
+
+  // ── Outside-click handling for dropdown menus ─────────────────────────────
+
+  /** Close sort/filter menus when the user clicks anywhere outside them. */
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (sortRef.current && !sortRef.current.contains(e.target as Node)) setShowSortMenu(false);
@@ -64,10 +169,13 @@ export default function Logbook() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // ── Error state ───────────────────────────────────────────────────────────
+
   if (error) {
     return (
       <div className="p-8 text-center animate-fade-in">
         <div className="inline-flex items-center gap-2 bg-red-100 text-red-700 px-4 py-3 rounded-lg">
+          {/* Exclamation-triangle icon */}
           <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -77,8 +185,12 @@ export default function Logbook() {
     );
   }
 
-  // Filter by search term
+  // ── Filtering logic ───────────────────────────────────────────────────────
+
+  /** Lowercased, trimmed search query for case-insensitive matching. */
   const q = search.toLowerCase().trim();
+
+  // Step 1: apply the free-text search across several text fields
   let filtered = q
     ? flights.filter(
         (f) =>
@@ -91,7 +203,8 @@ export default function Logbook() {
       )
     : [...flights];
 
-  // Apply quick filter
+  // Step 2: apply the optional quick filter (show only rows with a positive value)
+  // Each branch checks a specific Flight field and keeps rows where it is > 0.
   if (activeFilter === "sel_time") filtered = filtered.filter((f) => f.sel_time > 0);
   if (activeFilter === "ses_time") filtered = filtered.filter((f) => f.ses_time > 0);
   if (activeFilter === "mel_time") filtered = filtered.filter((f) => f.mel_time > 0);
@@ -113,10 +226,14 @@ export default function Logbook() {
   if (activeFilter === "non_precision_approaches") filtered = filtered.filter((f) => f.non_precision_approaches > 0);
   if (activeFilter === "holding_patterns") filtered = filtered.filter((f) => f.holding_patterns > 0);
 
-  // Apply sort
+  // ── Sorting ───────────────────────────────────────────────────────────────
+
+  /** Sort the filtered list in-place by the selected field and direction. */
   filtered.sort((a, b) => {
+    // Use safe defaults (empty string or 0) for missing values
     let aVal: string | number = a[sortField] ?? "";
     let bVal: string | number = b[sortField] ?? "";
+    // String comparisons are case-insensitive
     if (typeof aVal === "string" && typeof bVal === "string") {
       aVal = aVal.toLowerCase();
       bVal = bVal.toLowerCase();
@@ -126,12 +243,24 @@ export default function Logbook() {
     return 0;
   });
 
-  // Paginate — pageSize === 0 means "All"
+  // ── Pagination ────────────────────────────────────────────────────────────
+
+  /** When pageSize === 0 we treat it as "show all rows" by setting the size to the full count. */
   const effectivePageSize = pageSize === 0 ? filtered.length : pageSize;
+  /** Total number of pages. At minimum 1 (even when there are zero rows). */
   const totalPages = Math.max(1, Math.ceil(filtered.length / effectivePageSize));
+  /** Clamp the current page to a valid range in case the filter reduced results below the current page. */
   const safePage = Math.min(page, totalPages - 1);
+  /** Slice of rows for the current page. */
   const paged = filtered.slice(safePage * effectivePageSize, (safePage + 1) * effectivePageSize);
 
+  // ── Actions ───────────────────────────────────────────────────────────────
+
+  /**
+   * Delete a flight record after user confirmation.
+   * On success the flight is removed from local state so the UI updates immediately
+   * without a re-fetch.
+   */
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this flight record?")) return;
     try {
@@ -142,6 +271,9 @@ export default function Logbook() {
     }
   };
 
+  // ── Dropdown option definitions ───────────────────────────────────────────
+
+  /** Every field the user can sort by, with a human-readable label and the matching Flight key. */
   const sortOptions: { label: string; field: SortField }[] = [
     { label: "Date", field: "date" },
     { label: "Total Time", field: "total_time" },
@@ -171,6 +303,7 @@ export default function Logbook() {
     { label: "Holding Patterns", field: "holding_patterns" },
   ];
 
+  /** Every quick-filter option. */
   const filterOptions: { label: string; key: FilterKey }[] = [
     { label: "Single Engine Land", key: "sel_time" },
     { label: "Single Engine Sea", key: "ses_time" },
@@ -194,7 +327,14 @@ export default function Logbook() {
     { label: "Holding Patterns", key: "holding_patterns" },
   ];
 
-  // Map sort/filter keys to ColumnVisibility keys so hidden columns hide their options
+  /**
+   * Mapping from SortField / FilterKey strings to the ColumnVisibility keys used
+   * in settings. This lets us hide sort/filter options when the corresponding column
+   * is hidden — there's no point sorting by a column the user chose to hide.
+   *
+   * NOTE: includes some keys (departureTime, arrivalTime) not present in sortOptions
+   * but needed for completeness; they simply won't match any sort option.
+   */
   const sortToColumnKey: Record<string, keyof ColumnVisibility> = {
     date: "date",
     total_time: "totalTime",
@@ -226,13 +366,28 @@ export default function Logbook() {
     holding_patterns: "holdingPatterns",
   };
 
-  const availableSortOptions = sortOptions.filter((opt) => columnVisibility[sortToColumnKey[opt.field]]);
-  const availableFilterOptions = filterOptions.filter((opt) => columnVisibility[sortToColumnKey[opt.key]]);
+  /** Sort options filtered to only include columns the user hasn't hidden. */
+  const availableSortOptions = sortOptions.filter(
+    (opt) => columnVisibility[sortToColumnKey[opt.field]]
+  );
+
+  /** Filter options filtered the same way. */
+  const availableFilterOptions = filterOptions.filter(
+    (opt) => columnVisibility[sortToColumnKey[opt.key]]
+  );
 
   const activeSortLabel = sortOptions.find((o) => o.field === sortField)?.label ?? "Date";
   const activeFilterLabel = filterOptions.find((o) => o.key === activeFilter)?.label;
 
-  // Define all columns once — Actions is always visible, independent of settings
+  // ── Column definitions ────────────────────────────────────────────────────
+
+  /**
+   * All columns the table could display. Each entry specifies a unique key,
+   * a header label, and a render function that extracts/transforms the Flight data.
+   *
+   * The "actions" column has alwaysVisible: true to ensure the edit/delete buttons
+   * are never hidden by the column-visibility settings.
+   */
   const allColumns: ColumnDef[] = [
     { key: "date", label: "Date", render: (f) => f.date },
     { key: "aircraftType", label: "Aircraft Type", render: (f) => f.aircraft_type },
@@ -270,20 +425,24 @@ export default function Logbook() {
       alwaysVisible: true,
       render: (f) => (
         <div className="flex items-center gap-1">
+          {/* Emit a custom event that the parent layout can listen for to open the edit modal */}
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("edit-flight", { detail: f.id }))}
             className="p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
             title="Edit flight"
           >
+            {/* Pencil icon */}
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
           </button>
+          {/* Trash icon — triggers handleDelete with confirmation */}
           <button
             onClick={() => handleDelete(f.id)}
             className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
             title="Delete flight"
           >
+            {/* Trash icon */}
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
@@ -293,12 +452,16 @@ export default function Logbook() {
     },
   ];
 
-  // Only show visible columns — the Actions column is always visible regardless of settings
+  /**
+   * The subset of columns to actually render. The "actions" column is always
+   * included regardless of the user's visibility preferences.
+   */
   const visibleColumns = allColumns.filter(
     (col) => col.alwaysVisible || columnVisibility[col.key as keyof ColumnVisibility]
   );
 
-  // Empty state — no flights at all
+  // ── Empty state (no flights at all) ───────────────────────────────────────
+
   if (flights.length === 0) {
     return (
       <div className="p-8 text-center animate-fade-in">
@@ -308,10 +471,12 @@ export default function Logbook() {
           <p className="text-gray-500 mb-6 dark:text-white">
             Ready for takeoff? Add your first flight to get started.
           </p>
+          {/* Emit a custom event that the parent layout can listen for to navigate to the add-flight page */}
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("navigate", { detail: "add" }))}
             className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors btn-primary"
           >
+            {/* Plus icon */}
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
@@ -322,12 +487,15 @@ export default function Logbook() {
     );
   }
 
+  // ── Main render ───────────────────────────────────────────────────────────
+
   return (
     <div className="p-4 sm:p-8 max-w-[95%] mx-auto animate-fade-in">
+      {/* ── Header bar: title + sort/filter/search controls ────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Logbook</h1>
         <div className="flex items-center gap-2">
-          {/* Sort dropdown */}
+          {/* ── Sort dropdown ──────────────────────────────────────────────── */}
           <div className="relative" ref={sortRef}>
             <button
               onClick={() => { setShowSortMenu((v) => !v); setShowFilterMenu(false); }}
@@ -337,22 +505,27 @@ export default function Logbook() {
                   : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-zinc-900 dark:border-zinc-600 dark:text-white dark:hover:bg-zinc-800"
               }`}
             >
+              {/* Sort icon */}
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 17h6m-6-5h9m5-1v8m0 0l3-3m-3 3l-3-3M4 7h12" />
               </svg>
               <span>{activeSortLabel}</span>
+              {/* Chevron */}
               <svg className={`w-3.5 h-3.5 transition-transform ${showSortMenu ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
             {showSortMenu && (
               <div className="absolute left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 dark:bg-zinc-800 dark:border-zinc-600">
-                <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide dark:text-white">Sort by</div>
+                <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide dark:text-white">
+                  Sort by
+                </div>
                 <div className="max-h-64 overflow-y-auto">
                   {availableSortOptions.map((opt) => (
                     <button
                       key={opt.field}
                       onClick={() => {
+                        // Tapping the same field toggles direction; tapping a new field defaults to descending
                         if (sortField === opt.field) {
                           setSortDir((d) => (d === "asc" ? "desc" : "asc"));
                         } else {
@@ -363,10 +536,13 @@ export default function Logbook() {
                         setShowSortMenu(false);
                       }}
                       className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-gray-50 transition-colors ${
-                        sortField === opt.field ? "text-blue-600 font-medium dark:hover:bg-zinc-700" : "text-gray-700 dark:text-white dark:hover:bg-zinc-700"
+                        sortField === opt.field
+                          ? "text-blue-600 font-medium dark:hover:bg-zinc-700"
+                          : "text-gray-700 dark:text-white dark:hover:bg-zinc-700"
                       }`}
                     >
                       <span>{opt.label}</span>
+                      {/* Show current direction indicator next to the active option */}
                       {sortField === opt.field && (
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           {sortDir === "desc"
@@ -378,16 +554,25 @@ export default function Logbook() {
                     </button>
                   ))}
                 </div>
+                {/* Inline direction toggle inside the dropdown */}
                 <div className="border-t border-gray-100 mt-1 pt-1 px-3 pb-1">
                   <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Direction</div>
                   <div className="flex gap-1">
                     <button
                       onClick={() => { setSortDir("asc"); setPage(0); setShowSortMenu(false); }}
-                      className={`flex-1 py-1 text-xs rounded-md font-medium transition-colors ${sortDir === "asc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:text-white dark:bg-zinc-700 dark:hover:bg-zinc-600"}`}
+                      className={`flex-1 py-1 text-xs rounded-md font-medium transition-colors ${
+                        sortDir === "asc"
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:text-white dark:bg-zinc-700 dark:hover:bg-zinc-600"
+                      }`}
                     >↑ Asc</button>
                     <button
                       onClick={() => { setSortDir("desc"); setPage(0); setShowSortMenu(false); }}
-                      className={`flex-1 py-1 text-xs rounded-md font-medium transition-colors ${sortDir === "desc" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:text-white dark:bg-zinc-700 dark:hover:bg-zinc-600"}`}
+                      className={`flex-1 py-1 text-xs rounded-md font-medium transition-colors ${
+                        sortDir === "desc"
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:text-white dark:bg-zinc-700 dark:hover:bg-zinc-600"
+                      }`}
                     >↓ Desc</button>
                   </div>
                 </div>
@@ -395,7 +580,7 @@ export default function Logbook() {
             )}
           </div>
 
-          {/* Filter dropdown */}
+          {/* ── Filter dropdown ────────────────────────────────────────────── */}
           <div className="relative" ref={filterRef}>
             <button
               onClick={() => { setShowFilterMenu((v) => !v); setShowSortMenu(false); }}
@@ -407,10 +592,12 @@ export default function Logbook() {
                   : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:text-white dark:bg-zinc-900 dark:border-zinc-600 dark:hover:bg-zinc-800"
               }`}
             >
+              {/* Funnel icon */}
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M22 3H2l8 10v4l4 4v-8z" />
               </svg>
               <span>{activeFilterLabel ?? "Filter"}</span>
+              {/* When a filter is active show a dismiss "×" chip */}
               {activeFilter && (
                 <span
                   onClick={(e) => { e.stopPropagation(); setActiveFilter(""); setPage(0); }}
@@ -431,6 +618,7 @@ export default function Logbook() {
                     <button
                       key={opt.key}
                       onClick={() => {
+                        // Tapping the same filter again clears it
                         setActiveFilter(activeFilter === opt.key ? "" : opt.key);
                         setPage(0);
                         setShowFilterMenu(false);
@@ -463,8 +651,9 @@ export default function Logbook() {
             )}
           </div>
 
-          {/* Search */}
+          {/* ── Search input ───────────────────────────────────────────────── */}
           <div className="relative">
+            {/* Magnifying glass icon */}
             <svg
               className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
               fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -482,9 +671,10 @@ export default function Logbook() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* ── Table ──────────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden dark:bg-zinc-800 dark:border-zinc-600">
         {filtered.length === 0 ? (
+          /* Empty result state: search/filter narrowed results to zero */
           <div className="text-center py-12 text-gray-500 dark:text-white">
             <p className="text-lg">No flights match your search{activeFilter ? " or filter" : ""}.</p>
             <button
@@ -496,9 +686,11 @@ export default function Logbook() {
           </div>
         ) : (
           <>
+            {/* Scrollable table wrapper — max-height prevents the table from pushing the page footer off-screen */}
             <div className="overflow-x-auto max-h-[calc(100vh-16rem)]">
               <table className="w-full text-center">
                 <thead>
+                  {/* Sticky header so column labels stay visible while scrolling vertically */}
                   <tr className="border-b-2 border-gray-200 bg-gray-50 dark:bg-zinc-900 dark:border-zinc-600 sticky top-0 z-10">
                     {visibleColumns.map((col) => (
                       <th key={col.key} className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">
@@ -512,6 +704,7 @@ export default function Logbook() {
                     <tr
                       key={flight.id}
                       className="border-b border-gray-100 hover:bg-gray-50 dark:hover:bg-zinc-700 logbook-row"
+                      /* Staggered animation delay for a subtle cascade effect on page load */
                       style={{ animationDelay: `${idx * 30}ms` }}
                     >
                       {visibleColumns.map((col) => (
@@ -530,8 +723,9 @@ export default function Logbook() {
               </table>
             </div>
 
-            {/* Pagination */}
+            {/* ── Pagination bar ───────────────────────────────────────────── */}
             <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-600 dark:bg-zinc-900 dark:border-zinc-600 dark:text-gray-300">
+              {/* Page-size selector */}
               <div className="flex items-center gap-2">
                 <span className="text-gray-500 dark:text-gray-400">Rows:</span>
                 <select
@@ -547,13 +741,16 @@ export default function Logbook() {
                 </select>
               </div>
 
+              {/* Pagination controls — only render when there is more than one page */}
               {totalPages > 1 && (
                 <>
                   <span className="hidden sm:inline">
-                    Showing {safePage * effectivePageSize + 1}–{Math.min((safePage + 1) * effectivePageSize, filtered.length)} of{" "}
+                    Showing {safePage * effectivePageSize + 1}–
+                    {Math.min((safePage + 1) * effectivePageSize, filtered.length)} of{" "}
                     {filtered.length} flights
                   </span>
                   <div className="flex items-center gap-1">
+                    {/* Previous page */}
                     <button
                       onClick={() => setPage((p) => Math.max(0, p - 1))}
                       disabled={safePage === 0}
@@ -561,6 +758,7 @@ export default function Logbook() {
                     >
                       ‹ Prev
                     </button>
+                    {/* Page-number buttons — show at most 5, centred around the current page */}
                     {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                       const start = Math.max(0, Math.min(safePage - 2, totalPages - 5));
                       const pg = start + i;
@@ -578,6 +776,7 @@ export default function Logbook() {
                         </button>
                       );
                     })}
+                    {/* Next page */}
                     <button
                       onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                       disabled={safePage >= totalPages - 1}
@@ -588,6 +787,7 @@ export default function Logbook() {
                   </div>
                 </>
               )}
+              {/* Single-page summary when totalPages <= 1 */}
               {totalPages <= 1 && (
                 <span className="text-gray-500 dark:text-gray-400">
                   {filtered.length} flight{filtered.length !== 1 ? "s" : ""}

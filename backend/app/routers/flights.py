@@ -1,4 +1,19 @@
-"""Flight CRUD API routes — scoped to authenticated user."""
+"""
+Flight CRUD API routes — scoped to the authenticated user.
+
+All endpoints require a valid ``Authorization: Bearer <token>`` header.
+The ``_get_user_id()`` helper extracts the user from the session token
+on every request, ensuring that users can only see/modify their own
+flight records (multi-tenant data isolation).
+
+Endpoints:
+  - GET    /api/flights          — List all flights for the current user.
+  - GET    /api/flights/{id}     — Get a single flight by ID.
+  - POST   /api/flights          — Create a new flight entry.
+  - PUT    /api/flights/{id}     — Update an existing flight entry.
+  - DELETE /api/flights/{id}     — Delete a flight entry.
+  - GET    /api/dashboard/stats  — Aggregated statistics for dashboard.
+"""
 
 from typing import List
 from fastapi import APIRouter, HTTPException, Header
@@ -10,7 +25,12 @@ router = APIRouter()
 
 
 def _get_user_id(authorization: str) -> int:
-    """Extract user_id from Authorization header. Raises 401 if invalid."""
+    """Extract the authenticated user's ID from the Authorization header.
+
+    Looks up the Bearer token in the ``sessions`` table. Raises a 401
+    if the token is missing, expired, or invalid. This is called by
+    every protected endpoint to scope the database query.
+    """
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization required")
     token = authorization.replace("Bearer ", "").strip()
@@ -27,7 +47,13 @@ def _get_user_id(authorization: str) -> int:
 
 
 def row_to_flight_response(row) -> dict:
-    """Convert a sqlite3.Row to a dict for FlightResponse."""
+    """Convert a ``sqlite3.Row`` to a plain dict matching ``FlightResponse``.
+
+    SQLite returns rows as named tuples (via ``row_factory=sqlite3.Row``).
+    Pydantic v2 can accept these when ``from_attributes=True``, but the
+    explicit dict conversion ensures we handle any null / type coercion
+    issues that SQLite might introduce (e.g. returning None for defaults).
+    """
     return {
         "id": row["id"],
         "date": row["date"],
@@ -69,7 +95,11 @@ def row_to_flight_response(row) -> dict:
 
 @router.get("/flights", response_model=List[FlightResponse])
 async def list_flights(authorization: str = Header(None)):
-    """Get all flight entries for the authenticated user, ordered by date descending."""
+    """Get all flights for the authenticated user.
+
+    Results are ordered by date descending (most recent first),
+    with ties broken by ID descending (most recently created first).
+    """
     user_id = _get_user_id(authorization)
     conn = get_connection()
     try:
@@ -84,7 +114,11 @@ async def list_flights(authorization: str = Header(None)):
 
 @router.get("/flights/{flight_id}", response_model=FlightResponse)
 async def get_flight(flight_id: int, authorization: str = Header(None)):
-    """Get a single flight entry by ID (must belong to the authenticated user)."""
+    """Get a single flight entry by ID.
+
+    The flight must belong to the authenticated user; otherwise a 404
+    is returned (we do not reveal whether the record exists for another user).
+    """
     user_id = _get_user_id(authorization)
     conn = get_connection()
     try:
@@ -100,7 +134,11 @@ async def get_flight(flight_id: int, authorization: str = Header(None)):
 
 @router.post("/flights", response_model=FlightResponse, status_code=201)
 async def create_flight(flight: FlightCreate, authorization: str = Header(None)):
-    """Create a new flight entry for the authenticated user."""
+    """Create a new flight entry for the authenticated user.
+
+    Returns the created record (with its auto-generated ID and created_at
+    timestamp) in the response body with HTTP 201.
+    """
     user_id = _get_user_id(authorization)
     conn = get_connection()
     try:
@@ -162,7 +200,12 @@ async def create_flight(flight: FlightCreate, authorization: str = Header(None))
 
 @router.put("/flights/{flight_id}", response_model=FlightResponse)
 async def update_flight(flight_id: int, flight: FlightUpdate, authorization: str = Header(None)):
-    """Update an existing flight entry (must belong to the authenticated user)."""
+    """Update an existing flight entry.
+
+    Only the fields present in the request body are updated (PATCH-style
+    semantics via ``FlightUpdate`` where all fields are optional).
+    The flight must belong to the authenticated user.
+    """
     user_id = _get_user_id(authorization)
     conn = get_connection()
     try:
@@ -172,6 +215,9 @@ async def update_flight(flight_id: int, flight: FlightUpdate, authorization: str
         if not existing:
             raise HTTPException(status_code=404, detail="Flight not found")
 
+        # Build a dynamic UPDATE statement with only the provided fields.
+        # ``model_fields_set`` is a Pydantic v2 feature that lists which
+        # fields were explicitly set (not just defaulted).
         updates = {}
         for field in flight.model_fields_set:
             value = getattr(flight, field)
@@ -181,6 +227,7 @@ async def update_flight(flight_id: int, flight: FlightUpdate, authorization: str
                 updates[field] = value
 
         if not updates:
+            # No fields to update — return the existing record unchanged.
             return row_to_flight_response(existing)
 
         set_clause = ", ".join(f"{k} = ?" for k in updates)
@@ -202,7 +249,11 @@ async def update_flight(flight_id: int, flight: FlightUpdate, authorization: str
 
 @router.delete("/flights/{flight_id}", status_code=204)
 async def delete_flight(flight_id: int, authorization: str = Header(None)):
-    """Delete a flight entry (must belong to the authenticated user)."""
+    """Delete a flight entry by ID.
+
+    Returns HTTP 204 No Content on success. If the flight does not exist
+    or belongs to a different user, a 404 is returned.
+    """
     user_id = _get_user_id(authorization)
     conn = get_connection()
     try:
@@ -218,7 +269,11 @@ async def delete_flight(flight_id: int, authorization: str = Header(None)):
 
 @router.get("/dashboard/stats", response_model=DashboardStats)
 async def get_dashboard_stats(authorization: str = Header(None)):
-    """Get aggregated dashboard statistics for the authenticated user."""
+    """Get aggregated statistics for the Dashboard page.
+
+    All stats are computed server-side via SQL aggregate functions to
+    minimise data transfer. The results are specific to the authenticated user.
+    """
     user_id = _get_user_id(authorization)
     conn = get_connection()
     try:

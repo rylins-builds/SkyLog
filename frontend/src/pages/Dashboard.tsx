@@ -1,3 +1,19 @@
+/**
+ * SkyLog Dashboard Page
+ *
+ * This is the landing page shown after the user authenticates. It displays:
+ *   1. **Stat cards** — aggregated flight metrics (total flights, hours, etc.)
+ *      computed server-side via ``GET /api/dashboard/stats``.
+ *   2. **Recent flights** — the 5 most recent entries in a compact table.
+ *
+ * The page has three visual states managed by React:
+ *   - **Loading** — skeleton placeholders while the API call is in flight.
+ *   - **Empty** — a welcome message with a CTA to log the first flight.
+ *   - **Data** — stat cards + recent flights table.
+ *
+ * @module pages/Dashboard
+ */
+
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { DashboardStats, Flight } from "../api/types";
@@ -7,6 +23,8 @@ export default function Dashboard() {
   const [recentFlights, setRecentFlights] = useState<Flight[]>([]);
   const [error, setError] = useState("");
 
+  // On mount, fetch both the aggregated stats and the full flight list
+  // in parallel, then take the 5 most recent for the "Recent Flights" table.
   useEffect(() => {
     Promise.all([
       api.getDashboardStats(),
@@ -19,6 +37,7 @@ export default function Dashboard() {
       .catch((e) => setError(e.message));
   }, []);
 
+  // ── Error state ──
   if (error) {
     return (
       <div className="p-8 text-center animate-fade-in">
@@ -32,6 +51,7 @@ export default function Dashboard() {
     );
   }
 
+  // ── Loading state (skeleton) ──
   if (!stats) {
     return (
       <div className="p-8 max-w-[80%] mx-auto animate-fade-in">
@@ -48,18 +68,18 @@ export default function Dashboard() {
     );
   }
 
-  // If no flights logged
+  // ── Empty state (no flights logged yet) ──
   if (stats.total_flights === 0) {
     return (
       <div className="p-4 sm:p-8 max-w-4xl mx-auto animate-fade-in dark:bg-zinc-800">
         <h1 className="text-3xl font-bold text-gray-900 mb-6 dark:text-white">Dashboard</h1>
         <div className="text-center py-16">
-          {/* Aviation icon */}
           <div className="text-6xl mb-4">✈️</div>
           <h2 className="text-xl font-semibold text-gray-700 mb-2 dark:text-white">Welcome to SkyLog!</h2>
           <p className="text-gray-500 mb-6 dark:text-white">
             Your flight data will appear here once you start logging.
           </p>
+          {/* Navigate to the Add Flight page via custom event */}
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("navigate", { detail: "add" }))}
             className="inline-flex items-center gap-2 bg-blue-600 dark:bg-blue-800 dark:text-white text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors btn-primary"
@@ -74,11 +94,12 @@ export default function Dashboard() {
     );
   }
 
+  // ── Data state ──
   return (
     <div className="p-4 sm:p-8 max-w-[80%] mx-auto animate-fade-in dark:bg-zinc-800">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Dashboard</h1>
 
-      {/* Stat Cards */}
+      {/* Stat Cards — each card shows one aggregated metric */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 dark:text-white dark:bg-zinc-800 dark:border-zinc-300">
         <StatCard label="Total Flights" value={stats.total_flights} icon="📊" />
         <StatCard label="Total Hours" value={`${stats.total_hours.toFixed(1)}`} icon="⏱️" />
@@ -88,11 +109,12 @@ export default function Dashboard() {
         <StatCard label="Unique Aircraft" value={stats.unique_aircraft} icon="🛩️" />
       </div>
 
-      {/* Recent Flights Section */}
+      {/* Recent Flights Section — compact table of the 5 most recent entries */}
       {recentFlights.length > 0 && (
         <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden animate-slide-up dark:bg-zinc-900 dark:border-zinc-600">
           <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Flights</h2>
+            {/* Link to the full logbook page */}
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("navigate", { detail: "logbook" }))}
               className="text-sm text-blue-600 hover:text-blue-700 font-medium dark:text-blue-400 dark:hover:text-blue-300"
@@ -106,8 +128,8 @@ export default function Dashboard() {
                 <tr className="bg-gray-50 dark:bg-zinc-800">
                   <th className="px-6 py-3 text-sm font-semibold text-gray-600 dark:text-white">Date</th>
                   <th className="px-6 py-3 text-sm font-semibold text-gray-600 dark:text-white">Aircraft</th>
+                  <th className="px-6 py-3 text-sm font-semibold text-gray-600 dark:text-white">Registration</th>
                   <th className="px-6 py-3 text-sm font-semibold text-gray-600 dark:text-white">From → To</th>
-                  <th className="px-6 py-3 text-sm font-semibold text-gray-600 dark:text-white">Duration</th>
                   <th className="px-6 py-3 text-sm font-semibold text-gray-600 dark:text-white">Total</th>
                   <th className="px-6 py-3 text-sm font-semibold text-gray-600 dark:text-white">PIC</th>
                   <th className="px-6 py-3 text-sm font-semibold text-gray-600 dark:text-white">SIC</th>
@@ -118,6 +140,7 @@ export default function Dashboard() {
                   <tr
                     key={flight.id}
                     className="border-b border-gray-50 hover:bg-gray-50 logbook-row dark:border-zinc-600 dark:hover:bg-zinc-700"
+                    // Stagger the entrance animation slightly for each row
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
                     <td className="px-6 py-3 text-sm text-gray-900 dark:text-white">{flight.date}</td>
@@ -138,6 +161,13 @@ export default function Dashboard() {
   );
 }
 
+/**
+ * A single stat card displaying a labelled metric with an emoji icon.
+ *
+ * @param label - The human-readable label (e.g. "Total Flights").
+ * @param value - The numeric or string value to display prominently.
+ * @param icon - An emoji string to show alongside the label.
+ */
 function StatCard({
   label,
   value,
