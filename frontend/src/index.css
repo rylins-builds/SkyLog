@@ -33,6 +33,10 @@
 }
 
 /* ── Base Styles ── */
+html, body {
+  overflow: hidden;
+}
+
 #root {
   width: 100%;
   min-height: 100svh;  /* Use small-viewport-height to avoid mobile browser chrome issues */

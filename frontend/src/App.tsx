@@ -261,7 +261,7 @@ export default function App() {
   );
 
   return (
-    <div className="h-screen flex flex-col bg-zinc-50 dark:bg-zinc-800">
+    <div className="h-screen flex flex-col bg-zinc-50 dark:bg-zinc-800 overflow-hidden">
       {/* ════════════════════════════════════════
           Navigation Header (non-scrollable)
           ════════════════════════════════════════ */}
