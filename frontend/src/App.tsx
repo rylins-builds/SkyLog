@@ -261,11 +261,11 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-800">
+    <div className="h-screen flex flex-col bg-zinc-50 dark:bg-zinc-800">
       {/* ════════════════════════════════════════
-          Navigation Header
+          Navigation Header (non-scrollable)
           ════════════════════════════════════════ */}
-      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10 dark:bg-zinc-900 dark:border-zinc-900 relative">
+      <header className="bg-white shadow-sm border-b border-gray-200 shrink-0 relative dark:bg-zinc-900 dark:border-zinc-900">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
@@ -342,9 +342,9 @@ export default function App() {
       </header>
 
       {/* ════════════════════════════════════════
-          Page Content
+          Page Content (scrollable, fills remaining height)
           ════════════════════════════════════════ */}
-      <main className="animate-fade-in" key={`${currentPage}-${editingFlightId ?? "new"}`}>
+      <main className="flex-1 overflow-y-auto animate-fade-in" key={`${currentPage}-${editingFlightId ?? "new"}`}>
         {currentPage === "dashboard" && <Dashboard />}
         {currentPage === "logbook" && <Logbook />}
         {currentPage === "currency" && <Currency />}
