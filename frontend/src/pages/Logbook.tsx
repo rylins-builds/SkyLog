@@ -517,7 +517,7 @@ export default function Logbook() {
             </button>
             {showSortMenu && (
               <div className="absolute left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 dark:bg-zinc-800 dark:border-zinc-600">
-                <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide dark:text-white">
+                <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">
                   Sort by
                 </div>
                 <div className="max-h-64 overflow-y-auto">
