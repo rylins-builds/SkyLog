@@ -66,8 +66,9 @@ export default function FAA8710() {
 
   // ── Future: the FAA 8710 form will render here ──
   return (
-    <div className="p-8 max-w-[80%] mx-auto animate-fade-in">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6 dark:text-white">FAA 8710</h1>
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto animate-fade-in">
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">FAA 8710</h1>
+      <p className="text-gray-500 dark:text-gray-400">FAA Form 8710 generation coming soon.</p>
       {/* TODO: Build the 8710 form using flight data */}
     </div>
   );

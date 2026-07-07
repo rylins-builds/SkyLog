@@ -492,9 +492,9 @@ export default function Logbook() {
   return (
     <div className="p-4 sm:p-8 max-w-[95%] mx-auto animate-fade-in">
       {/* ── Header bar: title + sort/filter/search controls ────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Logbook</h1>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Logbook</h1>
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
           {/* ── Sort dropdown ──────────────────────────────────────────────── */}
           <div className="relative" ref={sortRef}>
             <button
@@ -665,7 +665,7 @@ export default function Logbook() {
               placeholder="Search flights..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-              className="pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48 sm:w-56"
+              className="pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-56"
             />
           </div>
         </div>
@@ -693,7 +693,7 @@ export default function Logbook() {
                   {/* Sticky header so column labels stay visible while scrolling vertically */}
                   <tr className="border-b-2 border-gray-200 bg-gray-50 dark:bg-zinc-900 dark:border-zinc-600 sticky top-0 z-10">
                     {visibleColumns.map((col) => (
-                      <th key={col.key} className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">
+                      <th key={col.key} className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-600 dark:text-white">
                         {col.label}
                       </th>
                     ))}
@@ -710,7 +710,7 @@ export default function Logbook() {
                       {visibleColumns.map((col) => (
                         <td
                           key={col.key}
-                          className={`px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white ${
+                          className={`px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 whitespace-nowrap dark:text-white ${
                             col.key === "actions" ? "row-actions" : ""
                           }`}
                         >
