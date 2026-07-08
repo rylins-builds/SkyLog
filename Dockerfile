@@ -1,5 +1,7 @@
-# Stage 1: Build the React frontend
-FROM node:22-alpine AS frontend-build
+# ── Frontend build ──
+FROM alpine:latest AS frontend-build
+
+RUN apk add --no-cache nodejs npm
 
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
@@ -7,22 +9,29 @@ RUN npm ci
 COPY frontend/ .
 RUN npm run build
 
-# Stage 2: Python backend with built frontend
-FROM python:3.12-slim
+# ── Backend build ──
+FROM alpine:latest AS backend-build
+
+RUN apk add --no-cache go gcc musl-dev
 
 WORKDIR /app
+COPY backend-go/go.mod backend-go/go.sum ./
+RUN go mod download
+COPY backend-go/ .
+RUN CGO_ENABLED=0 go build -o skylog .
 
-# Copy backend
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# ── Runtime ──
+FROM alpine:latest
 
-COPY backend/ .
+WORKDIR /app
+RUN mkdir -p /app/data /app/static
 
-# Copy built frontend
+COPY --from=backend-build /app/skylog .
 COPY --from=frontend-build /app/frontend/dist /app/static
 
-# Expose the public port
 EXPOSE 3000
 
-# Run the server bound to all interfaces on port 3000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3000"]
+ENV PORT=3000
+ENV SKYLOG_DB_PATH=/app/data/skylog.db
+
+CMD ["./skylog"]
