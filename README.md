@@ -17,7 +17,7 @@ A privacy-first, self-hosted digital flight logbook for pilots. Track flights, m
 
 | Layer      | Technology |
 |-----------|------------|
-| Backend   | Python 3.12 / FastAPI |
+| Backend   | Go / net/http |
 | Database  | SQLite (WAL mode) |
 | Frontend  | React 19 / TypeScript / Vite 8 / Tailwind CSS 4 |
 | Auth      | Bearer token sessions + SHA-256 salted passwords |
@@ -39,11 +39,8 @@ On first start the app auto-creates an admin user and logs you in directly (sing
 
 **Backend:**
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+cd backend-go
+go run .
 ```
 
 **Frontend:**
@@ -53,23 +50,20 @@ npm install
 npm run dev      # opens at http://localhost:5173
 ```
 
-The Vite dev server proxies `/api` requests to `localhost:8000`.
+The Vite dev server proxies `/api` requests to `localhost:3000` (the Go backend).
 
 ## Project Structure
 
 ```
 skylog/
-├── backend/
-│   ├── app/
-│   │   ├── __init__.py
-│   │   ├── main.py              # FastAPI app, lifespan, static files
-│   │   ├── database.py           # SQLite connection & schema init
-│   │   ├── schemas.py            # Pydantic models (Flight, User, etc.)
-│   │   └── routers/
-│   │       ├── flights.py        # Flight CRUD + dashboard stats
-│   │       └── settings.py       # Auth, settings, currency, visibility
-│   ├── requirements.txt
-│   └── static/                   # Built frontend (production)
+├── backend-go/
+│   ├── main.go              # Entry point, HTTP router, CORS, static files
+│   ├── database.go           # SQLite connection & schema init
+│   ├── models.go             # Go structs (Flight, User, etc.)
+│   ├── flights.go            # Flight CRUD + dashboard stats
+│   ├── settings.go           # Auth, settings, currency, visibility
+│   ├── go.mod
+│   └── go.sum
 │
 ├── frontend/
 │   ├── src/

@@ -21,7 +21,7 @@
  * @module pages/EntryForm
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { api } from "../api/client";
 import type { Flight } from "../api/types";
 import { loadSettings, loadVisibilityFromApi, type ColumnVisibility } from "../api/settings";
@@ -153,6 +153,9 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
   const [loadError, setLoadError] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Tracks whether the user has manually typed into the total_time field.
+  // When true, the auto-calc effect will skip updating total_time.
+  const totalTimeManuallySet = useRef(false);
 
   // ═══ Column visibility from settings ═══
   // We read visibility from both localStorage (synchronous on mount)
@@ -192,6 +195,45 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
       });
   }, [editFlightId]);
 
+  // ═══ Auto-calculate total time from departure/arrival Zulu ═══
+  // Parses fields in "HHMM" format (e.g. 1430, 1645) and computes
+  // elapsed hours. Re-runs whenever departure or arrival changes.
+  // Skips if the user has manually typed into total_time (tracked via
+  // totalTimeManuallySet ref).
+  useEffect(() => {
+    // Don't auto-calc if the user has manually typed into total_time
+    if (totalTimeManuallySet.current) return;
+
+    const dep = form.departure_time.trim();
+    const arr = form.arrival_time.trim();
+
+    // Both must be non-empty to calculate
+    if (!dep || !arr) return;
+
+    // Require exactly 4 digits ("HHMM") — never match partial input
+    const timeRegex = /^(\d{2})(\d{2})$/;
+    const depMatch = dep.match(timeRegex);
+    const arrMatch = arr.match(timeRegex);
+    if (!depMatch || !arrMatch) return;
+
+    const depHour = parseInt(depMatch[1], 10);
+    const depMin = parseInt(depMatch[2], 10);
+    const arrHour = parseInt(arrMatch[1], 10);
+    const arrMin = parseInt(arrMatch[2], 10);
+
+    if (depHour > 23 || depMin > 59 || arrHour > 23 || arrMin > 59) return;
+
+    const depTotalMin = depHour * 60 + depMin;
+    const arrTotalMin = arrHour * 60 + arrMin;
+
+    // If arrival is at or before departure, assume overnight (next Zulu day)
+    let diffMin = arrTotalMin - depTotalMin;
+    if (diffMin <= 0) diffMin += 1440;
+
+    const hours = diffMin / 60;
+    setForm(prev => ({ ...prev, total_time: hours.toFixed(1) }));
+  }, [form.departure_time, form.arrival_time]);
+
   // ═══ Generic change handler for all inputs ═══
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -200,6 +242,14 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+    // If user modifies total_time directly, mark as manually set so auto-calc stops
+    if (name === "total_time" && value.trim() !== "") {
+      totalTimeManuallySet.current = true;
+    }
+    // If user clears dep/arr, reset manual flag so auto-calc can restart
+    if (name === "departure_time" || name === "arrival_time") {
+      if (!value.trim()) totalTimeManuallySet.current = false;
+    }
     // Clear the error for this field when the user starts typing again
     if (errors[name]) {
       setErrors((prev) => {
@@ -317,7 +367,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
   if (loadingFlight) {
     return (
       <div className="p-4 sm:p-8 max-w-2xl mx-auto animate-fade-in">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6 dark:text-white">Edit Flight</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6 dark:text-white">Edit Flight</h1>
         <div className="space-y-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="skeleton h-10 w-full" />
@@ -330,7 +380,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
   // ═══ Error loading flight for edit ═══
   if (loadError) {
     return (
-      <div className="p-8 text-center animate-fade-in">
+      <div className="p-4 sm:p-8 text-center animate-fade-in">
         <div className="inline-flex items-center gap-2 bg-red-100 text-red-700 px-4 py-3 rounded-lg">
           <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -344,21 +394,21 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
   // ═══ Render the form ═══
   return (
     <div className="p-4 sm:p-8 max-w-2xl mx-auto animate-fade-in">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6 dark:text-white">
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6 dark:text-white">
         {isEditMode ? "Edit Flight" : "Log a New Flight"}
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* 2-column grid of fields — each field is conditionally rendered
-            based on columnVisibility */}        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            based on columnVisibility */}        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0 max-w-full">
           {isFieldVisible("date") && (
             <Field
               label="Date"
               name="date"
-              type="date"
               value={form.date}
               onChange={handleChange}
               required
+              placeholder="e.g. 2026-07-06"
               error={errors.date}
             />
           )}
@@ -419,20 +469,20 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
           )}
           {isFieldVisible("departureTime") && (
             <Field
-              label="Departure Time (Zulu)"
+              label="Departure (Zulu)"
               name="departure_time"
-              type="time"
               value={form.departure_time}
               onChange={handleChange}
+              placeholder="e.g. 1430"
             />
           )}
           {isFieldVisible("arrivalTime") && (
             <Field
-              label="Arrival Time (Zulu)"
+              label="Arrival (Zulu)"
               name="arrival_time"
-              type="time"
               value={form.arrival_time}
               onChange={handleChange}
+              placeholder="e.g. 1645"
             />
           )}
           {isFieldVisible("totalTime") && (
@@ -816,6 +866,7 @@ function Field({
   step,
   min,
   placeholder,
+  pattern,
   error,
 }: {
   label: string;
@@ -827,10 +878,11 @@ function Field({
   step?: string;
   min?: string;
   placeholder?: string;
+  pattern?: string;
   error?: string;
 }) {
   return (
-    <div>
+    <div className="min-w-0 max-w-full overflow-hidden">
       <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1 dark:text-white">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
@@ -844,7 +896,8 @@ function Field({
         step={step}
         min={min}
         placeholder={placeholder}
-        className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400 ${
+        pattern={pattern}
+        className={`w-full min-w-0 max-w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400 ${
           error
             ? "border-red-400 focus:ring-red-500"
             : "border-gray-300 focus:ring-blue-500"

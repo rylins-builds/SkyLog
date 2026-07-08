@@ -492,14 +492,14 @@ export default function Logbook() {
   return (
     <div className="p-4 sm:p-8 max-w-[95%] mx-auto animate-fade-in">
       {/* ── Header bar: title + sort/filter/search controls ────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Logbook</h1>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Logbook</h1>
+        <div className="flex items-center justify-end sm:justify-start gap-1 sm:gap-2 flex-wrap w-full sm:w-auto">
           {/* ── Sort dropdown ──────────────────────────────────────────────── */}
-          <div className="relative" ref={sortRef}>
+          <div className="relative flex-initial" ref={sortRef}>
             <button
               onClick={() => { setShowSortMenu((v) => !v); setShowFilterMenu(false); }}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-1.5 sm:px-3 py-2 rounded-lg border text-sm font-medium leading-tight transition-colors ${
                 showSortMenu
                   ? "bg-blue-50 border-blue-300 text-blue-700 dark:bg-zinc-900 dark:border-blue-700 dark:text-blue-300"
                   : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-zinc-900 dark:border-zinc-600 dark:text-white dark:hover:bg-zinc-800"
@@ -509,7 +509,7 @@ export default function Logbook() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 17h6m-6-5h9m5-1v8m0 0l3-3m-3 3l-3-3M4 7h12" />
               </svg>
-              <span>{activeSortLabel}</span>
+              <span className="hidden sm:inline">{activeSortLabel}</span>
               {/* Chevron */}
               <svg className={`w-3.5 h-3.5 transition-transform ${showSortMenu ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -517,7 +517,7 @@ export default function Logbook() {
             </button>
             {showSortMenu && (
               <div className="absolute left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 dark:bg-zinc-800 dark:border-zinc-600">
-                <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide dark:text-white">
+                <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">
                   Sort by
                 </div>
                 <div className="max-h-64 overflow-y-auto">
@@ -581,10 +581,10 @@ export default function Logbook() {
           </div>
 
           {/* ── Filter dropdown ────────────────────────────────────────────── */}
-          <div className="relative" ref={filterRef}>
+          <div className="relative flex-initial" ref={filterRef}>
             <button
               onClick={() => { setShowFilterMenu((v) => !v); setShowSortMenu(false); }}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-1.5 sm:px-3 py-2 rounded-lg border text-sm font-medium leading-tight transition-colors ${
                 activeFilter
                   ? "bg-amber-50 border-amber-300 text-amber-700"
                   : showFilterMenu
@@ -596,7 +596,7 @@ export default function Logbook() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M22 3H2l8 10v4l4 4v-8z" />
               </svg>
-              <span>{activeFilterLabel ?? "Filter"}</span>
+              <span className="hidden sm:inline">{activeFilterLabel ?? "Filter"}</span>
               {/* When a filter is active show a dismiss "×" chip */}
               {activeFilter && (
                 <span
@@ -665,7 +665,7 @@ export default function Logbook() {
               placeholder="Search flights..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-              className="pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48 sm:w-56"
+              className="pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm leading-tight placeholder:text-xs sm:placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-36 sm:w-56"
             />
           </div>
         </div>
@@ -693,7 +693,7 @@ export default function Logbook() {
                   {/* Sticky header so column labels stay visible while scrolling vertically */}
                   <tr className="border-b-2 border-gray-200 bg-gray-50 dark:bg-zinc-900 dark:border-zinc-600 sticky top-0 z-10">
                     {visibleColumns.map((col) => (
-                      <th key={col.key} className="px-4 py-3 text-sm font-semibold text-gray-600 dark:text-white">
+                      <th key={col.key} className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-600 dark:text-white">
                         {col.label}
                       </th>
                     ))}
@@ -710,7 +710,7 @@ export default function Logbook() {
                       {visibleColumns.map((col) => (
                         <td
                           key={col.key}
-                          className={`px-4 py-3 text-sm text-gray-900 whitespace-nowrap dark:text-white ${
+                          className={`px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 whitespace-nowrap dark:text-white ${
                             col.key === "actions" ? "row-actions" : ""
                           }`}
                         >
@@ -724,14 +724,14 @@ export default function Logbook() {
             </div>
 
             {/* ── Pagination bar ───────────────────────────────────────────── */}
-            <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-600 dark:bg-zinc-900 dark:border-zinc-600 dark:text-gray-300">
+            <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 border-t border-gray-200 text-xs sm:text-sm text-gray-600 dark:bg-zinc-900 dark:border-zinc-600 dark:text-gray-300">
               {/* Page-size selector */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className="text-gray-500 dark:text-gray-400">Rows:</span>
                 <select
                   value={pageSize}
                   onChange={(e) => persistPageSize(Number(e.target.value))}
-                  className="px-2 py-1 rounded border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:border-zinc-600 dark:text-white"
+                  className="px-1.5 sm:px-2 py-1 rounded border border-gray-300 bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:border-zinc-600 dark:text-white"
                 >
                   {PAGE_SIZE_OPTIONS.map((n) => (
                     <option key={n} value={n}>
@@ -749,12 +749,12 @@ export default function Logbook() {
                     {Math.min((safePage + 1) * effectivePageSize, filtered.length)} of{" "}
                     {filtered.length} flights
                   </span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-0.5 sm:gap-1">
                     {/* Previous page */}
                     <button
                       onClick={() => setPage((p) => Math.max(0, p - 1))}
                       disabled={safePage === 0}
-                      className="px-3 py-1.5 rounded-md hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent transition-colors dark:hover:bg-zinc-700"
+                      className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-md hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent transition-colors dark:hover:bg-zinc-700"
                     >
                       ‹ Prev
                     </button>
@@ -766,7 +766,7 @@ export default function Logbook() {
                         <button
                           key={pg}
                           onClick={() => setPage(pg)}
-                          className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                          className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-md text-xs sm:text-sm transition-colors ${
                             pg === safePage
                               ? "bg-blue-600 text-white"
                               : "hover:bg-gray-200 text-gray-700 dark:text-gray-300 dark:hover:bg-zinc-700"
@@ -780,7 +780,7 @@ export default function Logbook() {
                     <button
                       onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                       disabled={safePage >= totalPages - 1}
-                      className="px-3 py-1.5 rounded-md hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent transition-colors dark:hover:bg-zinc-700"
+                      className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-md hover:bg-gray-200 disabled:opacity-30 disabled:hover:bg-transparent transition-colors dark:hover:bg-zinc-700"
                     >
                       Next ›
                     </button>

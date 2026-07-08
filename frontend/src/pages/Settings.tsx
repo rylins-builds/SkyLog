@@ -794,17 +794,17 @@ export default function Settings() {
         {/* Username */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Username</label>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <input
               type="text"
               value={settings.username}
               onChange={(e) => setSettings(prev => ({ ...prev, username: e.target.value }))}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-zinc-800 dark:border-zinc-600 dark:text-white"
+              className="w-full sm:flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-zinc-800 dark:border-zinc-600 dark:text-white"
             />
             <button
               onClick={handleUsernameChange}
               disabled={isLoading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
               Update
             </button>
@@ -854,7 +854,7 @@ export default function Settings() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Multi-User Mode
             </label>
-            <div className="flex items-center justify-between">
+            <div className="flex items-start sm:items-center justify-between gap-4">
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 {multiUserMode
                   ? "Login page is active. Users sign in to access SkyLog."
@@ -862,7 +862,7 @@ export default function Settings() {
               </span>
               <button
                 onClick={handleToggleMultiUser}
-                className={`relative w-12 h-6 rounded-full transition-colors ${
+                className={`relative w-12 h-6 rounded-full shrink-0 transition-colors ${
                   multiUserMode ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
                 }`}
               >

@@ -42,6 +42,58 @@ html, body {
   min-height: 100svh;  /* Use small-viewport-height to avoid mobile browser chrome issues */
 }
 
+/* ── Mobile-safe layout helpers ── */
+/* Prevent horizontal overflow on all viewport widths */
+html {
+  overflow-x: hidden;
+}
+
+/* Improve tap targets on mobile: ensure interactive elements have min height */
+button, a, input, select, textarea, label {
+  touch-action: manipulation;
+}
+
+/* ── Tailwind-compatible utility additions ── */
+
+/* Hide on the very smallest screens (useful for nav labels) */
+@media (max-width: 480px) {
+  .hide-xs {
+    display: none !important;
+  }
+  .px-mobile {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+}
+
+/* Single-column grid for mobile stats/sections */
+@media (max-width: 500px) {
+  .mobile-stack {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Shrink table cell padding on small screens */
+@media (max-width: 640px) {
+  .table-cell-mobile {
+    padding: 0.5rem 0.375rem !important;
+    font-size: 0.75rem !important;
+  }
+  .table-header-mobile {
+    padding: 0.5rem 0.375rem !important;
+    font-size: 0.7rem !important;
+  }
+}
+
+/* Hide scrollbar for horizontally scrolling nav on mobile */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── Custom Animations ── */
 
 /* Fade-in: used for page transitions and element appearance.
