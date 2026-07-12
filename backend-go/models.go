@@ -34,7 +34,9 @@ type Flight struct {
 	NightTime             float64 `json:"night_time"`
 	ActInstrumentTime     float64 `json:"act_instrument_time"`
 	SimInstrumentTime     float64 `json:"sim_instrument_time"`
-	SimTime               float64 `json:"sim_time"`
+	FullFlightSimulatorTime float64 `json:"full_flight_simulator_time"`
+	FlightTrainingDeviceTime float64 `json:"flight_training_device_time"`
+	AviationTrainingDeviceTime float64 `json:"aviation_training_device_time"`
 	PilotInCommand        string  `json:"pilot_in_command"`
 	Remarks               *string `json:"remarks"`
 	TakeoffsDay           int     `json:"takeoffs_day"`
@@ -76,7 +78,9 @@ type FlightCreate struct {
 	NightTime             float64 `json:"night_time"`
 	ActInstrumentTime     float64 `json:"act_instrument_time"`
 	SimInstrumentTime     float64 `json:"sim_instrument_time"`
-	SimTime               float64 `json:"sim_time"`
+	FullFlightSimulatorTime float64 `json:"full_flight_simulator_time"`
+	FlightTrainingDeviceTime float64 `json:"flight_training_device_time"`
+	AviationTrainingDeviceTime float64 `json:"aviation_training_device_time"`
 	PilotInCommand        string  `json:"pilot_in_command"`
 	Remarks               *string `json:"remarks"`
 	TakeoffsDay           int     `json:"takeoffs_day"`
@@ -118,7 +122,9 @@ type FlightUpdate struct {
 	NightTime             *float64 `json:"night_time"`
 	ActInstrumentTime     *float64 `json:"act_instrument_time"`
 	SimInstrumentTime     *float64 `json:"sim_instrument_time"`
-	SimTime               *float64 `json:"sim_time"`
+	FullFlightSimulatorTime *float64 `json:"full_flight_simulator_time"`
+	FlightTrainingDeviceTime *float64 `json:"flight_training_device_time"`
+	AviationTrainingDeviceTime *float64 `json:"aviation_training_device_time"`
 	PilotInCommand        *string  `json:"pilot_in_command"`
 	Remarks               *string  `json:"remarks"`
 	TakeoffsDay           *int     `json:"takeoffs_day"`
@@ -223,9 +229,6 @@ func (f *FlightCreate) Validate() map[string]string {
 	}
 	if f.TotalTime <= 0 {
 		errs["total_time"] = "Total time must be greater than 0"
-	}
-	if f.PilotInCommand == "" {
-		errs["pilot_in_command"] = "Pilot in command is required"
 	}
 	return errs
 }

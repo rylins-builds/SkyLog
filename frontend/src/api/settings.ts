@@ -62,7 +62,9 @@ export interface ColumnVisibility {
   nightTime: boolean;
   actInstrumentTime: boolean;
   simInstrumentTime: boolean;
-  simTime: boolean;
+  fullFlightSimulatorTime: boolean;
+  flightTrainingDeviceTime: boolean;
+  aviationTrainingDeviceTime: boolean;
   pilotInCommand: boolean;
   remarks: boolean;
   takeoffsDay: boolean;
@@ -116,7 +118,9 @@ export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   nightTime: true,
   actInstrumentTime: true,
   simInstrumentTime: true,
-  simTime: true,
+  fullFlightSimulatorTime: true,
+  flightTrainingDeviceTime: true,
+  aviationTrainingDeviceTime: true,
   pilotInCommand: true,
   remarks: true,
   takeoffsDay: true,
@@ -330,7 +334,9 @@ export const COLUMN_TO_FORM_FIELD: Record<string, string> = {
   nightTime: "night_time",
   actInstrumentTime: "act_instrument_time",
   simInstrumentTime: "sim_instrument_time",
-  simTime: "sim_time",
+  fullFlightSimulatorTime: "full_flight_simulator_time",
+  flightTrainingDeviceTime: "flight_training_device_time",
+  aviationTrainingDeviceTime: "aviation_training_device_time",
   pilotInCommand: "pilot_in_command",
   remarks: "remarks",
   takeoffsDay: "takeoffs_day",
@@ -352,7 +358,8 @@ export const FORM_GRID_FIELDS = new Set([
   "gliderTime", "balloonTime", "airshipTime",
   "soloTime",
   "picTime", "sicTime", "dualTime", "instructorTime", "xcountryTime",
-  "nightTime", "actInstrumentTime", "simInstrumentTime", "simTime",
+  "nightTime", "actInstrumentTime", "simInstrumentTime", "fullFlightSimulatorTime",
+  "flightTrainingDeviceTime", "aviationTrainingDeviceTime",
   "pilotInCommand", "takeoffsDay", "takeoffsNight", "landingsDay", "landingsNight",
   "precisionApproaches", "nonPrecisionApproaches", "holdingPatterns",
 ]);

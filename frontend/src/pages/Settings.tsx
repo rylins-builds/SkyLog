@@ -49,6 +49,7 @@ export default function Settings() {
     },
     columnVisibility: {
       date: true,
+      pilotInCommand: true,
       aircraftType: true,
       aircraftReg: true,
       departure: true,
@@ -75,8 +76,9 @@ export default function Settings() {
       nightTime: true,
       actInstrumentTime: true,
       simInstrumentTime: true,
-      simTime: true,
-      pilotInCommand: true,
+      fullFlightSimulatorTime: true,
+      flightTrainingDeviceTime: true,
+      aviationTrainingDeviceTime: true,
       remarks: true,
       takeoffsDay: true,
       takeoffsNight: true,
@@ -346,18 +348,19 @@ export default function Settings() {
       const flights = await api.listFlights();
 
       const headers = [
-        "Date", "Aircraft Type", "Registration", "Departure", "Arrival",
+        "Date", "Pilot in Command", "Aircraft Type", "Registration", "Departure", "Arrival",
         "Departure Time", "Arrival Time", "Total Time", "SEL", "SES", "MEL",
         "MES", "Helicopter", "Gyroplane", "Powered Lift", "Glider", "Balloon", "Airship", "Solo", "PIC", "SIC", "Dual Received",
         "Instructor", "Cross Country", "Night", "Actual Instrument",
-        "Simulated Instrument", "Flight Simulator", "Pilot in Command",
-        "Remarks", "Takeoffs Day", "Takeoffs Night", "Landings Day",
-        "Landings Night", "Precision Approaches", "Non-Precision Approaches",
-        "Holding Patterns",
+        "Simulated Instrument", "Full Flight Simulator", "Flight Training Device",
+        "Aviation Training Device", "Remarks",
+        "Takeoffs Day", "Takeoffs Night", "Landings Day", "Landings Night",
+        "Precision Approaches", "Non-Precision Approaches", "Holding Patterns",
       ];
 
       const rows = flights.map((flight: Flight) => [
         flight.date,
+        flight.pilot_in_command,
         flight.aircraft_type,
         flight.aircraft_reg,
         flight.departure,
@@ -384,8 +387,9 @@ export default function Settings() {
         flight.night_time?.toFixed(1) || "0.0",
         flight.act_instrument_time?.toFixed(1) || "0.0",
         flight.sim_instrument_time?.toFixed(1) || "0.0",
-        flight.sim_time?.toFixed(1) || "0.0",
-        flight.pilot_in_command,
+        flight.full_flight_simulator_time?.toFixed(1) || "0.0",
+        flight.flight_training_device_time?.toFixed(1) || "0.0",
+        flight.aviation_training_device_time?.toFixed(1) || "0.0",
         flight.remarks || "",
         flight.takeoffs_day || 0,
         flight.takeoffs_night || 0,
@@ -477,12 +481,12 @@ export default function Settings() {
         let values: string[] = [];
         try {
           values = parseCSVLine(line);
-          // Expect 36 columns based on the export format
-          if (values.length < 36) {
+          // Expect 39 columns based on the export format
+          if (values.length < 39) {
             const dateHint = values[0] ? ` (date: ${values[0]})` : "";
             errors.push({
               row: csvLineNumber,
-              error: `Too few columns (got ${values.length}, need 34).${dateHint}`,
+              error: `Too few columns (got ${values.length}, need 39).${dateHint}`,
             });
             failed++;
             continue;
@@ -490,42 +494,44 @@ export default function Settings() {
 
           await api.createFlight({
             date: values[0],
-            aircraft_type: values[1],
-            aircraft_reg: values[2],
-            departure: values[3],
-            arrival: values[4],
-            departure_time: values[5] || null,
-            arrival_time: values[6] || null,
-            total_time: parseFloat(values[7]) || 0,
-            sel_time: parseFloat(values[8]) || 0,
-            ses_time: parseFloat(values[9]) || 0,
-            mel_time: parseFloat(values[10]) || 0,
-            mes_time: parseFloat(values[11]) || 0,
-            helicopter_time: parseFloat(values[12]) || 0,
-            gyroplane_time: parseFloat(values[13]) || 0,
-            powered_lift_time: parseFloat(values[14]) || 0,
-            glider_time: parseFloat(values[15]) || 0,
-            balloon_time: parseFloat(values[16]) || 0,
-            airship_time: parseFloat(values[17]) || 0,
-            solo_time: parseFloat(values[18]) || 0,
-            pic_time: parseFloat(values[19]) || 0,
-            sic_time: parseFloat(values[20]) || 0,
-            dual_time: parseFloat(values[21]) || 0,
-            instructor_time: parseFloat(values[22]) || 0,
-            xcountry_time: parseFloat(values[23]) || 0,
-            night_time: parseFloat(values[24]) || 0,
-            act_instrument_time: parseFloat(values[25]) || 0,
-            sim_instrument_time: parseFloat(values[26]) || 0,
-            sim_time: parseFloat(values[27]) || 0,
-            pilot_in_command: values[28] || "",
-            remarks: values[29] || null,
-            takeoffs_day: parseInt(values[30]) || 0,
-            takeoffs_night: parseInt(values[31]) || 0,
-            landings_day: parseInt(values[32]) || 0,
-            landings_night: parseInt(values[33]) || 0,
-            precision_approaches: parseInt(values[34]) || 0,
-            non_precision_approaches: parseInt(values[35]) || 0,
-            holding_patterns: parseInt(values[36]) || 0,
+            pilot_in_command: values[1],
+            aircraft_type: values[2],
+            aircraft_reg: values[3],
+            departure: values[4],
+            arrival: values[5],
+            departure_time: values[6] || null,
+            arrival_time: values[7] || null,
+            total_time: parseFloat(values[8]) || 0,
+            sel_time: parseFloat(values[9]) || 0,
+            ses_time: parseFloat(values[10]) || 0,
+            mel_time: parseFloat(values[11]) || 0,
+            mes_time: parseFloat(values[12]) || 0,
+            helicopter_time: parseFloat(values[13]) || 0,
+            gyroplane_time: parseFloat(values[14]) || 0,
+            powered_lift_time: parseFloat(values[15]) || 0,
+            glider_time: parseFloat(values[16]) || 0,
+            balloon_time: parseFloat(values[17]) || 0,
+            airship_time: parseFloat(values[18]) || 0,
+            solo_time: parseFloat(values[19]) || 0,
+            pic_time: parseFloat(values[20]) || 0,
+            sic_time: parseFloat(values[21]) || 0,
+            dual_time: parseFloat(values[22]) || 0,
+            instructor_time: parseFloat(values[23]) || 0,
+            xcountry_time: parseFloat(values[24]) || 0,
+            night_time: parseFloat(values[25]) || 0,
+            act_instrument_time: parseFloat(values[26]) || 0,
+            sim_instrument_time: parseFloat(values[27]) || 0,
+            full_flight_simulator_time: parseFloat(values[28]) || 0,
+            flight_training_device_time: parseFloat(values[29]) || 0,
+            aviation_training_device_time: parseFloat(values[30]) || 0,
+            remarks: values[31] || null,
+            takeoffs_day: parseInt(values[32]) || 0,
+            takeoffs_night: parseInt(values[33]) || 0,
+            landings_day: parseInt(values[34]) || 0,
+            landings_night: parseInt(values[35]) || 0,
+            precision_approaches: parseInt(values[36]) || 0,
+            non_precision_approaches: parseInt(values[37]) || 0,
+            holding_patterns: parseInt(values[38]) || 0,
           });
           imported++;
         } catch (e) {
@@ -594,14 +600,13 @@ export default function Settings() {
     {
       title: "Basic Information",
       columns: [
-        { key: "date", label: "Date" },
+        { key: "pilotInCommand", label: "Pilot in Command" },
         { key: "aircraftType", label: "Aircraft Type" },
         { key: "aircraftReg", label: "Registration" },
         { key: "departure", label: "Departure" },
         { key: "arrival", label: "Arrival" },
         { key: "departureTime", label: "Departure Time" },
         { key: "arrivalTime", label: "Arrival Time" },
-        { key: "pilotInCommand", label: "Pilot in Command" },
       ],
     },
     {
@@ -637,7 +642,9 @@ export default function Settings() {
         { key: "nightTime", label: "Night" },
         { key: "actInstrumentTime", label: "Actual Instrument" },
         { key: "simInstrumentTime", label: "Simulated Instrument" },
-        { key: "simTime", label: "Flight Simulator" },
+        { key: "fullFlightSimulatorTime", label: "Full Flight Simulator" },
+        { key: "flightTrainingDeviceTime", label: "Flight Training Device" },
+        { key: "aviationTrainingDeviceTime", label: "Aviation Training Device" },
       ],
     },
     {
@@ -1002,10 +1009,11 @@ export default function Settings() {
         {/* CSV format hint */}
         <div className="mt-3 p-3 bg-gray-50 rounded-lg dark:bg-zinc-800">
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            <strong>CSV Format:</strong> Date, Aircraft Type, Registration, Departure, Arrival,
-            Departure Time, Arrival Time, Total Time, SEL, SES, MEL, MES, Helicopter, Glider,
-            Balloon, Airship, Solo, PIC, SIC, Dual Received, Instructor, Cross Country, Night,
-            Actual Instrument, Simulated Instrument, Flight Simulator, Pilot in Command, Remarks,
+            <strong>CSV Format:</strong> Date, Pilot in Command, Aircraft Type, Registration, Departure, Arrival,
+            Departure Time, Arrival Time, Total Time, SEL, SES, MEL, MES, Helicopter, Gyroplane,
+            Powered Lift, Glider, Balloon, Airship, Solo, PIC, SIC, Dual Received, Instructor,
+            Cross Country, Night, Actual Instrument, Simulated Instrument, Full Flight Simulator,
+            Flight Training Device, Aviation Training Device, Remarks,
             Takeoffs Day, Takeoffs Night, Landings Day, Landings Night, Precision Approaches,
             Non-Precision Approaches, Holding Patterns
           </p>

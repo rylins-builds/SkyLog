@@ -405,7 +405,8 @@ export default function Logbook() {
    * are never hidden by the column-visibility settings.
    */
   const allColumns: ColumnDef[] = [
-    { key: "date", label: "Date", render: (f) => f.date },
+    { key: "date", label: "Date", alwaysVisible: true, render: (f) => f.date },
+    { key: "pilotInCommand", label: "Pilot in Command", render: (f) => f.pilot_in_command },
     { key: "aircraftType", label: "Aircraft Type", render: (f) => f.aircraft_type },
     { key: "aircraftReg", label: "Aircraft Registration", render: (f) => f.aircraft_reg },
     { key: "departure", label: "From", render: (f) => f.departure },
@@ -430,7 +431,9 @@ export default function Logbook() {
     { key: "nightTime", label: "Night", render: (f) => f.night_time.toFixed(1) },
     { key: "actInstrumentTime", label: "Actual Instrument", render: (f) => f.act_instrument_time.toFixed(1) },
     { key: "simInstrumentTime", label: "Hooded Instrument", render: (f) => f.sim_instrument_time.toFixed(1) },
-    { key: "simTime", label: "Flight Simulator", render: (f) => f.sim_time.toFixed(1) },
+    { key: "fullFlightSimulatorTime", label: "Full Flight Simulator", render: (f) => f.full_flight_simulator_time.toFixed(1) },
+    { key: "flightTrainingDeviceTime", label: "Flight Training Device", render: (f) => f.flight_training_device_time.toFixed(1) },
+    { key: "aviationTrainingDeviceTime", label: "Aviation Training Device", render: (f) => f.aviation_training_device_time.toFixed(1) },
     { key: "takeoffsDay", label: "Day Takeoffs", render: (f) => f.takeoffs_day },
     { key: "takeoffsNight", label: "Night Takeoffs", render: (f) => f.takeoffs_night },
     { key: "landingsDay", label: "Day Landings", render: (f) => f.landings_day },

@@ -56,7 +56,9 @@ interface FormState {
   night_time: string;
   act_instrument_time: string;
   sim_instrument_time: string;
-  sim_time: string;
+  full_flight_simulator_time: string;
+  flight_training_device_time: string;
+  aviation_training_device_time: string;
   pilot_in_command: string;
   remarks: string;
   takeoffs_day: string;
@@ -97,7 +99,9 @@ const initialForm = (): FormState => ({
   night_time: "",
   act_instrument_time: "",
   sim_instrument_time: "",
-  sim_time: "",
+  full_flight_simulator_time: "",
+  flight_training_device_time: "",
+  aviation_training_device_time: "",
   pilot_in_command: "",
   remarks: "",
   takeoffs_day: "0",
@@ -138,7 +142,9 @@ const flightToForm = (flight: Flight): FormState => ({
   night_time: flight.night_time.toString(),
   act_instrument_time: flight.act_instrument_time.toString(),
   sim_instrument_time: flight.sim_instrument_time.toString(),
-  sim_time: flight.sim_time.toString(),
+  full_flight_simulator_time: flight.full_flight_simulator_time.toString(),
+  flight_training_device_time: flight.flight_training_device_time.toString(),
+  aviation_training_device_time: flight.aviation_training_device_time.toString(),
   pilot_in_command: flight.pilot_in_command,
   remarks: flight.remarks ?? "",
   takeoffs_day: flight.takeoffs_day.toString(),
@@ -280,7 +286,6 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
     if (!form.aircraft_reg.trim()) errs.aircraft_reg = "Required";
     if (!form.departure.trim()) errs.departure = "Required";
     if (!form.arrival.trim()) errs.arrival = "Required";
-    if (!form.pilot_in_command.trim()) errs.pilot_in_command = "Required";
     if (!form.total_time || parseFloat(form.total_time) <= 0) errs.total_time = "Must be > 0";
     // Validate all numeric time fields are non-negative
     if (form.sel_time && parseFloat(form.sel_time) < 0) errs.sel_time = "Cannot be negative";
@@ -303,7 +308,9 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
     }
     if (form.act_instrument_time && parseFloat(form.act_instrument_time) < 0) errs.act_instrument_time = "Cannot be negative";
     if (form.sim_instrument_time && parseFloat(form.sim_instrument_time) < 0) errs.sim_instrument_time = "Cannot be negative";
-    if (form.sim_time && parseFloat(form.sim_time) < 0) errs.sim_time = "Cannot be negative";
+    if (form.full_flight_simulator_time && parseFloat(form.full_flight_simulator_time) < 0) errs.full_flight_simulator_time = "Cannot be negative";
+    if (form.flight_training_device_time && parseFloat(form.flight_training_device_time) < 0) errs.flight_training_device_time = "Cannot be negative";
+    if (form.aviation_training_device_time && parseFloat(form.aviation_training_device_time) < 0) errs.aviation_training_device_time = "Cannot be negative";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -344,7 +351,9 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
       night_time: parseFloat(form.night_time) || 0,
       act_instrument_time: parseFloat(form.act_instrument_time) || 0,
       sim_instrument_time: parseFloat(form.sim_instrument_time) || 0,
-      sim_time: parseFloat(form.sim_time) || 0,
+      full_flight_simulator_time: parseFloat(form.full_flight_simulator_time) || 0,
+      flight_training_device_time: parseFloat(form.flight_training_device_time) || 0,
+      aviation_training_device_time: parseFloat(form.aviation_training_device_time) || 0,
       pilot_in_command: form.pilot_in_command.trim(),
       remarks: form.remarks.trim() || null,
       takeoffs_day: parseInt(form.takeoffs_day) || 0,
@@ -436,7 +445,6 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               name="pilot_in_command"
               value={form.pilot_in_command}
               onChange={handleChange}
-              required
               placeholder="e.g. Mike Brogan"
               error={errors.pilot_in_command}
             />
@@ -764,17 +772,43 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               error={errors.sim_instrument_time}
             />
           )}
-          {isFieldVisible("simTime") && (
+          {isFieldVisible("fullFlightSimulatorTime") && (
             <Field
-              label="Simulator Time (hours)"
-              name="sim_time"
+              label="Full Flight Simulator Time (hours)"
+              name="full_flight_simulator_time"
               type="number"
               step="0.1"
               min="0"
-              value={form.sim_time}
+              value={form.full_flight_simulator_time}
               onChange={handleChange}
               placeholder="0"
-              error={errors.sim_time}
+              error={errors.full_flight_simulator_time}
+            />
+          )}
+          {isFieldVisible("flightTrainingDeviceTime") && (
+            <Field
+              label="Flight Training Device Time (hours)"
+              name="flight_training_device_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.flight_training_device_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.flight_training_device_time}
+            />
+          )}
+          {isFieldVisible("aviationTrainingDeviceTime") && (
+            <Field
+              label="Aviation Training Device Time (hours)"
+              name="aviation_training_device_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.aviation_training_device_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.aviation_training_device_time}
             />
           )}
           {isFieldVisible("takeoffsDay") && (

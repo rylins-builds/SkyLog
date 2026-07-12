@@ -77,8 +77,12 @@ export interface Flight {
   act_instrument_time: number;
   /** Simulated instrument (hood / foggles) time (hours) */
   sim_instrument_time: number;
-  /** Flight simulator / training device time (hours) */
-  sim_time: number;
+  /** Full flight simulator time (hours) */
+  full_flight_simulator_time: number;
+  /** Flight training device time (hours) */
+  flight_training_device_time: number;
+  /** Aviation training device time (hours) */
+  aviation_training_device_time: number;
   /** Name of the pilot in command */
   pilot_in_command: string;
   /** Free-text remarks or notes about the flight */
@@ -163,8 +167,12 @@ export interface FlightCreate {
   act_instrument_time: number;
   /** Simulated instrument (hood) time (hours) */
   sim_instrument_time: number;
-  /** Flight simulator / training device time (hours) */
-  sim_time: number;
+  /** Full flight simulator time (hours) */
+  full_flight_simulator_time: number;
+  /** Flight training device time (hours) */
+  flight_training_device_time: number;
+  /** Aviation training device time (hours) */
+  aviation_training_device_time: number;
   /** Name of the pilot in command */
   pilot_in_command: string;
   /** Free-text remarks or notes */

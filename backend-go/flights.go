@@ -169,10 +169,11 @@ func createFlight(db *sql.DB) http.HandlerFunc {
 				user_id, date, aircraft_type, aircraft_reg, departure, arrival,
 				departure_time, arrival_time, total_time, sel_time, ses_time, mel_time, mes_time,
 				helicopter_time, gyroplane_time, powered_lift_time, glider_time, balloon_time, airship_time, solo_time, pic_time, sic_time, dual_time, instructor_time,
-				xcountry_time, night_time, act_instrument_time, sim_instrument_time, sim_time,
+				xcountry_time, night_time, act_instrument_time, sim_instrument_time,
+				full_flight_simulator_time, flight_training_device_time, aviation_training_device_time,
 				pilot_in_command, remarks, takeoffs_day, takeoffs_night, landings_day,
 				landings_night, precision_approaches, non_precision_approaches, holding_patterns
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			userID,
 			fc.Date,
 			fc.AircraftType,
@@ -201,7 +202,9 @@ func createFlight(db *sql.DB) http.HandlerFunc {
 			nightTime,
 			fc.ActInstrumentTime,
 			fc.SimInstrumentTime,
-			fc.SimTime,
+			fc.FullFlightSimulatorTime,
+			fc.FlightTrainingDeviceTime,
+			fc.AviationTrainingDeviceTime,
 			fc.PilotInCommand,
 			fc.Remarks,
 			takeoffsDay,
@@ -349,8 +352,14 @@ func updateFlight(db *sql.DB) http.HandlerFunc {
 		if update.SimInstrumentTime != nil {
 			cols["sim_instrument_time"] = *update.SimInstrumentTime
 		}
-		if update.SimTime != nil {
-			cols["sim_time"] = *update.SimTime
+		if update.FullFlightSimulatorTime != nil {
+			cols["full_flight_simulator_time"] = *update.FullFlightSimulatorTime
+		}
+		if update.FlightTrainingDeviceTime != nil {
+			cols["flight_training_device_time"] = *update.FlightTrainingDeviceTime
+		}
+		if update.AviationTrainingDeviceTime != nil {
+			cols["aviation_training_device_time"] = *update.AviationTrainingDeviceTime
 		}
 		if update.PilotInCommand != nil {
 			cols["pilot_in_command"] = *update.PilotInCommand
