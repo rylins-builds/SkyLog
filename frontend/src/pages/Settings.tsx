@@ -61,7 +61,11 @@ export default function Settings() {
       melTime: true,
       mesTime: true,
       helicopterTime: true,
+      gyroplaneTime: true,
+      poweredLiftTime: true,
       gliderTime: true,
+      balloonTime: true,
+      airshipTime: true,
       soloTime: true,
       picTime: true,
       sicTime: true,
@@ -344,7 +348,7 @@ export default function Settings() {
       const headers = [
         "Date", "Aircraft Type", "Registration", "Departure", "Arrival",
         "Departure Time", "Arrival Time", "Total Time", "SEL", "SES", "MEL",
-        "MES", "Helicopter", "Glider", "Solo", "PIC", "SIC", "Dual Received",
+        "MES", "Helicopter", "Gyroplane", "Powered Lift", "Glider", "Balloon", "Airship", "Solo", "PIC", "SIC", "Dual Received",
         "Instructor", "Cross Country", "Night", "Actual Instrument",
         "Simulated Instrument", "Flight Simulator", "Pilot in Command",
         "Remarks", "Takeoffs Day", "Takeoffs Night", "Landings Day",
@@ -366,7 +370,11 @@ export default function Settings() {
         flight.mel_time?.toFixed(1) || "0.0",
         flight.mes_time?.toFixed(1) || "0.0",
         flight.helicopter_time?.toFixed(1) || "0.0",
+        flight.gyroplane_time?.toFixed(1) || "0.0",
+        flight.powered_lift_time?.toFixed(1) || "0.0",
         flight.glider_time?.toFixed(1) || "0.0",
+        flight.balloon_time?.toFixed(1) || "0.0",
+        flight.airship_time?.toFixed(1) || "0.0",
         flight.solo_time?.toFixed(1) || "0.0",
         flight.pic_time.toFixed(1),
         flight.sic_time.toFixed(1),
@@ -469,8 +477,8 @@ export default function Settings() {
         let values: string[] = [];
         try {
           values = parseCSVLine(line);
-          // Expect 34 columns based on the export format
-          if (values.length < 34) {
+          // Expect 36 columns based on the export format
+          if (values.length < 36) {
             const dateHint = values[0] ? ` (date: ${values[0]})` : "";
             errors.push({
               row: csvLineNumber,
@@ -494,26 +502,30 @@ export default function Settings() {
             mel_time: parseFloat(values[10]) || 0,
             mes_time: parseFloat(values[11]) || 0,
             helicopter_time: parseFloat(values[12]) || 0,
-            glider_time: parseFloat(values[13]) || 0,
-            solo_time: parseFloat(values[14]) || 0,
-            pic_time: parseFloat(values[15]) || 0,
-            sic_time: parseFloat(values[16]) || 0,
-            dual_time: parseFloat(values[17]) || 0,
-            instructor_time: parseFloat(values[18]) || 0,
-            xcountry_time: parseFloat(values[19]) || 0,
-            night_time: parseFloat(values[20]) || 0,
-            act_instrument_time: parseFloat(values[21]) || 0,
-            sim_instrument_time: parseFloat(values[22]) || 0,
-            sim_time: parseFloat(values[23]) || 0,
-            pilot_in_command: values[24] || "",
-            remarks: values[25] || null,
-            takeoffs_day: parseInt(values[26]) || 0,
-            takeoffs_night: parseInt(values[27]) || 0,
-            landings_day: parseInt(values[28]) || 0,
-            landings_night: parseInt(values[29]) || 0,
-            precision_approaches: parseInt(values[30]) || 0,
-            non_precision_approaches: parseInt(values[31]) || 0,
-            holding_patterns: parseInt(values[32]) || 0,
+            gyroplane_time: parseFloat(values[13]) || 0,
+            powered_lift_time: parseFloat(values[14]) || 0,
+            glider_time: parseFloat(values[15]) || 0,
+            balloon_time: parseFloat(values[16]) || 0,
+            airship_time: parseFloat(values[17]) || 0,
+            solo_time: parseFloat(values[18]) || 0,
+            pic_time: parseFloat(values[19]) || 0,
+            sic_time: parseFloat(values[20]) || 0,
+            dual_time: parseFloat(values[21]) || 0,
+            instructor_time: parseFloat(values[22]) || 0,
+            xcountry_time: parseFloat(values[23]) || 0,
+            night_time: parseFloat(values[24]) || 0,
+            act_instrument_time: parseFloat(values[25]) || 0,
+            sim_instrument_time: parseFloat(values[26]) || 0,
+            sim_time: parseFloat(values[27]) || 0,
+            pilot_in_command: values[28] || "",
+            remarks: values[29] || null,
+            takeoffs_day: parseInt(values[30]) || 0,
+            takeoffs_night: parseInt(values[31]) || 0,
+            landings_day: parseInt(values[32]) || 0,
+            landings_night: parseInt(values[33]) || 0,
+            precision_approaches: parseInt(values[34]) || 0,
+            non_precision_approaches: parseInt(values[35]) || 0,
+            holding_patterns: parseInt(values[36]) || 0,
           });
           imported++;
         } catch (e) {
@@ -601,7 +613,11 @@ export default function Settings() {
         { key: "melTime", label: "Multi Engine Land" },
         { key: "mesTime", label: "Multi Engine Sea" },
         { key: "helicopterTime", label: "Helicopter" },
+        { key: "gyroplaneTime", label: "Gyroplane" },
+        { key: "poweredLiftTime", label: "Powered Lift" },
         { key: "gliderTime", label: "Glider" },
+        { key: "balloonTime", label: "Balloon" },
+        { key: "airshipTime", label: "Airship" },
       ],
     },
     {
@@ -988,10 +1004,10 @@ export default function Settings() {
           <p className="text-xs text-gray-500 dark:text-gray-400">
             <strong>CSV Format:</strong> Date, Aircraft Type, Registration, Departure, Arrival,
             Departure Time, Arrival Time, Total Time, SEL, SES, MEL, MES, Helicopter, Glider,
-            Solo, PIC, SIC, Dual Received, Instructor, Cross Country, Night, Actual Instrument,
-            Simulated Instrument, Flight Simulator, Pilot in Command, Remarks, Takeoffs Day,
-            Takeoffs Night, Landings Day, Landings Night, Precision Approaches, Non-Precision
-            Approaches, Holding Patterns
+            Balloon, Airship, Solo, PIC, SIC, Dual Received, Instructor, Cross Country, Night,
+            Actual Instrument, Simulated Instrument, Flight Simulator, Pilot in Command, Remarks,
+            Takeoffs Day, Takeoffs Night, Landings Day, Landings Night, Precision Approaches,
+            Non-Precision Approaches, Holding Patterns
           </p>
         </div>
       </div>

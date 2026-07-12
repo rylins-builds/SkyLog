@@ -42,7 +42,11 @@ interface FormState {
   mel_time: string;
   mes_time: string;
   helicopter_time: string;
+  gyroplane_time: string;
+  powered_lift_time: string;
   glider_time: string;
+  balloon_time: string;
+  airship_time: string;
   solo_time: string;
   pic_time: string;
   sic_time: string;
@@ -79,7 +83,11 @@ const initialForm = (): FormState => ({
   mel_time: "",
   mes_time: "",
   helicopter_time: "",
+  gyroplane_time: "",
+  powered_lift_time: "",
   glider_time: "",
+  balloon_time: "",
+  airship_time: "",
   solo_time: "",
   pic_time: "",
   sic_time: "",
@@ -116,7 +124,11 @@ const flightToForm = (flight: Flight): FormState => ({
   mel_time: flight.mel_time.toString(),
   mes_time: flight.mes_time.toString(),
   helicopter_time: flight.helicopter_time.toString(),
+  gyroplane_time: flight.gyroplane_time.toString(),
+  powered_lift_time: flight.powered_lift_time.toString(),
   glider_time: flight.glider_time.toString(),
+  balloon_time: flight.balloon_time.toString(),
+  airship_time: flight.airship_time.toString(),
   solo_time: flight.solo_time.toString(),
   pic_time: flight.pic_time.toString(),
   sic_time: flight.sic_time.toString(),
@@ -276,6 +288,8 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
     if (form.mel_time && parseFloat(form.mel_time) < 0) errs.mel_time = "Cannot be negative";
     if (form.mes_time && parseFloat(form.mes_time) < 0) errs.mes_time = "Cannot be negative";
     if (form.helicopter_time && parseFloat(form.helicopter_time) < 0) errs.helicopter_time = "Cannot be negative";
+    if (form.gyroplane_time && parseFloat(form.gyroplane_time) < 0) errs.gyroplane_time = "Cannot be negative";
+    if (form.powered_lift_time && parseFloat(form.powered_lift_time) < 0) errs.powered_lift_time = "Cannot be negative";
     if (form.glider_time && parseFloat(form.glider_time) < 0) errs.glider_time = "Cannot be negative";
     if (form.solo_time && parseFloat(form.solo_time) < 0) errs.solo_time = "Cannot be negative";
     if (form.pic_time && parseFloat(form.pic_time) < 0) errs.pic_time = "Cannot be negative";
@@ -316,7 +330,11 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
       mel_time: parseFloat(form.mel_time) || 0,
       mes_time: parseFloat(form.mes_time) || 0,
       helicopter_time: parseFloat(form.helicopter_time) || 0,
+      gyroplane_time: parseFloat(form.gyroplane_time) || 0,
+      powered_lift_time: parseFloat(form.powered_lift_time) || 0,
       glider_time: parseFloat(form.glider_time) || 0,
+      balloon_time: parseFloat(form.balloon_time) || 0,
+      airship_time: parseFloat(form.airship_time) || 0,
       solo_time: parseFloat(form.solo_time) || 0,
       pic_time: parseFloat(form.pic_time) || 0,
       sic_time: parseFloat(form.sic_time) || 0,
@@ -564,6 +582,32 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               error={errors.helicopter_time}
             />
           )}
+          {isFieldVisible("gyroplaneTime") && (
+            <Field
+              label="Gyroplane Time (hours)"
+              name="gyroplane_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.gyroplane_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.gyroplane_time}
+            />
+          )}
+          {isFieldVisible("poweredLiftTime") && (
+            <Field
+              label="Powered Lift Time (hours)"
+              name="powered_lift_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.powered_lift_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.powered_lift_time}
+            />
+          )}
           {isFieldVisible("gliderTime") && (
             <Field
               label="Glider Time (hours)"
@@ -575,6 +619,32 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               onChange={handleChange}
               placeholder="0"
               error={errors.glider_time}
+            />
+          )}
+          {isFieldVisible("balloonTime") && (
+            <Field
+              label="Balloon Time (hours)"
+              name="balloon_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.balloon_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.balloon_time}
+            />
+          )}
+          {isFieldVisible("airshipTime") && (
+            <Field
+              label="Airship Time (hours)"
+              name="airship_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.airship_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.airship_time}
             />
           )}
           {isFieldVisible("soloTime") && (

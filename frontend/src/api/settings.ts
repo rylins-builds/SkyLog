@@ -1,5 +1,5 @@
 /**
- * Shared Settings Types and Helpers
+ * SkyLog Settings Types and Helpers
  *
  * This module defines the TypeScript types for visibility preferences
  * (which optional pages appear in the nav bar, which columns appear in
@@ -48,7 +48,11 @@ export interface ColumnVisibility {
   melTime: boolean;
   mesTime: boolean;
   helicopterTime: boolean;
+  gyroplaneTime: boolean;
+  poweredLiftTime: boolean;
   gliderTime: boolean;
+  balloonTime: boolean;
+  airshipTime: boolean;
   soloTime: boolean;
   picTime: boolean;
   sicTime: boolean;
@@ -98,7 +102,11 @@ export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   melTime: true,
   mesTime: true,
   helicopterTime: true,
+  gyroplaneTime: true,
+  poweredLiftTime: true,
   gliderTime: true,
+  balloonTime: true,
+  airshipTime: true,
   soloTime: true,
   picTime: true,
   sicTime: true,
@@ -308,7 +316,11 @@ export const COLUMN_TO_FORM_FIELD: Record<string, string> = {
   melTime: "mel_time",
   mesTime: "mes_time",
   helicopterTime: "helicopter_time",
+  gyroplaneTime: "gyroplane_time",
+  poweredLiftTime: "powered_lift_time",
   gliderTime: "glider_time",
+  balloonTime: "balloon_time",
+  airshipTime: "airship_time",
   soloTime: "solo_time",
   picTime: "pic_time",
   sicTime: "sic_time",
@@ -336,7 +348,9 @@ export const COLUMN_TO_FORM_FIELD: Record<string, string> = {
 export const FORM_GRID_FIELDS = new Set([
   "date", "aircraftType", "aircraftReg", "departure", "arrival",
   "departureTime", "arrivalTime", "totalTime", "selTime", "sesTime",
-  "melTime", "mesTime", "helicopterTime", "gliderTime", "soloTime",
+  "melTime", "mesTime", "helicopterTime", "gyroplaneTime", "poweredLiftTime",
+  "gliderTime", "balloonTime", "airshipTime",
+  "soloTime",
   "picTime", "sicTime", "dualTime", "instructorTime", "xcountryTime",
   "nightTime", "actInstrumentTime", "simInstrumentTime", "simTime",
   "pilotInCommand", "takeoffsDay", "takeoffsNight", "landingsDay", "landingsNight",

@@ -11,13 +11,10 @@ import (
 )
 
 // getDBPath returns the path to the SQLite database file.
-// Respects the SKYLOG_DB_PATH environment variable for Docker volume mounts.
+// Defaults to the Docker volume mount location; falls back to CWD for local dev.
 func getDBPath() string {
-	if p := os.Getenv("SKYLOG_DB_PATH"); p != "" {
-		return p
-	}
-	// Default: skylog.db in the current working directory (repo root or backend/)
-	return "skylog.db"
+	// Default to Docker volume path
+	return "/app/data/skylog.db"
 }
 
 // openDB opens the SQLite database with WAL mode and returns a *sql.DB handle.
@@ -77,7 +74,11 @@ func initDB(ctx context.Context, db *sql.DB) error {
 			mel_time              REAL    NOT NULL CHECK(mel_time >= 0),
 			mes_time              REAL    NOT NULL CHECK(mes_time >= 0),
 			helicopter_time       REAL    NOT NULL CHECK(helicopter_time >= 0),
+			gyroplane_time        REAL    NOT NULL DEFAULT 0 CHECK(gyroplane_time >= 0),
+			powered_lift_time     REAL    NOT NULL DEFAULT 0 CHECK(powered_lift_time >= 0),
 			glider_time           REAL    NOT NULL CHECK(glider_time >= 0),
+			balloon_time          REAL    NOT NULL DEFAULT 0 CHECK(balloon_time >= 0),
+			airship_time          REAL    NOT NULL DEFAULT 0 CHECK(airship_time >= 0),
 			solo_time             REAL    NOT NULL CHECK(solo_time >= 0),
 			pic_time              REAL    NOT NULL CHECK(pic_time >= 0),
 			sic_time              REAL    NOT NULL CHECK(sic_time >= 0),
@@ -191,7 +192,7 @@ func scanFlight(scanner interface {
 		&f.ID, &f.UserID, &f.Date, &f.AircraftType, &f.AircraftReg,
 		&f.Departure, &f.Arrival, &f.DepartureTime, &f.ArrivalTime,
 		&f.TotalTime, &f.SELTime, &f.SESTime, &f.MELTime, &f.MESTime,
-		&f.HelicopterTime, &f.GliderTime, &f.SoloTime, &f.PICTime,
+		&f.HelicopterTime, &f.GyroplaneTime, &f.PoweredLiftTime, &f.GliderTime, &f.BalloonTime, &f.AirshipTime, &f.SoloTime, &f.PICTime,
 		&f.SICTime, &f.DualTime, &f.InstructorTime, &f.XCountryTime,
 		&f.NightTime, &f.ActInstrumentTime, &f.SimInstrumentTime,
 		&f.SimTime, &f.PilotInCommand, &f.Remarks,

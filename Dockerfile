@@ -32,6 +32,5 @@ COPY --from=frontend-build /app/frontend/dist /app/static
 EXPOSE 3000
 
 ENV PORT=3000
-ENV SKYLOG_DB_PATH=/app/data/skylog.db
 
 CMD ["./skylog"]

@@ -20,7 +20,11 @@ type Flight struct {
 	MELTime               float64 `json:"mel_time"`
 	MESTime               float64 `json:"mes_time"`
 	HelicopterTime        float64 `json:"helicopter_time"`
+	GyroplaneTime         float64 `json:"gyroplane_time"`
+	PoweredLiftTime       float64 `json:"powered_lift_time"`
 	GliderTime            float64 `json:"glider_time"`
+	BalloonTime           float64 `json:"balloon_time"`
+	AirshipTime           float64 `json:"airship_time"`
 	SoloTime              float64 `json:"solo_time"`
 	PICTime               float64 `json:"pic_time"`
 	SICTime               float64 `json:"sic_time"`
@@ -58,7 +62,11 @@ type FlightCreate struct {
 	MELTime               float64 `json:"mel_time"`
 	MESTime               float64 `json:"mes_time"`
 	HelicopterTime        float64 `json:"helicopter_time"`
+	GyroplaneTime         float64 `json:"gyroplane_time"`
+	PoweredLiftTime       float64 `json:"powered_lift_time"`
 	GliderTime            float64 `json:"glider_time"`
+	BalloonTime           float64 `json:"balloon_time"`
+	AirshipTime           float64 `json:"airship_time"`
 	SoloTime              float64 `json:"solo_time"`
 	PICTime               float64 `json:"pic_time"`
 	SICTime               float64 `json:"sic_time"`
@@ -96,7 +104,11 @@ type FlightUpdate struct {
 	MELTime               *float64 `json:"mel_time"`
 	MESTime               *float64 `json:"mes_time"`
 	HelicopterTime        *float64 `json:"helicopter_time"`
+	GyroplaneTime         *float64 `json:"gyroplane_time"`
+	PoweredLiftTime       *float64 `json:"powered_lift_time"`
 	GliderTime            *float64 `json:"glider_time"`
+	BalloonTime           *float64 `json:"balloon_time"`
+	AirshipTime           *float64 `json:"airship_time"`
 	SoloTime              *float64 `json:"solo_time"`
 	PICTime               *float64 `json:"pic_time"`
 	SICTime               *float64 `json:"sic_time"`

@@ -49,8 +49,16 @@ export interface Flight {
   mes_time: number;
   /** Helicopter time (hours) */
   helicopter_time: number;
+  /** Gyroplane time (hours) */
+  gyroplane_time: number;
+  /** Powered Lift time (hours) */
+  powered_lift_time: number;
   /** Glider time (hours) */
   glider_time: number;
+  /** Balloon time (hours) */
+  balloon_time: number;
+  /** Airship time (hours) */
+  airship_time: number;
   /** Solo flight time (hours) */
   solo_time: number;
   /** Pilot-in-Command time (hours) */
@@ -127,8 +135,16 @@ export interface FlightCreate {
   mes_time: number;
   /** Helicopter time (hours) */
   helicopter_time: number;
+  /** Gyroplane time (hours) */
+  gyroplane_time: number;
+  /** Powered Lift time (hours) */
+  powered_lift_time: number;
   /** Glider time (hours) */
   glider_time: number;
+  /** Balloon time (hours) */
+  balloon_time: number;
+  /** Airship time (hours) */
+  airship_time: number;
   /** Solo flight time (hours) */
   solo_time: number;
   /** Pilot-in-Command time (hours) */

@@ -168,11 +168,11 @@ func createFlight(db *sql.DB) http.HandlerFunc {
 			INSERT INTO flights (
 				user_id, date, aircraft_type, aircraft_reg, departure, arrival,
 				departure_time, arrival_time, total_time, sel_time, ses_time, mel_time, mes_time,
-				helicopter_time, glider_time, solo_time, pic_time, sic_time, dual_time, instructor_time,
+				helicopter_time, gyroplane_time, powered_lift_time, glider_time, balloon_time, airship_time, solo_time, pic_time, sic_time, dual_time, instructor_time,
 				xcountry_time, night_time, act_instrument_time, sim_instrument_time, sim_time,
 				pilot_in_command, remarks, takeoffs_day, takeoffs_night, landings_day,
 				landings_night, precision_approaches, non_precision_approaches, holding_patterns
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			userID,
 			fc.Date,
 			fc.AircraftType,
@@ -187,7 +187,11 @@ func createFlight(db *sql.DB) http.HandlerFunc {
 			fc.MELTime,
 			fc.MESTime,
 			fc.HelicopterTime,
+			fc.GyroplaneTime,
+			fc.PoweredLiftTime,
 			fc.GliderTime,
+			fc.BalloonTime,
+			fc.AirshipTime,
 			fc.SoloTime,
 			fc.PICTime,
 			fc.SICTime,
@@ -303,8 +307,20 @@ func updateFlight(db *sql.DB) http.HandlerFunc {
 		if update.HelicopterTime != nil {
 			cols["helicopter_time"] = *update.HelicopterTime
 		}
+		if update.GyroplaneTime != nil {
+			cols["gyroplane_time"] = *update.GyroplaneTime
+		}
+		if update.PoweredLiftTime != nil {
+			cols["powered_lift_time"] = *update.PoweredLiftTime
+		}
 		if update.GliderTime != nil {
 			cols["glider_time"] = *update.GliderTime
+		}
+		if update.BalloonTime != nil {
+			cols["balloon_time"] = *update.BalloonTime
+		}
+		if update.AirshipTime != nil {
+			cols["airship_time"] = *update.AirshipTime
 		}
 		if update.SoloTime != nil {
 			cols["solo_time"] = *update.SoloTime
