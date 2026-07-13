@@ -142,6 +142,30 @@ export default function Settings() {
   /** Whether the current user has admin privileges. */
   const [isAdmin, setIsAdmin] = useState(false);
 
+  /** Wipe database multi-step state: 0=idle, 1=confirm text, 2=final confirm, 3=done. */
+  const [wipeStep, setWipeStep] = useState(0);
+
+  /** Text input for wipe confirmation. */
+  const [wipeConfirmText, setWipeConfirmText] = useState("");
+
+  /** Execute the database wipe. */
+  const handleWipeDatabase = async () => {
+    try {
+      setIsLoading(true);
+      const { deleted } = await api.wipeFlights();
+      setWipeStep(3);
+      setSuccess(`Deleted ${deleted} flight${deleted !== 1 ? "s" : ""}.`);
+      setTimeout(() => setSuccess(""), 5000);
+    } catch (e) {
+      setError("Failed to delete flights");
+      setTimeout(() => setError(""), 3000);
+      setWipeStep(0);
+      setWipeConfirmText("");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   /** Check whether glider/LTA launch type flights exist and auto-enable column. */
   const checkGliderLaunchType = async () => {
     try {
@@ -1086,6 +1110,116 @@ export default function Settings() {
             Launch Type, Remarks
           </p>
         </div>
+      </div>
+
+      {/* ── Wipe Database ──────────────────────────────────────────────────── */}
+      <div
+        className="bg-white rounded-xl shadow-md p-6 mb-6 border border-red-100 dark:bg-zinc-900 dark:border-red-800 animate-slide-up"
+        style={{ animationDelay: "350ms" }}
+      >
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Danger Zone</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Permanently delete all flight records for your account. This action cannot be undone.
+        </p>
+
+        {/* Step 1: initial warning */}
+        {wipeStep === 0 && (
+          <div className="space-y-3">
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/30 dark:border-red-800">
+              <p className="text-sm text-red-700 dark:text-red-400 font-medium flex items-center gap-2">
+                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                This will permanently delete every flight in your logbook. Your settings and account will be preserved.
+              </p>
+            </div>
+            <button
+              onClick={() => setWipeStep(1)}
+              className="w-full py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+            >
+              Delete All Flights
+            </button>
+          </div>
+        )}
+
+        {/* Step 2: confirmation text input */}
+        {wipeStep === 1 && (
+          <div className="space-y-3">
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/30 dark:border-red-800">
+              <p className="text-sm text-red-700 dark:text-red-400 font-medium">
+                Type <span className="font-bold">DELETE</span> below and click confirm to permanently erase your entire flight log.
+              </p>
+            </div>
+            <input
+              type="text"
+              value={wipeConfirmText}
+              onChange={(e) => setWipeConfirmText(e.target.value)}
+              placeholder='Type "DELETE" to confirm'
+              className="w-full px-4 py-2 border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-zinc-800 dark:border-red-700 dark:text-white"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setWipeStep(0); setWipeConfirmText(""); }}
+                className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors dark:bg-zinc-600 dark:text-white dark:hover:bg-zinc-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (wipeConfirmText === "DELETE") setWipeStep(2);
+                }}
+                disabled={wipeConfirmText !== "DELETE"}
+                className="flex-1 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                I Understand, Delete Everything
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: final confirmation + wipe execution */}
+        {wipeStep === 2 && (
+          <div className="space-y-3">
+            <div className="p-3 bg-red-100 border border-red-300 rounded-lg dark:bg-red-900/50 dark:border-red-700">
+              <p className="text-sm text-red-800 dark:text-red-300 font-bold flex items-center gap-2">
+                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Final warning — this is permanent.
+              </p>
+              <p className="text-sm text-red-700 dark:text-red-400 mt-1">
+                All flight records will be deleted immediately. Your account, settings, and preferences will remain intact.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setWipeStep(0); setWipeConfirmText(""); }}
+                className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors dark:bg-zinc-600 dark:text-white dark:hover:bg-zinc-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleWipeDatabase}
+                disabled={isLoading}
+                className="flex-1 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {isLoading ? "Deleting..." : "Yes, Delete Everything"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Success state */}
+        {wipeStep === 3 && (
+          <div className="p-3 bg-green-100 border border-green-300 rounded-lg dark:bg-green-900/30 dark:border-green-700">
+            <p className="text-sm text-green-700 dark:text-green-300 font-medium flex items-center gap-2">
+              <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              All flights have been deleted successfully.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ── Import error details (expandable panel) ─────────────────────────── */}

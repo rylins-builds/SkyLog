@@ -18,6 +18,7 @@ func registerFlightRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.HandleFunc("GET /api/flights/{id}", getFlight(db))
 	mux.HandleFunc("PUT /api/flights/{id}", updateFlight(db))
 	mux.HandleFunc("DELETE /api/flights/{id}", deleteFlight(db))
+	mux.HandleFunc("DELETE /api/flights", wipeFlights(db))
 	// Dashboard stats
 	mux.HandleFunc("GET /api/dashboard/stats", getDashboardStats(db))
 }
@@ -454,6 +455,29 @@ func deleteFlight(db *sql.DB) http.HandlerFunc {
 		}
 
 		w.WriteHeader(204)
+	}
+}
+
+// ── DELETE /api/flights (wipe all flights for user) ──
+
+func wipeFlights(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := getUserID(r, db)
+		if err != nil {
+			he := err.(*httpError)
+			writeError(w, he.Code, he.Message)
+			return
+		}
+
+		result, err := db.ExecContext(r.Context(),
+			"DELETE FROM flights WHERE user_id = ?", userID)
+		if err != nil {
+			writeError(w, 500, "Database error")
+			return
+		}
+
+		count, _ := result.RowsAffected()
+		writeJSON(w, 200, map[string]any{"deleted": count})
 	}
 }
 

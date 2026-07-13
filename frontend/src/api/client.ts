@@ -96,6 +96,10 @@ export const api = {
   deleteFlight: (id: number) =>
     request<void>(`/flights/${id}`, { method: "DELETE" }),
 
+  /** Delete all flights for the current user. Returns count of deleted rows. */
+  wipeFlights: () =>
+    request<{ deleted: number }>("/flights", { method: "DELETE" }),
+
   // ═══ Dashboard ═══
 
   /** Get aggregated dashboard statistics for the current user. */
