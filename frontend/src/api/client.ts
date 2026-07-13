@@ -201,4 +201,10 @@ export const api = {
   /** Check whether the current user has any flights with a glider/LTA launch type logged. */
   hasGliderLaunchType: () =>
     request<{ hasGliderLaunchType: boolean }>("/settings/has-glider-launch-type"),
+
+  // ═══ Reset Settings ═══
+
+  /** Reset all user settings (visibility and currency thresholds) to defaults. */
+  resetSettings: () =>
+    request<{ status: string }>("/settings/reset", { method: "DELETE" }),
 };

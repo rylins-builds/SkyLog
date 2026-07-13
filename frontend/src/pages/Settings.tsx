@@ -148,6 +148,9 @@ export default function Settings() {
   /** Text input for wipe confirmation. */
   const [wipeConfirmText, setWipeConfirmText] = useState("");
 
+  /** Reset settings multi-step state: 0=idle, 1=warning shown, 2=done. */
+  const [resetSettingsStep, setResetSettingsStep] = useState(0);
+
   /** Execute the database wipe. */
   const handleWipeDatabase = async () => {
     try {
@@ -161,6 +164,37 @@ export default function Settings() {
       setTimeout(() => setError(""), 3000);
       setWipeStep(0);
       setWipeConfirmText("");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /** Execute the settings reset. */
+  const handleResetSettings = async () => {
+    try {
+      setIsLoading(true);
+      // Clear settings from backend
+      await api.resetSettings();
+      // Clear localStorage
+      localStorage.removeItem("flightLogbookSettings");
+      // Reset local state to defaults
+      const defaults = loadSettingsFromStorage();
+      setSettings(prev => ({
+        ...prev,
+        pageVisibility: defaults.pageVisibility,
+        columnVisibility: defaults.columnVisibility,
+      }));
+      // Save defaults to backend so they persist
+      await saveVisibilityToApi(defaults.pageVisibility, defaults.columnVisibility);
+      // Notify other components
+      window.dispatchEvent(new CustomEvent("settingsUpdated", { detail: defaults }));
+      setResetSettingsStep(2);
+      setSuccess("All settings have been reset to defaults.");
+      setTimeout(() => setSuccess(""), 5000);
+    } catch (e) {
+      setError("Failed to reset settings");
+      setTimeout(() => setError(""), 3000);
+      setResetSettingsStep(0);
     } finally {
       setIsLoading(false);
     }
@@ -1110,6 +1144,80 @@ export default function Settings() {
             Launch Type, Remarks
           </p>
         </div>
+      </div>
+
+      {/* ── Reset Settings ───────────────────────────────────────────────── */}
+      <div
+        className="bg-white rounded-xl shadow-md p-6 mb-6 border border-yellow-200 dark:bg-zinc-900 dark:border-yellow-700 animate-slide-up"
+        style={{ animationDelay: "335ms" }}
+      >
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Reset Settings</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Restore all page visibility, column visibility, and currency threshold settings to their factory defaults.
+          Your flight data, account, and password will not be affected.
+        </p>
+
+        {resetSettingsStep === 0 && (
+          <div className="space-y-3">
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg dark:bg-yellow-900/30 dark:border-yellow-700">
+              <p className="text-sm text-yellow-800 dark:text-yellow-300 font-medium flex items-center gap-2">
+                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                This will reset your page visibility, column visibility, and currency thresholds to their original defaults.
+              </p>
+            </div>
+            <button
+              onClick={() => setResetSettingsStep(1)}
+              className="w-full py-2 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-600 transition-colors"
+            >
+              Reset Settings to Defaults
+            </button>
+          </div>
+        )}
+
+        {resetSettingsStep === 1 && (
+          <div className="space-y-3">
+            <div className="p-3 bg-yellow-100 border border-yellow-300 rounded-lg dark:bg-yellow-900/50 dark:border-yellow-700">
+              <p className="text-sm text-yellow-800 dark:text-yellow-300 font-bold flex items-center gap-2">
+                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Are you sure?
+              </p>
+              <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
+                This will restore defaults for page visibility, column visibility, and currency thresholds.
+                Your flight records, username, and password will remain unchanged.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setResetSettingsStep(0); }}
+                className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors dark:bg-zinc-600 dark:text-white dark:hover:bg-zinc-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResetSettings}
+                disabled={isLoading}
+                className="flex-1 py-2 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-600 transition-colors disabled:opacity-50"
+              >
+                {isLoading ? "Resetting..." : "Yes, Reset Settings"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {resetSettingsStep === 2 && (
+          <div className="p-3 bg-green-100 border border-green-300 rounded-lg dark:bg-green-900/30 dark:border-green-700">
+            <p className="text-sm text-green-700 dark:text-green-300 font-medium flex items-center gap-2">
+              <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Settings have been reset to defaults.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ── Wipe Database ──────────────────────────────────────────────────── */}
