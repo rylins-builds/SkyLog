@@ -251,24 +251,53 @@ function buildExperienceGrid(flights: Flight[], mappings: AircraftTypeMappings):
   });
 }
 
-interface CountRow {
+interface LaunchRow {
   label: string;
-  value: number;
+  picFlights: number;
+  dualFlights: number;
+  totalFlights: number;
+  aeroTows: number;
+  groundLaunches: number;
+  poweredLaunches: number;
 }
 
-function buildCountsGrid(flights: Flight[]): CountRow[] {
-  const sum = (k: keyof Flight): number =>
-    flights.reduce((a, f) => a + (Number(f[k]) || 0), 0);
+function buildLaunchGrid(flights: Flight[], mappings: AircraftTypeMappings): LaunchRow[] {
+  // Build reverse mapping: sub-category → list of aircraft types
+  const categoryToTypes: Record<string, string[]> = {};
+  for (const [aircraftType, categoryValue] of Object.entries(mappings)) {
+    if (!categoryToTypes[categoryValue]) categoryToTypes[categoryValue] = [];
+    categoryToTypes[categoryValue].push(aircraftType);
+  }
 
-  return [
-    { label: "Day Takeoffs",              value: sum("takeoffs_day") },
-    { label: "Night Takeoffs",            value: sum("takeoffs_night") },
-    { label: "Day Landings",              value: sum("landings_day") },
-    { label: "Night Landings",            value: sum("landings_night") },
-    { label: "Precision Approaches",       value: sum("precision_approaches") },
-    { label: "Non-Precision Approaches",   value: sum("non_precision_approaches") },
-    { label: "Holding Patterns",           value: sum("holding_patterns") },
+  const catKeyToCategory = (key: keyof Flight): string =>
+    String(key).replace(/_time$/, "");
+
+  const rows: { label: string; catKeys: (keyof Flight)[] }[] = [
+    { label: "Glider",           catKeys: ["glider_time"] },
+    { label: "Lighter-than-Air", catKeys: ["balloon_time", "airship_time"] },
   ];
+
+  return rows.map((r) => {
+    const rowCategories = r.catKeys.map(catKeyToCategory);
+    const rowTypes = rowCategories.flatMap((c) => categoryToTypes[c] ?? []);
+    const rowTypesSet = new Set(rowTypes);
+    const filtered = flights.filter((f) => rowTypesSet.has(f.aircraft_type ?? ""));
+
+    const countLaunch = (type: string): number =>
+      filtered.filter((f) => f.launch_type === type).length;
+
+    const co = (f: Flight, k: keyof Flight) => Number(f[k]) || 0;
+
+    return {
+      label: r.label,
+      picFlights: filtered.filter((f) => co(f, "pic_time") > 0).length,
+      dualFlights: filtered.filter((f) => co(f, "dual_time") > 0).length,
+      totalFlights: filtered.length,
+      aeroTows: countLaunch("aero_tow"),
+      groundLaunches: countLaunch("ground_launch"),
+      poweredLaunches: countLaunch("powered_launch"),
+    };
+  });
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────
@@ -357,7 +386,7 @@ export default function FAA8710() {
   }, []);
 
   const experienceRows = useMemo(() => buildExperienceGrid(flights, mappings), [flights, mappings]);
-  const countRows = useMemo(() => buildCountsGrid(flights), [flights]);
+  const launchRows = useMemo(() => buildLaunchGrid(flights, mappings), [flights, mappings]);
 
   const uniqueTypes = useMemo(() => {
     const seen = new Set<string>();
@@ -452,28 +481,51 @@ export default function FAA8710() {
         </div>
       </div>
 
-      {/* ═══ Takeoffs / Landings / Approaches ═══ */}
+      {/* ═══ Glider / Lighter-than-Air Launch Totals ═══ */}
       <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-8 dark:bg-zinc-800 dark:border-zinc-600">
         <div className="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200 dark:bg-zinc-900 dark:border-zinc-600">
           <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide dark:text-white">
-            Takeoffs, Landings & Approaches
+            Glider & Lighter-than-Air — Flight & Launch Totals
           </h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b-2 border-gray-200 dark:border-zinc-600">
-                <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white w-2/3">Event</th>
-                <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white w-1/3 text-right">Count</th>
+                <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white">Category</th>
+                <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">PIC Flights</th>
+                <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">Dual Flights</th>
+                <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">Total Flights</th>
+                <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">Aero-Tows</th>
+                <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">Ground Launches</th>
+                <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">Powered Launches</th>
               </tr>
             </thead>
             <tbody>
-              {countRows.map((r) => (
-                <tr key={r.label} className="border-b border-gray-100 hover:bg-gray-50 dark:border-zinc-700 dark:hover:bg-zinc-700 transition-colors">
-                  <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-700 dark:text-white">{r.label}</td>
-                  <td className="px-4 sm:px-6 py-2.5 text-sm font-semibold text-gray-900 dark:text-white text-right tabular-nums">{r.value}</td>
-                </tr>
-              ))}
+              {launchRows.map((r) => {
+                const isGlider = r.label === "Glider";
+                return (
+                  <tr key={r.label} className="border-b border-gray-100 hover:bg-gray-50 dark:border-zinc-700 dark:hover:bg-zinc-700 transition-colors">
+                    <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-700 dark:text-white font-medium">{r.label}</td>
+                    {isGlider ? (
+                      <>
+                        <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-900 dark:text-white text-right tabular-nums">{r.picFlights}</td>
+                        <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-900 dark:text-white text-right tabular-nums">{r.dualFlights}</td>
+                        <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-300 dark:text-gray-600 text-right tabular-nums">—</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-300 dark:text-gray-600 text-right tabular-nums">—</td>
+                        <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-300 dark:text-gray-600 text-right tabular-nums">—</td>
+                        <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-900 dark:text-white text-right tabular-nums">{r.totalFlights}</td>
+                      </>
+                    )}
+                    <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-900 dark:text-white text-right tabular-nums">{r.aeroTows}</td>
+                    <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-900 dark:text-white text-right tabular-nums">{r.groundLaunches}</td>
+                    <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-900 dark:text-white text-right tabular-nums">{r.poweredLaunches}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
