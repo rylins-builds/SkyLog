@@ -36,6 +36,7 @@ export interface PageVisibility {
  *  Each key corresponds to a field in the Flight record. */
 export interface ColumnVisibility {
   date: boolean;
+  pilotInCommand: boolean;
   aircraftType: boolean;
   aircraftReg: boolean;
   departure: boolean;
@@ -65,8 +66,7 @@ export interface ColumnVisibility {
   fullFlightSimulatorTime: boolean;
   flightTrainingDeviceTime: boolean;
   aviationTrainingDeviceTime: boolean;
-  pilotInCommand: boolean;
-  remarks: boolean;
+  
   takeoffsDay: boolean;
   takeoffsNight: boolean;
   landingsDay: boolean;
@@ -74,6 +74,8 @@ export interface ColumnVisibility {
   precisionApproaches: boolean;
   nonPrecisionApproaches: boolean;
   holdingPatterns: boolean;
+  launchType: boolean;
+  remarks: boolean;
 }
 
 /** Full settings object stored in localStorage. */
@@ -92,6 +94,7 @@ export interface SettingsData {
 /** Default: all columns visible. */
 export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   date: true,
+  pilotInCommand: true,
   aircraftType: true,
   aircraftReg: true,
   departure: true,
@@ -121,8 +124,8 @@ export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   fullFlightSimulatorTime: true,
   flightTrainingDeviceTime: true,
   aviationTrainingDeviceTime: true,
-  pilotInCommand: true,
-  remarks: true,
+
+  
   takeoffsDay: true,
   takeoffsNight: true,
   landingsDay: true,
@@ -130,6 +133,8 @@ export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   precisionApproaches: true,
   nonPrecisionApproaches: true,
   holdingPatterns: true,
+  launchType: true,
+  remarks: true,
 };
 
 /** Default: both optional pages visible. */
@@ -308,6 +313,7 @@ export const OPTIONAL_PAGES = ["currency", "FAA 8710"] as const;
  *  Used by EntryForm to conditionally hide fields based on visibility settings. */
 export const COLUMN_TO_FORM_FIELD: Record<string, string> = {
   date: "date",
+  pilotInCommand: "pilot_in_command",
   aircraftType: "aircraft_type",
   aircraftReg: "aircraft_reg",
   departure: "departure",
@@ -337,8 +343,6 @@ export const COLUMN_TO_FORM_FIELD: Record<string, string> = {
   fullFlightSimulatorTime: "full_flight_simulator_time",
   flightTrainingDeviceTime: "flight_training_device_time",
   aviationTrainingDeviceTime: "aviation_training_device_time",
-  pilotInCommand: "pilot_in_command",
-  remarks: "remarks",
   takeoffsDay: "takeoffs_day",
   takeoffsNight: "takeoffs_night",
   landingsDay: "landings_day",
@@ -346,13 +350,15 @@ export const COLUMN_TO_FORM_FIELD: Record<string, string> = {
   precisionApproaches: "precision_approaches",
   nonPrecisionApproaches: "non_precision_approaches",
   holdingPatterns: "holding_patterns",
+  launchType: "launch_type",
+  remarks: "remarks",
 };
 
 /** Set of ColumnVisibility keys whose corresponding form fields are in
  *  the 2-column grid section of EntryForm. Used to decide whether
  *  a field should be wrapped in a grid cell. */
 export const FORM_GRID_FIELDS = new Set([
-  "date", "aircraftType", "aircraftReg", "departure", "arrival",
+  "date", "pilotInCommand", "aircraftType", "aircraftReg", "departure", "arrival",
   "departureTime", "arrivalTime", "totalTime", "selTime", "sesTime",
   "melTime", "mesTime", "helicopterTime", "gyroplaneTime", "poweredLiftTime",
   "gliderTime", "balloonTime", "airshipTime",
@@ -360,6 +366,7 @@ export const FORM_GRID_FIELDS = new Set([
   "picTime", "sicTime", "dualTime", "instructorTime", "xcountryTime",
   "nightTime", "actInstrumentTime", "simInstrumentTime", "fullFlightSimulatorTime",
   "flightTrainingDeviceTime", "aviationTrainingDeviceTime",
-  "pilotInCommand", "takeoffsDay", "takeoffsNight", "landingsDay", "landingsNight",
-  "precisionApproaches", "nonPrecisionApproaches", "holdingPatterns",
+ "takeoffsDay", "takeoffsNight", "landingsDay", "landingsNight",
+  "precisionApproaches", "nonPrecisionApproaches", "holdingPatterns", 
+  "launchType",
 ]);

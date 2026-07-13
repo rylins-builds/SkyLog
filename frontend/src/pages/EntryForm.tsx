@@ -30,6 +30,7 @@ import { loadSettings, loadVisibilityFromApi, type ColumnVisibility } from "../a
  *  two-way binding with <input> elements. They are parsed on submit. */
 interface FormState {
   date: string;
+  pilot_in_command: string;
   aircraft_type: string;
   aircraft_reg: string;
   departure: string;
@@ -59,8 +60,6 @@ interface FormState {
   full_flight_simulator_time: string;
   flight_training_device_time: string;
   aviation_training_device_time: string;
-  pilot_in_command: string;
-  remarks: string;
   takeoffs_day: string;
   takeoffs_night: string;
   landings_day: string;
@@ -68,11 +67,14 @@ interface FormState {
   precision_approaches: string;
   non_precision_approaches: string;
   holding_patterns: string;
+  launch_type: string;
+  remarks: string;
 }
 
 /** Build the initial (empty) form state with date defaulting to today. */
 const initialForm = (): FormState => ({
   date: new Date().toISOString().split("T")[0],
+  pilot_in_command: "",
   aircraft_type: "",
   aircraft_reg: "",
   departure: "",
@@ -102,8 +104,6 @@ const initialForm = (): FormState => ({
   full_flight_simulator_time: "",
   flight_training_device_time: "",
   aviation_training_device_time: "",
-  pilot_in_command: "",
-  remarks: "",
   takeoffs_day: "0",
   takeoffs_night: "0",
   landings_day: "0",
@@ -111,11 +111,14 @@ const initialForm = (): FormState => ({
   precision_approaches: "0",
   non_precision_approaches: "0",
   holding_patterns: "0",
+  launch_type: "",
+  remarks: "",
 });
 
 /** Convert a ``Flight`` object (from the API) into form state strings. */
 const flightToForm = (flight: Flight): FormState => ({
   date: flight.date,
+  pilot_in_command: flight.pilot_in_command,
   aircraft_type: flight.aircraft_type,
   aircraft_reg: flight.aircraft_reg,
   departure: flight.departure,
@@ -145,8 +148,6 @@ const flightToForm = (flight: Flight): FormState => ({
   full_flight_simulator_time: flight.full_flight_simulator_time.toString(),
   flight_training_device_time: flight.flight_training_device_time.toString(),
   aviation_training_device_time: flight.aviation_training_device_time.toString(),
-  pilot_in_command: flight.pilot_in_command,
-  remarks: flight.remarks ?? "",
   takeoffs_day: flight.takeoffs_day.toString(),
   takeoffs_night: flight.takeoffs_night.toString(),
   landings_day: flight.landings_day.toString(),
@@ -154,6 +155,8 @@ const flightToForm = (flight: Flight): FormState => ({
   precision_approaches: flight.precision_approaches.toString(),
   non_precision_approaches: flight.non_precision_approaches.toString(),
   holding_patterns: flight.holding_patterns.toString(),
+  launch_type: flight.launch_type ?? "",
+  remarks: flight.remarks ?? "",
 });
 
 interface EntryFormProps {
@@ -174,6 +177,12 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
   // Tracks whether the user has manually typed into the total_time field.
   // When true, the auto-calc effect will skip updating total_time.
   const totalTimeManuallySet = useRef(false);
+
+  // Whether launch type is required based on glider/balloon/airship times
+  const needsLaunchType =
+    (parseFloat(form.glider_time) || 0) > 0 ||
+    (parseFloat(form.balloon_time) || 0) > 0 ||
+    (parseFloat(form.airship_time) || 0) > 0;
 
   // ═══ Column visibility from settings ═══
   // We read visibility from both localStorage (synchronous on mount)
@@ -253,7 +262,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
   }, [form.departure_time, form.arrival_time]);
 
   // ═══ Generic change handler for all inputs ═══
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const checked = type === "checkbox" ? (e.target as HTMLInputElement).checked : undefined;
     setForm((prev) => ({
@@ -311,6 +320,11 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
     if (form.full_flight_simulator_time && parseFloat(form.full_flight_simulator_time) < 0) errs.full_flight_simulator_time = "Cannot be negative";
     if (form.flight_training_device_time && parseFloat(form.flight_training_device_time) < 0) errs.flight_training_device_time = "Cannot be negative";
     if (form.aviation_training_device_time && parseFloat(form.aviation_training_device_time) < 0) errs.aviation_training_device_time = "Cannot be negative";
+    // Launch type is required when glider/balloon/airship time is logged
+    const needsLaunchType = (parseFloat(form.glider_time) || 0) > 0 || (parseFloat(form.balloon_time) || 0) > 0 || (parseFloat(form.airship_time) || 0) > 0;
+    if (needsLaunchType && !form.launch_type.trim()) {
+      errs.launch_type = "Launch type is required for glider or lighter-than-air flights";
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -325,6 +339,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
     // Build the payload with all fields parsed to their correct types
     const payload = {
       date: form.date,
+      pilot_in_command: form.pilot_in_command.trim(),
       aircraft_type: form.aircraft_type.trim(),
       aircraft_reg: form.aircraft_reg.trim().toUpperCase(),
       departure: form.departure.trim().toUpperCase(),
@@ -354,8 +369,6 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
       full_flight_simulator_time: parseFloat(form.full_flight_simulator_time) || 0,
       flight_training_device_time: parseFloat(form.flight_training_device_time) || 0,
       aviation_training_device_time: parseFloat(form.aviation_training_device_time) || 0,
-      pilot_in_command: form.pilot_in_command.trim(),
-      remarks: form.remarks.trim() || null,
       takeoffs_day: parseInt(form.takeoffs_day) || 0,
       takeoffs_night: parseInt(form.takeoffs_night) || 0,
       landings_day: parseInt(form.landings_day) || 0,
@@ -363,6 +376,8 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
       precision_approaches: parseInt(form.precision_approaches) || 0,
       non_precision_approaches: parseInt(form.non_precision_approaches) || 0,
       holding_patterns: parseInt(form.holding_patterns) || 0,
+      launch_type: form.launch_type.trim() || null,
+      remarks: form.remarks.trim() || null,
     };
 
     try {
@@ -654,6 +669,51 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               placeholder="0"
               error={errors.airship_time}
             />
+          )}
+          {/* Launch Type — only shown when glider/balloon/airship time > 0.
+              Appears right after the field that triggered it. */}
+          {needsLaunchType && (
+            <div className="min-w-0 max-w-full overflow-hidden sm:col-span-2">
+              {/* Prominent banner when launch type is required but not set */}
+              {needsLaunchType && !form.launch_type.trim() && (
+                <div className="bg-amber-50 border border-amber-300 text-amber-800 px-3 py-2 rounded-lg mb-2 text-sm font-medium flex items-center gap-2">
+                  <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>
+                    Launch type is required for glider or lighter-than-air flights.
+                  </span>
+                </div>
+              )}
+              <label htmlFor="launch_type" className="block text-sm font-medium text-gray-700 mb-1 dark:text-white">
+                Launch Type {needsLaunchType && <span className="text-red-500">*</span>}
+                {needsLaunchType && <span className="text-xs text-red-400 ml-1">(required)</span>}
+              </label>
+              <select
+                id="launch_type"
+                name="launch_type"
+                value={form.launch_type}
+                onChange={handleChange}
+                className={`w-full min-w-0 max-w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors ${
+                  errors.launch_type
+                    ? "border-red-400 focus:ring-red-500"
+                    : needsLaunchType
+                    ? "border-amber-400 focus:ring-amber-500"
+                    : "border-gray-300 focus:ring-blue-500"
+                }`}
+              >
+                <option value="">Select launch type...</option>
+                <option value="aero_tow">Aero-Tow</option>
+                <option value="ground_launch">Ground Launch</option>
+                <option value="powered_launch">Powered Launch</option>
+              </select>
+              {errors.launch_type && <p className="text-xs text-red-500 mt-1">{errors.launch_type}</p>}
+              {!errors.launch_type && needsLaunchType && !form.launch_type.trim() && (
+                <p className="text-xs text-amber-600 mt-1">
+                  This flight involves a glider or lighter-than-air aircraft. Select a launch method to continue.
+                </p>
+              )}
+            </div>
           )}
           {isFieldVisible("soloTime") && (
             <Field

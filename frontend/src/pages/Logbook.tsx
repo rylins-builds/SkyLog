@@ -441,6 +441,14 @@ export default function Logbook() {
     { key: "precisionApproaches", label: "Precision Approaches", render: (f) => f.precision_approaches },
     { key: "nonPrecisionApproaches", label: "Non-Precision Approaches", render: (f) => f.non_precision_approaches },
     { key: "holdingPatterns", label: "Holding Patterns", render: (f) => f.holding_patterns },
+    { key: "launchType", label: "Glider/Lighter-than-Air Launch Type", render: (f) => {
+      const displayLabels: Record<string, string> = {
+        "aero_tow": "Aero-Tow",
+        "ground_launch": "Ground Launch",
+        "powered_launch": "Powered Launch",
+      };
+      return f.launch_type ? displayLabels[f.launch_type] || f.launch_type : "";
+    }},
     { key: "remarks", label: "Remarks", render: (f) => f.remarks },
     {
       key: "actions",

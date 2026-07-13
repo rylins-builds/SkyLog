@@ -62,6 +62,7 @@ func initDB(ctx context.Context, db *sql.DB) error {
 			id                    INTEGER PRIMARY KEY AUTOINCREMENT,
 			user_id               INTEGER NOT NULL DEFAULT 0,
 			date                  TEXT    NOT NULL,
+			pilot_in_command      TEXT    NOT NULL,
 			aircraft_type         TEXT    NOT NULL,
 			aircraft_reg          TEXT    NOT NULL,
 			departure             TEXT    NOT NULL,
@@ -91,8 +92,6 @@ func initDB(ctx context.Context, db *sql.DB) error {
 			full_flight_simulator_time       REAL    NOT NULL DEFAULT 0 CHECK(full_flight_simulator_time >= 0),
 			flight_training_device_time      REAL    NOT NULL DEFAULT 0 CHECK(flight_training_device_time >= 0),
 			aviation_training_device_time    REAL    NOT NULL DEFAULT 0 CHECK(aviation_training_device_time >= 0),
-			pilot_in_command      TEXT    NOT NULL,
-			remarks               TEXT,
 			takeoffs_day          INTEGER DEFAULT 0 CHECK(takeoffs_day >= 0),
 			takeoffs_night        INTEGER DEFAULT 0 CHECK(takeoffs_night >= 0),
 			landings_day          INTEGER DEFAULT 0 CHECK(landings_day >= 0),
@@ -100,6 +99,8 @@ func initDB(ctx context.Context, db *sql.DB) error {
 			precision_approaches      INTEGER DEFAULT 0 CHECK(precision_approaches >= 0),
 			non_precision_approaches  INTEGER DEFAULT 0 CHECK(non_precision_approaches >= 0),
 			holding_patterns          INTEGER DEFAULT 0 CHECK(holding_patterns >= 0),
+			launch_type           TEXT,
+			remarks               TEXT,
 			created_at            TEXT    DEFAULT (datetime('now'))
 		);
 
@@ -165,6 +166,32 @@ func initDB(ctx context.Context, db *sql.DB) error {
 		}
 	}
 
+	// ── Migration: add launch_type to flights if missing ──
+	rows2, err := tx.QueryContext(ctx, "PRAGMA table_info(flights)")
+	if err != nil {
+		return fmt.Errorf("pragma table_info flights: %w", err)
+	}
+	hasLaunchType := false
+	for rows2.Next() {
+		var cid int
+		var name, colType string
+		var notNull, pk int
+		var dflt sql.NullString
+		if err := rows2.Scan(&cid, &name, &colType, &notNull, &dflt, &pk); err != nil {
+			rows2.Close()
+			return fmt.Errorf("scan table_info: %w", err)
+		}
+		if name == "launch_type" {
+			hasLaunchType = true
+		}
+	}
+	rows2.Close()
+	if !hasLaunchType {
+		if _, err := tx.ExecContext(ctx, "ALTER TABLE flights ADD COLUMN launch_type TEXT"); err != nil {
+			return fmt.Errorf("add launch_type column: %w", err)
+		}
+	}
+
 	// ── Auto-create admin user on first run ──
 	var userCount int
 	if err := tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM users").Scan(&userCount); err != nil {
@@ -191,17 +218,23 @@ func scanFlight(scanner interface {
 }) (Flight, error) {
 	var f Flight
 	err := scanner.Scan(
-		&f.ID, &f.UserID, &f.Date, &f.AircraftType, &f.AircraftReg,
-		&f.Departure, &f.Arrival, &f.DepartureTime, &f.ArrivalTime,
+		&f.ID, &f.UserID, &f.Date,
+		&f.PilotInCommand,
+		&f.AircraftType, &f.AircraftReg,
+		&f.Departure, &f.Arrival,
+		&f.DepartureTime, &f.ArrivalTime,
 		&f.TotalTime, &f.SELTime, &f.SESTime, &f.MELTime, &f.MESTime,
-		&f.HelicopterTime, &f.GyroplaneTime, &f.PoweredLiftTime, &f.GliderTime, &f.BalloonTime, &f.AirshipTime, &f.SoloTime, &f.PICTime,
-		&f.SICTime, &f.DualTime, &f.InstructorTime, &f.XCountryTime,
-		&f.NightTime, &f.ActInstrumentTime, &f.SimInstrumentTime,
+		&f.HelicopterTime, &f.GyroplaneTime, &f.PoweredLiftTime,
+		&f.GliderTime, &f.BalloonTime, &f.AirshipTime,
+		&f.SoloTime, &f.PICTime, &f.SICTime, &f.DualTime, &f.InstructorTime,
+		&f.XCountryTime, &f.NightTime,
+		&f.ActInstrumentTime, &f.SimInstrumentTime,
 		&f.FullFlightSimulatorTime, &f.FlightTrainingDeviceTime, &f.AviationTrainingDeviceTime,
-		&f.PilotInCommand, &f.Remarks,
 		&f.TakeoffsDay, &f.TakeoffsNight, &f.LandingsDay, &f.LandingsNight,
 		&f.PrecisionApproaches, &f.NonPrecisionApproaches,
-		&f.HoldingPatterns, &f.CreatedAt,
+		&f.HoldingPatterns,
+		&f.LaunchType, &f.Remarks,
+		&f.CreatedAt,
 	)
 	return f, err
 }

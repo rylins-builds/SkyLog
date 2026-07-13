@@ -25,6 +25,8 @@ export interface Flight {
   id: number;
   /** Flight date in YYYY-MM-DD format */
   date: string;
+  /** Name of the pilot in command */
+  pilot_in_command: string;
   /** Aircraft make/model (e.g. "Cessna 172S") */
   aircraft_type: string;
   /** Aircraft tail number / registration (e.g. "N2860Q") */
@@ -83,10 +85,6 @@ export interface Flight {
   flight_training_device_time: number;
   /** Aviation training device time (hours) */
   aviation_training_device_time: number;
-  /** Name of the pilot in command */
-  pilot_in_command: string;
-  /** Free-text remarks or notes about the flight */
-  remarks: string | null;
   /** Number of day takeoffs */
   takeoffs_day: number;
   /** Number of night takeoffs */
@@ -101,6 +99,10 @@ export interface Flight {
   non_precision_approaches: number;
   /** Number of holding pattern entries */
   holding_patterns: number;
+  /** Launch type (aero_tow, ground_launch, powered_launch) */
+  launch_type: string | null;
+  /** Free-text remarks or notes about the flight */
+  remarks: string | null;
   /** Timestamp of when the record was created (ISO 8601 string) */
   created_at: string;
 }
@@ -115,6 +117,8 @@ export interface Flight {
 export interface FlightCreate {
   /** Flight date in YYYY-MM-DD format */
   date: string;
+  /** Name of the pilot in command */
+  pilot_in_command: string;
   /** Aircraft make/model (e.g. "Cessna 172S") */
   aircraft_type: string;
   /** Aircraft tail number / registration */
@@ -173,10 +177,7 @@ export interface FlightCreate {
   flight_training_device_time: number;
   /** Aviation training device time (hours) */
   aviation_training_device_time: number;
-  /** Name of the pilot in command */
-  pilot_in_command: string;
-  /** Free-text remarks or notes */
-  remarks?: string | null;
+  
   /** Number of day takeoffs */
   takeoffs_day: number;
   /** Number of night takeoffs */
@@ -191,6 +192,10 @@ export interface FlightCreate {
   non_precision_approaches?: number;
   /** Number of holding pattern entries */
   holding_patterns?: number;
+  /** Launch type (aero_tow, ground_launch, powered_launch) */
+  launch_type?: string | null;
+  /** Free-text remarks or notes */
+  remarks?: string | null;
 }
 
 /**

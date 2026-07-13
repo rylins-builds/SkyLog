@@ -87,6 +87,7 @@ export default function Settings() {
       precisionApproaches: true,
       nonPrecisionApproaches: true,
       holdingPatterns: true,
+      launchType: true,
     },
     username: "",
     showLoginPage: false,
@@ -347,15 +348,23 @@ export default function Settings() {
       setIsLoading(true);
       const flights = await api.listFlights();
 
+      const launchTypeLabels: Record<string, string> = {
+        "aero_tow": "Aero-Tow",
+        "ground_launch": "Ground Launch",
+        "powered_launch": "Powered Launch",
+      };
+
       const headers = [
         "Date", "Pilot in Command", "Aircraft Type", "Registration", "Departure", "Arrival",
         "Departure Time", "Arrival Time", "Total Time", "SEL", "SES", "MEL",
-        "MES", "Helicopter", "Gyroplane", "Powered Lift", "Glider", "Balloon", "Airship", "Solo", "PIC", "SIC", "Dual Received",
+        "MES", "Helicopter", "Gyroplane", "Powered Lift", "Glider", "Balloon", "Airship",
+        "Solo", "PIC", "SIC", "Dual Received",
         "Instructor", "Cross Country", "Night", "Actual Instrument",
         "Simulated Instrument", "Full Flight Simulator", "Flight Training Device",
-        "Aviation Training Device", "Remarks",
+        "Aviation Training Device",
         "Takeoffs Day", "Takeoffs Night", "Landings Day", "Landings Night",
         "Precision Approaches", "Non-Precision Approaches", "Holding Patterns",
+        "Glider/Lighter-than-Air Launch Type", "Remarks",
       ];
 
       const rows = flights.map((flight: Flight) => [
@@ -390,7 +399,6 @@ export default function Settings() {
         flight.full_flight_simulator_time?.toFixed(1) || "0.0",
         flight.flight_training_device_time?.toFixed(1) || "0.0",
         flight.aviation_training_device_time?.toFixed(1) || "0.0",
-        flight.remarks || "",
         flight.takeoffs_day || 0,
         flight.takeoffs_night || 0,
         flight.landings_day || 0,
@@ -398,6 +406,8 @@ export default function Settings() {
         flight.precision_approaches || 0,
         flight.non_precision_approaches || 0,
         flight.holding_patterns || 0,
+        flight.launch_type ? launchTypeLabels[flight.launch_type] || flight.launch_type : "",
+        flight.remarks || "",
       ]);
 
       const csvContent = [
@@ -481,16 +491,26 @@ export default function Settings() {
         let values: string[] = [];
         try {
           values = parseCSVLine(line);
-          // Expect 39 columns based on the export format
-          if (values.length < 39) {
+          const launchTypeReverseLabels: Record<string, string> = {
+            "Aero-Tow": "aero_tow",
+            "Ground Launch": "ground_launch",
+            "Powered Launch": "powered_launch",
+          };
+
+          // Expect 40 columns based on the export format
+          if (values.length < 40) {
             const dateHint = values[0] ? ` (date: ${values[0]})` : "";
             errors.push({
               row: csvLineNumber,
-              error: `Too few columns (got ${values.length}, need 39).${dateHint}`,
+              error: `Too few columns (got ${values.length}, need 40).${dateHint}`,
             });
             failed++;
             continue;
           }
+
+          // Parse launch type from human-readable back to snake_case
+          const rawLaunchType = values[37].trim();
+          const launchType = rawLaunchType ? launchTypeReverseLabels[rawLaunchType] || rawLaunchType : null;
 
           await api.createFlight({
             date: values[0],
@@ -524,14 +544,15 @@ export default function Settings() {
             full_flight_simulator_time: parseFloat(values[28]) || 0,
             flight_training_device_time: parseFloat(values[29]) || 0,
             aviation_training_device_time: parseFloat(values[30]) || 0,
-            remarks: values[31] || null,
-            takeoffs_day: parseInt(values[32]) || 0,
-            takeoffs_night: parseInt(values[33]) || 0,
-            landings_day: parseInt(values[34]) || 0,
-            landings_night: parseInt(values[35]) || 0,
-            precision_approaches: parseInt(values[36]) || 0,
-            non_precision_approaches: parseInt(values[37]) || 0,
-            holding_patterns: parseInt(values[38]) || 0,
+            takeoffs_day: parseInt(values[31]) || 0,
+            takeoffs_night: parseInt(values[32]) || 0,
+            landings_day: parseInt(values[33]) || 0,
+            landings_night: parseInt(values[34]) || 0,
+            precision_approaches: parseInt(values[35]) || 0,
+            non_precision_approaches: parseInt(values[36]) || 0,
+            holding_patterns: parseInt(values[37]) || 0,
+            launch_type: launchType,
+            remarks: values[38] || null,
           });
           imported++;
         } catch (e) {
@@ -666,7 +687,10 @@ export default function Settings() {
     },
     {
       title: "Other",
-      columns: [{ key: "remarks", label: "Remarks" }],
+      columns: [
+        { key: "launchType", label: "Launch Type" },
+        { key: "remarks", label: "Remarks" },
+      ],
     },
   ];
 
@@ -1013,9 +1037,10 @@ export default function Settings() {
             Departure Time, Arrival Time, Total Time, SEL, SES, MEL, MES, Helicopter, Gyroplane,
             Powered Lift, Glider, Balloon, Airship, Solo, PIC, SIC, Dual Received, Instructor,
             Cross Country, Night, Actual Instrument, Simulated Instrument, Full Flight Simulator,
-            Flight Training Device, Aviation Training Device, Remarks,
+            Flight Training Device, Aviation Training Device,
             Takeoffs Day, Takeoffs Night, Landings Day, Landings Night, Precision Approaches,
-            Non-Precision Approaches, Holding Patterns
+            Non-Precision Approaches, Holding Patterns,
+            Launch Type, Remarks
           </p>
         </div>
       </div>

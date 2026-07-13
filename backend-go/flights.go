@@ -166,16 +166,17 @@ func createFlight(db *sql.DB) http.HandlerFunc {
 
 		result, err := db.ExecContext(r.Context(), `
 			INSERT INTO flights (
-				user_id, date, aircraft_type, aircraft_reg, departure, arrival,
+				user_id, date, pilot_in_command, aircraft_type, aircraft_reg, departure, arrival,
 				departure_time, arrival_time, total_time, sel_time, ses_time, mel_time, mes_time,
 				helicopter_time, gyroplane_time, powered_lift_time, glider_time, balloon_time, airship_time, solo_time, pic_time, sic_time, dual_time, instructor_time,
 				xcountry_time, night_time, act_instrument_time, sim_instrument_time,
 				full_flight_simulator_time, flight_training_device_time, aviation_training_device_time,
-				pilot_in_command, remarks, takeoffs_day, takeoffs_night, landings_day,
-				landings_night, precision_approaches, non_precision_approaches, holding_patterns
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				takeoffs_day, takeoffs_night, landings_day,
+				landings_night, precision_approaches, non_precision_approaches, holding_patterns, launch_type, remarks
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			userID,
 			fc.Date,
+			fc.PilotInCommand,
 			fc.AircraftType,
 			fc.AircraftReg,
 			fc.Departure,
@@ -205,8 +206,6 @@ func createFlight(db *sql.DB) http.HandlerFunc {
 			fc.FullFlightSimulatorTime,
 			fc.FlightTrainingDeviceTime,
 			fc.AviationTrainingDeviceTime,
-			fc.PilotInCommand,
-			fc.Remarks,
 			takeoffsDay,
 			takeoffsNight,
 			landingsDay,
@@ -214,6 +213,8 @@ func createFlight(db *sql.DB) http.HandlerFunc {
 			precisionApproaches,
 			nonPrecisionApproaches,
 			holdingPatterns,
+			fc.LaunchType,
+			fc.Remarks,
 		)
 		if err != nil {
 			log.Printf("createFlight insert: %v", err)
@@ -272,6 +273,9 @@ func updateFlight(db *sql.DB) http.HandlerFunc {
 
 		if update.Date != nil {
 			cols["date"] = *update.Date
+		}
+		if update.PilotInCommand != nil {
+			cols["pilot_in_command"] = *update.PilotInCommand
 		}
 		if update.AircraftType != nil {
 			// Use the named field path from FlightUpdate struct
@@ -361,12 +365,6 @@ func updateFlight(db *sql.DB) http.HandlerFunc {
 		if update.AviationTrainingDeviceTime != nil {
 			cols["aviation_training_device_time"] = *update.AviationTrainingDeviceTime
 		}
-		if update.PilotInCommand != nil {
-			cols["pilot_in_command"] = *update.PilotInCommand
-		}
-		if update.Remarks != nil {
-			cols["remarks"] = *update.Remarks
-		}
 		if update.TakeoffsDay != nil {
 			cols["takeoffs_day"] = *update.TakeoffsDay
 		}
@@ -387,6 +385,12 @@ func updateFlight(db *sql.DB) http.HandlerFunc {
 		}
 		if update.HoldingPatterns != nil {
 			cols["holding_patterns"] = *update.HoldingPatterns
+		}
+		if update.LaunchType != nil {
+			cols["launch_type"] = *update.LaunchType
+		}
+		if update.Remarks != nil {
+			cols["remarks"] = *update.Remarks
 		}
 
 		if len(cols) == 0 {
