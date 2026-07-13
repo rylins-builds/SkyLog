@@ -488,7 +488,9 @@ export default function Logbook() {
    * included regardless of the user's visibility preferences.
    */
   const visibleColumns = allColumns.filter(
-    (col) => col.alwaysVisible || columnVisibility[col.key as keyof ColumnVisibility]
+    (col) =>
+      col.alwaysVisible ||
+      columnVisibility[col.key as keyof ColumnVisibility]
   );
 
   // ── Empty state (no flights at all) ───────────────────────────────────────

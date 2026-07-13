@@ -91,7 +91,7 @@ export interface SettingsData {
 // Defaults
 // ═════════════════════════════════════════════════
 
-/** Default: all columns visible. */
+/** Default: all columns visible except Launch Type. */
 export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   date: true,
   pilotInCommand: true,
@@ -124,8 +124,6 @@ export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   fullFlightSimulatorTime: true,
   flightTrainingDeviceTime: true,
   aviationTrainingDeviceTime: true,
-
-  
   takeoffsDay: true,
   takeoffsNight: true,
   landingsDay: true,
@@ -133,7 +131,7 @@ export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   precisionApproaches: true,
   nonPrecisionApproaches: true,
   holdingPatterns: true,
-  launchType: true,
+  launchType: false,
   remarks: true,
 };
 

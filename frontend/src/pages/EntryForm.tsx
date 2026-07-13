@@ -24,7 +24,7 @@
 import { useState, useEffect, useRef } from "react";
 import { api } from "../api/client";
 import type { Flight } from "../api/types";
-import { loadSettings, loadVisibilityFromApi, type ColumnVisibility } from "../api/settings";
+import { loadSettings, loadVisibilityFromApi, saveVisibilityToApi, saveSettings, type ColumnVisibility } from "../api/settings";
 
 /** All form field values are stored as strings (even numerics) to simplify
  *  two-way binding with <input> elements. They are parsed on submit. */
@@ -388,6 +388,18 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
         await api.createFlight(payload);
         setMessage({ type: "success", text: "Flight logged successfully!" });
         setForm(initialForm());  // Reset form for another entry
+
+        // If this was a glider/LTA flight with a launch type, auto-enable the
+        // Launch Type column visibility so it appears in the Logbook.
+        const gliderLtaFlight = payload.glider_time > 0 || (parseFloat(form.balloon_time) || 0) > 0 || (parseFloat(form.airship_time) || 0) > 0;
+        if (gliderLtaFlight && payload.launch_type) {
+          const currentSettings = loadSettings();
+          if (!currentSettings.columnVisibility.launchType) {
+            currentSettings.columnVisibility.launchType = true;
+            saveSettings(currentSettings);
+            saveVisibilityToApi(currentSettings.pageVisibility, currentSettings.columnVisibility).catch(() => {});
+          }
+        }
       }
       setErrors({});
     } catch (err) {

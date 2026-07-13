@@ -24,6 +24,7 @@ import {
   type ColumnVisibility,
   saveVisibilityToApi,
   loadVisibilityFromApi,
+  loadSettings as loadSettingsFromStorage,
 } from "../api/settings";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -87,7 +88,7 @@ export default function Settings() {
       precisionApproaches: true,
       nonPrecisionApproaches: true,
       holdingPatterns: true,
-      launchType: true,
+      launchType: false,
     },
     username: "",
     showLoginPage: false,
@@ -141,6 +142,31 @@ export default function Settings() {
   /** Whether the current user has admin privileges. */
   const [isAdmin, setIsAdmin] = useState(false);
 
+  /** Check whether glider/LTA launch type flights exist and auto-enable column. */
+  const checkGliderLaunchType = async () => {
+    try {
+      const { hasGliderLaunchType: h } = await api.hasGliderLaunchType();
+      if (h) {
+        setSettings(prev => {
+          if (!prev.columnVisibility.launchType) {
+            const updated = {
+              ...prev,
+              columnVisibility: { ...prev.columnVisibility, launchType: true },
+            };
+            // Persist immediately so Logbook picks it up
+            localStorage.setItem("flightLogbookSettings", JSON.stringify(updated));
+            saveVisibilityToApi(updated.pageVisibility, updated.columnVisibility).catch(() => {});
+            window.dispatchEvent(new CustomEvent("settingsUpdated", { detail: updated }));
+            return updated;
+          }
+          return prev;
+        });
+      }
+    } catch {
+      // Ignore errors
+    }
+  };
+
   // ── Initialisation ────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -149,6 +175,10 @@ export default function Settings() {
     api.getMultiUserMode().then(({ multiUserMode: mum }) => {
       setMultiUserMode(mum);
     }).catch(() => {});
+    checkGliderLaunchType();
+    // Re-check when flights are added/imported
+    window.addEventListener("flightsUpdated", checkGliderLaunchType);
+    return () => window.removeEventListener("flightsUpdated", checkGliderLaunchType);
   }, []);
 
   /**
@@ -577,8 +607,21 @@ export default function Settings() {
       }
       setTimeout(() => setSuccess(""), 5000);
 
-      // Tell other components (e.g. Logbook, Dashboard) to refresh their data
+      // If the import included any glider/LTA flights with launch types,
+      // auto-enable the Launch Type column visibility.
       const updatedFlights = await api.listFlights();
+      const hasGliderData = updatedFlights.some(f => f.launch_type && (f.glider_time > 0 || f.balloon_time > 0 || f.airship_time > 0));
+      if (hasGliderData) {
+        const currentSettings = loadSettingsFromStorage();
+        if (!currentSettings.columnVisibility.launchType) {
+          currentSettings.columnVisibility.launchType = true;
+          localStorage.setItem("flightLogbookSettings", JSON.stringify(currentSettings));
+          window.dispatchEvent(new CustomEvent("settingsUpdated", { detail: currentSettings }));
+          saveVisibilityToApi(currentSettings.pageVisibility, currentSettings.columnVisibility).catch(() => {});
+        }
+      }
+
+      // Tell other components (e.g. Logbook, Dashboard) to refresh their data
       window.dispatchEvent(new CustomEvent("flightsUpdated", {
         detail: updatedFlights,
       }));
@@ -688,7 +731,7 @@ export default function Settings() {
     {
       title: "Other",
       columns: [
-        { key: "launchType", label: "Launch Type" },
+        { key: "launchType", label: "Glider/Lighter-than-Air Launch Type" },
         { key: "remarks", label: "Remarks" },
       ],
     },

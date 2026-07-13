@@ -191,4 +191,10 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ page_visibility: pageVisibility, column_visibility: columnVisibility }),
     }),
+
+  // ═══ Glider Launch Type Check ═══
+
+  /** Check whether the current user has any flights with a glider/LTA launch type logged. */
+  hasGliderLaunchType: () =>
+    request<{ hasGliderLaunchType: boolean }>("/settings/has-glider-launch-type"),
 };
