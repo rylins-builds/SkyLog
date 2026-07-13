@@ -434,7 +434,9 @@ export default function Settings() {
   const handleExportCSV = async () => {
     try {
       setIsLoading(true);
-      const flights = await api.listFlights();
+      const flights = (await api.listFlights()).toSorted(
+        (a, b) => a.date.localeCompare(b.date)
+      );
 
       const launchTypeLabels: Record<string, string> = {
         "aero_tow": "Aero-Tow",
