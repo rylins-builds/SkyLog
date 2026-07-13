@@ -634,8 +634,12 @@ export default function Logbook() {
               {activeFilter && (
                 <span
                   onClick={(e) => { e.stopPropagation(); setActiveFilter(""); setPage(0); }}
-                  className="ml-0.5 w-4 h-4 rounded-full bg-amber-200 hover:bg-amber-300 text-amber-800 flex items-center justify-center text-xs leading-none cursor-pointer"
-                >×</span>
+                  className="ml-0.5 w-4 h-4 rounded-full bg-amber-200 hover:bg-amber-300 flex items-center justify-center cursor-pointer"
+                >
+                  <svg className="w-2.5 h-2.5 text-amber-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </span>
               )}
               {!activeFilter && (
                 <svg className={`w-3.5 h-3.5 transition-transform ${showFilterMenu ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
