@@ -597,7 +597,7 @@ export default function Settings() {
           }
 
           // Parse launch type from human-readable back to snake_case
-          const rawLaunchType = values[37].trim();
+          const rawLaunchType = values[38].trim();
           const launchType = rawLaunchType ? launchTypeReverseLabels[rawLaunchType] || rawLaunchType : null;
 
           await api.createFlight({
@@ -640,7 +640,7 @@ export default function Settings() {
             non_precision_approaches: parseInt(values[36]) || 0,
             holding_patterns: parseInt(values[37]) || 0,
             launch_type: launchType,
-            remarks: values[38] || null,
+            remarks: values[39] || null,
           });
           imported++;
         } catch (e) {
