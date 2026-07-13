@@ -207,4 +207,17 @@ export const api = {
   /** Reset all user settings (visibility and currency thresholds) to defaults. */
   resetSettings: () =>
     request<{ status: string }>("/settings/reset", { method: "DELETE" }),
+
+  // ═══ FAA 8710 Mappings ═══
+
+  /** Get the user's aircraft-type-to-8710-category mappings. */
+  getFAA8710Mappings: () =>
+    request<Record<string, string>>("/faa8710/mappings"),
+
+  /** Save the user's aircraft-type-to-8710-category mappings. */
+  saveFAA8710Mappings: (mappings: Record<string, string>) =>
+    request<{ status: string }>("/faa8710/mappings", {
+      method: "PUT",
+      body: JSON.stringify({ mappings }),
+    }),
 };

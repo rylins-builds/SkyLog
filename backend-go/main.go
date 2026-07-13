@@ -37,6 +37,9 @@ func main() {
 	// Auth, settings, currency
 	registerSettingsRoutes(mux, db)
 
+	// FAA 8710 mappings
+	registerFAA8710Routes(mux, db)
+
 	// ── Determine port ──
 	port := os.Getenv("PORT")
 	if port == "" {
