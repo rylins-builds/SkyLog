@@ -21,8 +21,9 @@ type faa8710MappingsSaveRequest struct {
 // validFAA8710Categories is the set of allowable 8710 category keys.
 var validFAA8710Categories = map[string]bool{
 	"sel": true, "ses": true, "mel": true, "mes": true,
-	"helicopter": true, "gyroplane": true, "powered_lift": true,
-	"glider": true, "balloon": true, "airship": true,
+	"helicopter": true, "gyroplane": true,
+	"powered_lift": true, "glider": true,
+	"balloon": true, "airship": true,
 	"full_flight_simulator": true, "flight_training_device": true,
 	"aviation_training_device": true,
 }

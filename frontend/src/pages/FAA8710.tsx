@@ -15,17 +15,20 @@ import type { Flight } from "../api/types";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type FAA8710Category =
+/** Individual 8710 categories shown in the mapping dropdown. */
+type MappingCategory =
   | "sel" | "ses" | "mel" | "mes"
-  | "helicopter" | "gyroplane" | "powered_lift"
-  | "glider" | "balloon" | "airship"
+  | "helicopter" | "gyroplane"
+  | "powered_lift"
+  | "glider"
+  | "balloon" | "airship"
   | "full_flight_simulator" | "flight_training_device" | "aviation_training_device";
 
-const CATEGORY_LABELS: Record<FAA8710Category, string> = {
-  sel: "Single Engine Land",
-  ses: "Single Engine Sea",
-  mel: "Multi Engine Land",
-  mes: "Multi Engine Sea",
+const MAPPING_LABELS: Record<MappingCategory, string> = {
+  sel: "Single-Engine Land",
+  ses: "Single-Engine Sea",
+  mel: "Multi-Engine Land",
+  mes: "Multi-Engine Sea",
   helicopter: "Helicopter",
   gyroplane: "Gyroplane",
   powered_lift: "Powered Lift",
@@ -41,8 +44,12 @@ type AircraftTypeMappings = Record<string, string>;
 
 // ── Data helpers ───────────────────────────────────────────────────────────
 
+type GreyedOutColumn = "solo" | "pic" | "sic" | "xcDual" | "xcSolo" | "xcPic" | "xcSic"
+  | "nightDual" | "nightTOLdg" | "nightPic" | "nightSic" | "nightTOLdgPic" | "nightTOLdgSic";
+
 interface TableRow {
   label: string;
+  greyedOutColumns: Set<GreyedOutColumn>;
   total: number;
   dual: number;
   solo: number;
@@ -76,7 +83,8 @@ const EXPERIENCE_ROWS: { label: string; catKeys: (keyof Flight)[] }[] = [
 function fmtHrs(n: number): string { return n.toFixed(1); }
 
 function buildExperienceGrid(flights: Flight[], mappings: AircraftTypeMappings): TableRow[] {
-  // Build reverse mapping: category value → list of aircraft types mapped to that category
+  // Build reverse mapping: sub-category → list of aircraft types
+  // Each mapping value is already a direct sub-category key (e.g. "ses", "helicopter")
   const categoryToTypes: Record<string, string[]> = {};
   for (const [aircraftType, categoryValue] of Object.entries(mappings)) {
     if (!categoryToTypes[categoryValue]) categoryToTypes[categoryValue] = [];
@@ -159,8 +167,70 @@ function buildExperienceGrid(flights: Flight[], mappings: AircraftTypeMappings):
         ? a + Math.min(co(f, "sic_time"), co(f, "night_time") || 1)
         : a, 0);
 
+    // Build greyedOutColumns: different rules per category
+    const isFullFlightSimulator = r.catKeys.some((k) =>
+      String(k).startsWith("full_flight_simulator")
+    );
+    const isFlightTrainingDevice = r.catKeys.some((k) =>
+      String(k).startsWith("flight_training_device")
+    );
+    const isAviationTrainingDevice = r.catKeys.some((k) =>
+      String(k).startsWith("aviation_training_device")
+    );
+    const isGlider = r.label === "Glider";
+
+    const greyedOutColumns = new Set<GreyedOutColumn>();
+    if (isGlider) {
+      // Glider: only XC PIC, XC SIC, and all night columns greyed out
+      greyedOutColumns.add("xcPic");
+      greyedOutColumns.add("xcSic");
+      greyedOutColumns.add("nightDual");
+      greyedOutColumns.add("nightTOLdg");
+      greyedOutColumns.add("nightPic");
+      greyedOutColumns.add("nightSic");
+      greyedOutColumns.add("nightTOLdgPic");
+      greyedOutColumns.add("nightTOLdgSic");
+    } else if (isFullFlightSimulator) {
+      // Full Flight Simulator: Solo through XC SIC greyed out
+      greyedOutColumns.add("solo");
+      greyedOutColumns.add("pic");
+      greyedOutColumns.add("sic");
+      greyedOutColumns.add("xcDual");
+      greyedOutColumns.add("xcSolo");
+      greyedOutColumns.add("xcPic");
+      greyedOutColumns.add("xcSic");
+    } else if (isFlightTrainingDevice) {
+      // Flight Training Device: Solo through XC SIC + Night T/O & Ldg columns greyed out
+      greyedOutColumns.add("solo");
+      greyedOutColumns.add("pic");
+      greyedOutColumns.add("sic");
+      greyedOutColumns.add("xcDual");
+      greyedOutColumns.add("xcSolo");
+      greyedOutColumns.add("xcPic");
+      greyedOutColumns.add("xcSic");
+      greyedOutColumns.add("nightTOLdg");
+      greyedOutColumns.add("nightTOLdgPic");
+      greyedOutColumns.add("nightTOLdgSic");
+    } else if (isAviationTrainingDevice) {
+      // Aviation Training Device: Solo through XC SIC + all night columns greyed out
+      greyedOutColumns.add("solo");
+      greyedOutColumns.add("pic");
+      greyedOutColumns.add("sic");
+      greyedOutColumns.add("xcDual");
+      greyedOutColumns.add("xcSolo");
+      greyedOutColumns.add("xcPic");
+      greyedOutColumns.add("xcSic");
+      greyedOutColumns.add("nightDual");
+      greyedOutColumns.add("nightTOLdg");
+      greyedOutColumns.add("nightPic");
+      greyedOutColumns.add("nightSic");
+      greyedOutColumns.add("nightTOLdgPic");
+      greyedOutColumns.add("nightTOLdgSic");
+    }
+
     return {
       label: r.label,
+      greyedOutColumns,
       total: sum("total_time"),
       dual: sum("dual_time"),
       solo: sum("solo_time"),
@@ -233,25 +303,34 @@ function ExpHeader() {
 function ExpRow({ row }: { row: TableRow }) {
   const td = "px-2 py-2 text-[11px] sm:text-sm text-center border-r border-gray-100 dark:border-zinc-700 tabular-nums";
   const lbl = "px-3 py-2 text-[11px] sm:text-sm font-medium text-gray-900 dark:text-white text-left sticky left-0 bg-white dark:bg-zinc-800 z-10 border-r border-gray-100 dark:border-zinc-700 whitespace-nowrap";
+  const tdDisabled = `${td} text-gray-300 dark:text-gray-600`;
+
+  const greyed = (col: GreyedOutColumn) => row.greyedOutColumns.has(col);
+  const cell = (col: GreyedOutColumn, val: string | number) => (
+    <td className={greyed(col) ? tdDisabled : `${td} text-gray-900 dark:text-white`}>
+      {greyed(col) ? "—" : val}
+    </td>
+  );
+
   return (
     <tr className="border-b border-gray-100 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors">
       <td className={lbl}>{row.label}</td>
       <td className={`${td} text-gray-900 dark:text-white`}>{fmtHrs(row.total)}</td>
       <td className={`${td} text-gray-900 dark:text-white`}>{fmtHrs(row.dual)}</td>
-      <td className={`${td} text-gray-900 dark:text-white`}>{fmtHrs(row.solo)}</td>
-      <td className={`${td} text-gray-900 dark:text-white`}>{fmtHrs(row.pic)}</td>
-      <td className={`${td} text-gray-900 dark:text-white`}>{fmtHrs(row.sic)}</td>
-      <td className={`${td} text-gray-900 dark:text-white`}>{fmtHrs(row.xcDual)}</td>
-      <td className={`${td} text-gray-900 dark:text-white`}>{fmtHrs(row.xcSolo)}</td>
-      <td className={`${td} text-gray-900 dark:text-white`}>{fmtHrs(row.xcPic)}</td>
-      <td className={`${td} text-gray-900 dark:text-white`}>{fmtHrs(row.xcSic)}</td>
+      {cell("solo", fmtHrs(row.solo))}
+      {cell("pic", fmtHrs(row.pic))}
+      {cell("sic", fmtHrs(row.sic))}
+      {cell("xcDual", fmtHrs(row.xcDual))}
+      {cell("xcSolo", fmtHrs(row.xcSolo))}
+      {cell("xcPic", fmtHrs(row.xcPic))}
+      {cell("xcSic", fmtHrs(row.xcSic))}
       <td className={`${td} text-gray-900 dark:text-white`}>{fmtHrs(row.instrument)}</td>
-      <td className={`${td} text-gray-900 dark:text-white`}>{fmtHrs(row.nightDual)}</td>
-      <td className={`${td} text-gray-900 dark:text-white`}>{row.nightTOLdg.toFixed(0)}</td>
-      <td className={`${td} text-gray-900 dark:text-white`}>{fmtHrs(row.nightPic)}</td>
-      <td className={`${td} text-gray-900 dark:text-white`}>{fmtHrs(row.nightSic)}</td>
-      <td className={`${td} text-gray-900 dark:text-white`}>{fmtHrs(row.nightTOLdgPic)}</td>
-      <td className={`${td} text-gray-900 dark:text-white`}>{fmtHrs(row.nightTOLdgSic)}</td>
+      {cell("nightDual", fmtHrs(row.nightDual))}
+      {cell("nightTOLdg", row.nightTOLdg.toFixed(0))}
+      {cell("nightPic", fmtHrs(row.nightPic))}
+      {cell("nightSic", fmtHrs(row.nightSic))}
+      {cell("nightTOLdgPic", fmtHrs(row.nightTOLdgPic))}
+      {cell("nightTOLdgSic", fmtHrs(row.nightTOLdgSic))}
     </tr>
   );
 }
@@ -264,6 +343,7 @@ export default function FAA8710() {
   const [mappings, setMappings] = useState<AircraftTypeMappings>({});
   const [mappingsLoaded, setMappingsLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [expandedSection, setExpandedSection] = useState<string | null>("mappings");
 
   useEffect(() => {
@@ -287,12 +367,18 @@ export default function FAA8710() {
 
   const saveMappings = async () => {
     setSaving(true);
-    try { await api.saveFAA8710Mappings(mappings); }
-    catch (e) { alert(`Failed to save mappings: ${e instanceof Error ? e.message : "Unknown"}`); }
-    finally { setSaving(false); }
+    setSaveStatus(null);
+    try {
+      await api.saveFAA8710Mappings(mappings);
+      setSaveStatus({ type: "success", message: "Mappings saved successfully." });
+    } catch (e) {
+      setSaveStatus({ type: "error", message: `Failed to save mappings: ${e instanceof Error ? e.message : "Unknown"}` });
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const setMapping = (aircraftType: string, category: FAA8710Category | "") => {
+  const setMapping = (aircraftType: string, category: MappingCategory | "") => {
     setMappings((prev) => {
       const next = { ...prev };
       if (category === "") delete next[aircraftType];
@@ -435,12 +521,12 @@ export default function FAA8710() {
                           <td className="px-3 py-2.5">
                             <select
                               value={mappings[t] ?? ""}
-                              onChange={(e) => setMapping(t, e.target.value as FAA8710Category | "")}
+                              onChange={(e) => setMapping(t, (e.target.value || "") as MappingCategory | "")}
                               className="w-full px-2 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:border-zinc-600 dark:text-white"
                             >
                               <option value="">— Unmapped —</option>
-                              {(Object.keys(CATEGORY_LABELS) as FAA8710Category[]).map((cat) => (
-                                <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
+                              {(Object.keys(MAPPING_LABELS) as MappingCategory[]).map((cat) => (
+                                <option key={cat} value={cat}>{MAPPING_LABELS[cat]}</option>
                               ))}
                             </select>
                           </td>
@@ -449,7 +535,12 @@ export default function FAA8710() {
                     </tbody>
                   </table>
                 </div>
-                <div className="mt-4 flex justify-end">
+                <div className="mt-4 flex items-center justify-end gap-3">
+                  {saveStatus && (
+                    <span className={`text-sm ${saveStatus.type === "success" ? "text-green-600" : "text-red-600"}`}>
+                      {saveStatus.message}
+                    </span>
+                  )}
                   <button onClick={saveMappings} disabled={saving} className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-primary">
                     {saving ? "Saving…" : (<><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>Save Mappings</>)}
                   </button>
