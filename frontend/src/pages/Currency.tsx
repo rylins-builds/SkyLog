@@ -556,7 +556,7 @@ export default function Currency() {
     return (
       <div className="p-8 text-center animate-fade-in">
         <div className="max-w-md mx-auto py-16">
-          <div className="text-6xl mb-4">🛡️</div>
+          <div className="text-6xl mb-4">📊</div>
           <h2 className="text-xl font-semibold text-gray-700 mb-2 dark:text-white">
             No currency data yet
           </h2>
