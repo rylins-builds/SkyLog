@@ -1,12 +1,11 @@
 services:
   skylog:
     build: .
+    container_name: skylog
     ports:
       - "3000:3000"
     volumes:
-      - ./skylog_data:/app/data
-    environment:
-      - SKYLOG_DB_PATH=/app/data/skylog.db
+      - database:/app/data
 
 volumes:
-  skylog_data:
+  database:

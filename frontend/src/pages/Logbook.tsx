@@ -29,7 +29,7 @@ type SortField =
   | "date" | "total_time" | "aircraft_type" | "aircraft_reg"
   | "departure" | "arrival"
   | "sel_time" | "ses_time" | "mel_time" | "mes_time"
-  | "helicopter_time" | "glider_time"
+  | "helicopter_time" | "gyroplane_time" | "powered_lift_time" | "glider_time" | "balloon_time" | "airship_time"
   | "solo_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time"
   | "xcountry_time" | "night_time"
   | "takeoffs_day" | "takeoffs_night"
@@ -47,7 +47,7 @@ type SortDir = "asc" | "desc";
  */
 type FilterKey =
   | "sel_time" | "ses_time" | "mel_time" | "mes_time"
-  | "helicopter_time" | "glider_time"
+  | "helicopter_time" | "gyroplane_time" | "powered_lift_time" | "glider_time" | "balloon_time" | "airship_time"
   | "solo_time" | "pic_time" | "sic_time" | "dual_time" | "instructor_time"
   | "xcountry_time" | "night_time"
   | "takeoffs_day" | "takeoffs_night"
@@ -210,7 +210,11 @@ export default function Logbook() {
   if (activeFilter === "mel_time") filtered = filtered.filter((f) => f.mel_time > 0);
   if (activeFilter === "mes_time") filtered = filtered.filter((f) => f.mes_time > 0);
   if (activeFilter === "helicopter_time") filtered = filtered.filter((f) => f.helicopter_time > 0);
+  if (activeFilter === "gyroplane_time") filtered = filtered.filter((f) => f.gyroplane_time > 0);
+  if (activeFilter === "powered_lift_time") filtered = filtered.filter((f) => f.powered_lift_time > 0);
   if (activeFilter === "glider_time") filtered = filtered.filter((f) => f.glider_time > 0);
+  if (activeFilter === "balloon_time") filtered = filtered.filter((f) => f.balloon_time > 0);
+  if (activeFilter === "airship_time") filtered = filtered.filter((f) => f.airship_time > 0);
   if (activeFilter === "solo_time") filtered = filtered.filter((f) => f.solo_time > 0);
   if (activeFilter === "pic_time") filtered = filtered.filter((f) => f.pic_time > 0);
   if (activeFilter === "sic_time") filtered = filtered.filter((f) => f.sic_time > 0);
@@ -286,7 +290,11 @@ export default function Logbook() {
     { label: "Multi Engine Land", field: "mel_time" },
     { label: "Multi Engine Sea", field: "mes_time" },
     { label: "Helicopter", field: "helicopter_time" },
+    { label: "Gyroplane", field: "gyroplane_time" },
+    { label: "Powered Lift", field: "powered_lift_time" },
     { label: "Glider", field: "glider_time" },
+    { label: "Balloon", field: "balloon_time" },
+    { label: "Airship", field: "airship_time" },
     { label: "Solo", field: "solo_time" },
     { label: "PIC", field: "pic_time" },
     { label: "SIC", field: "sic_time" },
@@ -310,7 +318,11 @@ export default function Logbook() {
     { label: "Multi Engine Land", key: "mel_time" },
     { label: "Multi Engine Sea", key: "mes_time" },
     { label: "Helicopter", key: "helicopter_time" },
+    { label: "Gyroplane", key: "gyroplane_time" },
+    { label: "Powered Lift", key: "powered_lift_time" },
     { label: "Glider", key: "glider_time" },
+    { label: "Balloon", key: "balloon_time" },
+    { label: "Airship", key: "airship_time" },
     { label: "Solo", key: "solo_time" },
     { label: "PIC", key: "pic_time" },
     { label: "SIC", key: "sic_time" },
@@ -349,7 +361,11 @@ export default function Logbook() {
     mel_time: "melTime",
     mes_time: "mesTime",
     helicopter_time: "helicopterTime",
+    gyroplane_time: "gyroplaneTime",
+    powered_lift_time: "poweredLiftTime",
     glider_time: "gliderTime",
+    balloon_time: "balloonTime",
+    airship_time: "airshipTime",
     solo_time: "soloTime",
     pic_time: "picTime",
     sic_time: "sicTime",
@@ -389,7 +405,8 @@ export default function Logbook() {
    * are never hidden by the column-visibility settings.
    */
   const allColumns: ColumnDef[] = [
-    { key: "date", label: "Date", render: (f) => f.date },
+    { key: "date", label: "Date", alwaysVisible: true, render: (f) => f.date },
+    { key: "pilotInCommand", label: "Pilot in Command", render: (f) => f.pilot_in_command },
     { key: "aircraftType", label: "Aircraft Type", render: (f) => f.aircraft_type },
     { key: "aircraftReg", label: "Aircraft Registration", render: (f) => f.aircraft_reg },
     { key: "departure", label: "From", render: (f) => f.departure },
@@ -400,7 +417,11 @@ export default function Logbook() {
     { key: "melTime", label: "Multi Engine Land", render: (f) => f.mel_time.toFixed(1) },
     { key: "mesTime", label: "Multi Engine Sea", render: (f) => f.mes_time.toFixed(1) },
     { key: "helicopterTime", label: "Helicopter", render: (f) => f.helicopter_time.toFixed(1) },
+    { key: "gyroplaneTime", label: "Gyroplane", render: (f) => f.gyroplane_time.toFixed(1) },
+    { key: "poweredLiftTime", label: "Powered Lift", render: (f) => f.powered_lift_time.toFixed(1) },
     { key: "gliderTime", label: "Glider", render: (f) => f.glider_time.toFixed(1) },
+    { key: "balloonTime", label: "Balloon", render: (f) => f.balloon_time.toFixed(1) },
+    { key: "airshipTime", label: "Airship", render: (f) => f.airship_time.toFixed(1) },
     { key: "soloTime", label: "Solo", render: (f) => f.solo_time.toFixed(1) },
     { key: "picTime", label: "PIC", render: (f) => f.pic_time.toFixed(1) },
     { key: "sicTime", label: "SIC", render: (f) => f.sic_time.toFixed(1) },
@@ -410,7 +431,9 @@ export default function Logbook() {
     { key: "nightTime", label: "Night", render: (f) => f.night_time.toFixed(1) },
     { key: "actInstrumentTime", label: "Actual Instrument", render: (f) => f.act_instrument_time.toFixed(1) },
     { key: "simInstrumentTime", label: "Hooded Instrument", render: (f) => f.sim_instrument_time.toFixed(1) },
-    { key: "simTime", label: "Flight Simulator", render: (f) => f.sim_time.toFixed(1) },
+    { key: "fullFlightSimulatorTime", label: "Full Flight Simulator", render: (f) => f.full_flight_simulator_time.toFixed(1) },
+    { key: "flightTrainingDeviceTime", label: "Flight Training Device", render: (f) => f.flight_training_device_time.toFixed(1) },
+    { key: "aviationTrainingDeviceTime", label: "Aviation Training Device", render: (f) => f.aviation_training_device_time.toFixed(1) },
     { key: "takeoffsDay", label: "Day Takeoffs", render: (f) => f.takeoffs_day },
     { key: "takeoffsNight", label: "Night Takeoffs", render: (f) => f.takeoffs_night },
     { key: "landingsDay", label: "Day Landings", render: (f) => f.landings_day },
@@ -418,6 +441,14 @@ export default function Logbook() {
     { key: "precisionApproaches", label: "Precision Approaches", render: (f) => f.precision_approaches },
     { key: "nonPrecisionApproaches", label: "Non-Precision Approaches", render: (f) => f.non_precision_approaches },
     { key: "holdingPatterns", label: "Holding Patterns", render: (f) => f.holding_patterns },
+    { key: "launchType", label: "Glider/Lighter-than-Air Launch Type", render: (f) => {
+      const displayLabels: Record<string, string> = {
+        "aero_tow": "Aero-Tow",
+        "ground_launch": "Ground Launch",
+        "powered_launch": "Powered Launch",
+      };
+      return f.launch_type ? displayLabels[f.launch_type] || f.launch_type : "";
+    }},
     { key: "remarks", label: "Remarks", render: (f) => f.remarks },
     {
       key: "actions",
@@ -457,7 +488,9 @@ export default function Logbook() {
    * included regardless of the user's visibility preferences.
    */
   const visibleColumns = allColumns.filter(
-    (col) => col.alwaysVisible || columnVisibility[col.key as keyof ColumnVisibility]
+    (col) =>
+      col.alwaysVisible ||
+      columnVisibility[col.key as keyof ColumnVisibility]
   );
 
   // ── Empty state (no flights at all) ───────────────────────────────────────
@@ -601,8 +634,12 @@ export default function Logbook() {
               {activeFilter && (
                 <span
                   onClick={(e) => { e.stopPropagation(); setActiveFilter(""); setPage(0); }}
-                  className="ml-0.5 w-4 h-4 rounded-full bg-amber-200 hover:bg-amber-300 text-amber-800 flex items-center justify-center text-xs leading-none cursor-pointer"
-                >×</span>
+                  className="ml-0.5 w-4 h-4 rounded-full bg-amber-200 hover:bg-amber-300 flex items-center justify-center cursor-pointer"
+                >
+                  <svg className="w-2.5 h-2.5 text-amber-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </span>
               )}
               {!activeFilter && (
                 <svg className={`w-3.5 h-3.5 transition-transform ${showFilterMenu ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">

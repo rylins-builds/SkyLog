@@ -24,6 +24,7 @@ import {
   type ColumnVisibility,
   saveVisibilityToApi,
   loadVisibilityFromApi,
+  loadSettings as loadSettingsFromStorage,
 } from "../api/settings";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -49,6 +50,7 @@ export default function Settings() {
     },
     columnVisibility: {
       date: true,
+      pilotInCommand: true,
       aircraftType: true,
       aircraftReg: true,
       departure: true,
@@ -61,7 +63,11 @@ export default function Settings() {
       melTime: true,
       mesTime: true,
       helicopterTime: true,
+      gyroplaneTime: true,
+      poweredLiftTime: true,
       gliderTime: true,
+      balloonTime: true,
+      airshipTime: true,
       soloTime: true,
       picTime: true,
       sicTime: true,
@@ -71,8 +77,9 @@ export default function Settings() {
       nightTime: true,
       actInstrumentTime: true,
       simInstrumentTime: true,
-      simTime: true,
-      pilotInCommand: true,
+      fullFlightSimulatorTime: true,
+      flightTrainingDeviceTime: true,
+      aviationTrainingDeviceTime: true,
       remarks: true,
       takeoffsDay: true,
       takeoffsNight: true,
@@ -81,6 +88,7 @@ export default function Settings() {
       precisionApproaches: true,
       nonPrecisionApproaches: true,
       holdingPatterns: true,
+      launchType: false,
     },
     username: "",
     showLoginPage: false,
@@ -134,6 +142,89 @@ export default function Settings() {
   /** Whether the current user has admin privileges. */
   const [isAdmin, setIsAdmin] = useState(false);
 
+  /** Wipe database multi-step state: 0=idle, 1=confirm text, 2=final confirm, 3=done. */
+  const [wipeStep, setWipeStep] = useState(0);
+
+  /** Text input for wipe confirmation. */
+  const [wipeConfirmText, setWipeConfirmText] = useState("");
+
+  /** Reset settings multi-step state: 0=idle, 1=warning shown, 2=done. */
+  const [resetSettingsStep, setResetSettingsStep] = useState(0);
+
+  /** Execute the database wipe. */
+  const handleWipeDatabase = async () => {
+    try {
+      setIsLoading(true);
+      const { deleted } = await api.wipeFlights();
+      setWipeStep(3);
+      setSuccess(`Deleted ${deleted} flight${deleted !== 1 ? "s" : ""}.`);
+      setTimeout(() => setSuccess(""), 5000);
+    } catch (e) {
+      setError("Failed to delete flights");
+      setTimeout(() => setError(""), 3000);
+      setWipeStep(0);
+      setWipeConfirmText("");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /** Execute the settings reset. */
+  const handleResetSettings = async () => {
+    try {
+      setIsLoading(true);
+      // Clear settings from backend
+      await api.resetSettings();
+      // Clear localStorage
+      localStorage.removeItem("flightLogbookSettings");
+      // Reset local state to defaults
+      const defaults = loadSettingsFromStorage();
+      setSettings(prev => ({
+        ...prev,
+        pageVisibility: defaults.pageVisibility,
+        columnVisibility: defaults.columnVisibility,
+      }));
+      // Save defaults to backend so they persist
+      await saveVisibilityToApi(defaults.pageVisibility, defaults.columnVisibility);
+      // Notify other components
+      window.dispatchEvent(new CustomEvent("settingsUpdated", { detail: defaults }));
+      setResetSettingsStep(2);
+      setSuccess("All settings have been reset to defaults.");
+      setTimeout(() => setSuccess(""), 5000);
+    } catch (e) {
+      setError("Failed to reset settings");
+      setTimeout(() => setError(""), 3000);
+      setResetSettingsStep(0);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /** Check whether glider/LTA launch type flights exist and auto-enable column. */
+  const checkGliderLaunchType = async () => {
+    try {
+      const { hasGliderLaunchType: h } = await api.hasGliderLaunchType();
+      if (h) {
+        setSettings(prev => {
+          if (!prev.columnVisibility.launchType) {
+            const updated = {
+              ...prev,
+              columnVisibility: { ...prev.columnVisibility, launchType: true },
+            };
+            // Persist immediately so Logbook picks it up
+            localStorage.setItem("flightLogbookSettings", JSON.stringify(updated));
+            saveVisibilityToApi(updated.pageVisibility, updated.columnVisibility).catch(() => {});
+            window.dispatchEvent(new CustomEvent("settingsUpdated", { detail: updated }));
+            return updated;
+          }
+          return prev;
+        });
+      }
+    } catch {
+      // Ignore errors
+    }
+  };
+
   // ── Initialisation ────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -142,6 +233,10 @@ export default function Settings() {
     api.getMultiUserMode().then(({ multiUserMode: mum }) => {
       setMultiUserMode(mum);
     }).catch(() => {});
+    checkGliderLaunchType();
+    // Re-check when flights are added/imported
+    window.addEventListener("flightsUpdated", checkGliderLaunchType);
+    return () => window.removeEventListener("flightsUpdated", checkGliderLaunchType);
   }, []);
 
   /**
@@ -339,21 +434,32 @@ export default function Settings() {
   const handleExportCSV = async () => {
     try {
       setIsLoading(true);
-      const flights = await api.listFlights();
+      const flights = (await api.listFlights()).toSorted(
+        (a, b) => a.date.localeCompare(b.date)
+      );
+
+      const launchTypeLabels: Record<string, string> = {
+        "aero_tow": "Aero-Tow",
+        "ground_launch": "Ground Launch",
+        "powered_launch": "Powered Launch",
+      };
 
       const headers = [
-        "Date", "Aircraft Type", "Registration", "Departure", "Arrival",
+        "Date", "Pilot in Command", "Aircraft Type", "Registration", "Departure", "Arrival",
         "Departure Time", "Arrival Time", "Total Time", "SEL", "SES", "MEL",
-        "MES", "Helicopter", "Glider", "Solo", "PIC", "SIC", "Dual Received",
+        "MES", "Helicopter", "Gyroplane", "Powered Lift", "Glider", "Balloon", "Airship",
+        "Solo", "PIC", "SIC", "Dual Received",
         "Instructor", "Cross Country", "Night", "Actual Instrument",
-        "Simulated Instrument", "Flight Simulator", "Pilot in Command",
-        "Remarks", "Takeoffs Day", "Takeoffs Night", "Landings Day",
-        "Landings Night", "Precision Approaches", "Non-Precision Approaches",
-        "Holding Patterns",
+        "Simulated Instrument", "Full Flight Simulator", "Flight Training Device",
+        "Aviation Training Device",
+        "Takeoffs Day", "Takeoffs Night", "Landings Day", "Landings Night",
+        "Precision Approaches", "Non-Precision Approaches", "Holding Patterns",
+        "Glider/Lighter-than-Air Launch Type", "Remarks",
       ];
 
       const rows = flights.map((flight: Flight) => [
         flight.date,
+        flight.pilot_in_command,
         flight.aircraft_type,
         flight.aircraft_reg,
         flight.departure,
@@ -366,7 +472,11 @@ export default function Settings() {
         flight.mel_time?.toFixed(1) || "0.0",
         flight.mes_time?.toFixed(1) || "0.0",
         flight.helicopter_time?.toFixed(1) || "0.0",
+        flight.gyroplane_time?.toFixed(1) || "0.0",
+        flight.powered_lift_time?.toFixed(1) || "0.0",
         flight.glider_time?.toFixed(1) || "0.0",
+        flight.balloon_time?.toFixed(1) || "0.0",
+        flight.airship_time?.toFixed(1) || "0.0",
         flight.solo_time?.toFixed(1) || "0.0",
         flight.pic_time.toFixed(1),
         flight.sic_time.toFixed(1),
@@ -376,9 +486,9 @@ export default function Settings() {
         flight.night_time?.toFixed(1) || "0.0",
         flight.act_instrument_time?.toFixed(1) || "0.0",
         flight.sim_instrument_time?.toFixed(1) || "0.0",
-        flight.sim_time?.toFixed(1) || "0.0",
-        flight.pilot_in_command,
-        flight.remarks || "",
+        flight.full_flight_simulator_time?.toFixed(1) || "0.0",
+        flight.flight_training_device_time?.toFixed(1) || "0.0",
+        flight.aviation_training_device_time?.toFixed(1) || "0.0",
         flight.takeoffs_day || 0,
         flight.takeoffs_night || 0,
         flight.landings_day || 0,
@@ -386,6 +496,8 @@ export default function Settings() {
         flight.precision_approaches || 0,
         flight.non_precision_approaches || 0,
         flight.holding_patterns || 0,
+        flight.launch_type ? launchTypeLabels[flight.launch_type] || flight.launch_type : "",
+        flight.remarks || "",
       ]);
 
       const csvContent = [
@@ -469,51 +581,68 @@ export default function Settings() {
         let values: string[] = [];
         try {
           values = parseCSVLine(line);
-          // Expect 34 columns based on the export format
-          if (values.length < 34) {
+          const launchTypeReverseLabels: Record<string, string> = {
+            "Aero-Tow": "aero_tow",
+            "Ground Launch": "ground_launch",
+            "Powered Launch": "powered_launch",
+          };
+
+          // Expect 40 columns based on the export format
+          if (values.length < 40) {
             const dateHint = values[0] ? ` (date: ${values[0]})` : "";
             errors.push({
               row: csvLineNumber,
-              error: `Too few columns (got ${values.length}, need 34).${dateHint}`,
+              error: `Too few columns (got ${values.length}, need 40).${dateHint}`,
             });
             failed++;
             continue;
           }
 
+          // Parse launch type from human-readable back to snake_case
+          const rawLaunchType = values[38].trim();
+          const launchType = rawLaunchType ? launchTypeReverseLabels[rawLaunchType] || rawLaunchType : null;
+
           await api.createFlight({
             date: values[0],
-            aircraft_type: values[1],
-            aircraft_reg: values[2],
-            departure: values[3],
-            arrival: values[4],
-            departure_time: values[5] || null,
-            arrival_time: values[6] || null,
-            total_time: parseFloat(values[7]) || 0,
-            sel_time: parseFloat(values[8]) || 0,
-            ses_time: parseFloat(values[9]) || 0,
-            mel_time: parseFloat(values[10]) || 0,
-            mes_time: parseFloat(values[11]) || 0,
-            helicopter_time: parseFloat(values[12]) || 0,
-            glider_time: parseFloat(values[13]) || 0,
-            solo_time: parseFloat(values[14]) || 0,
-            pic_time: parseFloat(values[15]) || 0,
-            sic_time: parseFloat(values[16]) || 0,
-            dual_time: parseFloat(values[17]) || 0,
-            instructor_time: parseFloat(values[18]) || 0,
-            xcountry_time: parseFloat(values[19]) || 0,
-            night_time: parseFloat(values[20]) || 0,
-            act_instrument_time: parseFloat(values[21]) || 0,
-            sim_instrument_time: parseFloat(values[22]) || 0,
-            sim_time: parseFloat(values[23]) || 0,
-            pilot_in_command: values[24] || "",
-            remarks: values[25] || null,
-            takeoffs_day: parseInt(values[26]) || 0,
-            takeoffs_night: parseInt(values[27]) || 0,
-            landings_day: parseInt(values[28]) || 0,
-            landings_night: parseInt(values[29]) || 0,
-            precision_approaches: parseInt(values[30]) || 0,
-            non_precision_approaches: parseInt(values[31]) || 0,
-            holding_patterns: parseInt(values[32]) || 0,
+            pilot_in_command: values[1],
+            aircraft_type: values[2],
+            aircraft_reg: values[3],
+            departure: values[4],
+            arrival: values[5],
+            departure_time: values[6] || null,
+            arrival_time: values[7] || null,
+            total_time: parseFloat(values[8]) || 0,
+            sel_time: parseFloat(values[9]) || 0,
+            ses_time: parseFloat(values[10]) || 0,
+            mel_time: parseFloat(values[11]) || 0,
+            mes_time: parseFloat(values[12]) || 0,
+            helicopter_time: parseFloat(values[13]) || 0,
+            gyroplane_time: parseFloat(values[14]) || 0,
+            powered_lift_time: parseFloat(values[15]) || 0,
+            glider_time: parseFloat(values[16]) || 0,
+            balloon_time: parseFloat(values[17]) || 0,
+            airship_time: parseFloat(values[18]) || 0,
+            solo_time: parseFloat(values[19]) || 0,
+            pic_time: parseFloat(values[20]) || 0,
+            sic_time: parseFloat(values[21]) || 0,
+            dual_time: parseFloat(values[22]) || 0,
+            instructor_time: parseFloat(values[23]) || 0,
+            xcountry_time: parseFloat(values[24]) || 0,
+            night_time: parseFloat(values[25]) || 0,
+            act_instrument_time: parseFloat(values[26]) || 0,
+            sim_instrument_time: parseFloat(values[27]) || 0,
+            full_flight_simulator_time: parseFloat(values[28]) || 0,
+            flight_training_device_time: parseFloat(values[29]) || 0,
+            aviation_training_device_time: parseFloat(values[30]) || 0,
+            takeoffs_day: parseInt(values[31]) || 0,
+            takeoffs_night: parseInt(values[32]) || 0,
+            landings_day: parseInt(values[33]) || 0,
+            landings_night: parseInt(values[34]) || 0,
+            precision_approaches: parseInt(values[35]) || 0,
+            non_precision_approaches: parseInt(values[36]) || 0,
+            holding_patterns: parseInt(values[37]) || 0,
+            launch_type: launchType,
+            remarks: values[39] || null,
           });
           imported++;
         } catch (e) {
@@ -538,8 +667,21 @@ export default function Settings() {
       }
       setTimeout(() => setSuccess(""), 5000);
 
-      // Tell other components (e.g. Logbook, Dashboard) to refresh their data
+      // If the import included any glider/LTA flights with launch types,
+      // auto-enable the Launch Type column visibility.
       const updatedFlights = await api.listFlights();
+      const hasGliderData = updatedFlights.some(f => f.launch_type && (f.glider_time > 0 || f.balloon_time > 0 || f.airship_time > 0));
+      if (hasGliderData) {
+        const currentSettings = loadSettingsFromStorage();
+        if (!currentSettings.columnVisibility.launchType) {
+          currentSettings.columnVisibility.launchType = true;
+          localStorage.setItem("flightLogbookSettings", JSON.stringify(currentSettings));
+          window.dispatchEvent(new CustomEvent("settingsUpdated", { detail: currentSettings }));
+          saveVisibilityToApi(currentSettings.pageVisibility, currentSettings.columnVisibility).catch(() => {});
+        }
+      }
+
+      // Tell other components (e.g. Logbook, Dashboard) to refresh their data
       window.dispatchEvent(new CustomEvent("flightsUpdated", {
         detail: updatedFlights,
       }));
@@ -582,14 +724,13 @@ export default function Settings() {
     {
       title: "Basic Information",
       columns: [
-        { key: "date", label: "Date" },
+        { key: "pilotInCommand", label: "Pilot in Command" },
         { key: "aircraftType", label: "Aircraft Type" },
         { key: "aircraftReg", label: "Registration" },
         { key: "departure", label: "Departure" },
         { key: "arrival", label: "Arrival" },
         { key: "departureTime", label: "Departure Time" },
         { key: "arrivalTime", label: "Arrival Time" },
-        { key: "pilotInCommand", label: "Pilot in Command" },
       ],
     },
     {
@@ -601,7 +742,11 @@ export default function Settings() {
         { key: "melTime", label: "Multi Engine Land" },
         { key: "mesTime", label: "Multi Engine Sea" },
         { key: "helicopterTime", label: "Helicopter" },
+        { key: "gyroplaneTime", label: "Gyroplane" },
+        { key: "poweredLiftTime", label: "Powered Lift" },
         { key: "gliderTime", label: "Glider" },
+        { key: "balloonTime", label: "Balloon" },
+        { key: "airshipTime", label: "Airship" },
       ],
     },
     {
@@ -621,7 +766,9 @@ export default function Settings() {
         { key: "nightTime", label: "Night" },
         { key: "actInstrumentTime", label: "Actual Instrument" },
         { key: "simInstrumentTime", label: "Simulated Instrument" },
-        { key: "simTime", label: "Flight Simulator" },
+        { key: "fullFlightSimulatorTime", label: "Full Flight Simulator" },
+        { key: "flightTrainingDeviceTime", label: "Flight Training Device" },
+        { key: "aviationTrainingDeviceTime", label: "Aviation Training Device" },
       ],
     },
     {
@@ -643,7 +790,10 @@ export default function Settings() {
     },
     {
       title: "Other",
-      columns: [{ key: "remarks", label: "Remarks" }],
+      columns: [
+        { key: "launchType", label: "Glider/Lighter-than-Air Launch Type" },
+        { key: "remarks", label: "Remarks" },
+      ],
     },
   ];
 
@@ -986,14 +1136,200 @@ export default function Settings() {
         {/* CSV format hint */}
         <div className="mt-3 p-3 bg-gray-50 rounded-lg dark:bg-zinc-800">
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            <strong>CSV Format:</strong> Date, Aircraft Type, Registration, Departure, Arrival,
-            Departure Time, Arrival Time, Total Time, SEL, SES, MEL, MES, Helicopter, Glider,
-            Solo, PIC, SIC, Dual Received, Instructor, Cross Country, Night, Actual Instrument,
-            Simulated Instrument, Flight Simulator, Pilot in Command, Remarks, Takeoffs Day,
-            Takeoffs Night, Landings Day, Landings Night, Precision Approaches, Non-Precision
-            Approaches, Holding Patterns
+            <strong>CSV Format:</strong> Date, Pilot in Command, Aircraft Type, Registration, Departure, Arrival,
+            Departure Time, Arrival Time, Total Time, SEL, SES, MEL, MES, Helicopter, Gyroplane,
+            Powered Lift, Glider, Balloon, Airship, Solo, PIC, SIC, Dual Received, Instructor,
+            Cross Country, Night, Actual Instrument, Simulated Instrument, Full Flight Simulator,
+            Flight Training Device, Aviation Training Device,
+            Takeoffs Day, Takeoffs Night, Landings Day, Landings Night, Precision Approaches,
+            Non-Precision Approaches, Holding Patterns,
+            Launch Type, Remarks
           </p>
         </div>
+      </div>
+
+      {/* ── Reset Settings ───────────────────────────────────────────────── */}
+      <div
+        className="bg-white rounded-xl shadow-md p-6 mb-6 border border-yellow-200 dark:bg-zinc-900 dark:border-yellow-700 animate-slide-up"
+        style={{ animationDelay: "335ms" }}
+      >
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Reset Settings</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Restore all page visibility, column visibility, and currency threshold settings to their factory defaults.
+          Your flight data, account, and password will not be affected.
+        </p>
+
+        {resetSettingsStep === 0 && (
+          <div className="space-y-3">
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg dark:bg-yellow-900/30 dark:border-yellow-700">
+              <p className="text-sm text-yellow-800 dark:text-yellow-300 font-medium flex items-center gap-2">
+                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                This will reset your page visibility, column visibility, and currency thresholds to their original defaults.
+              </p>
+            </div>
+            <button
+              onClick={() => setResetSettingsStep(1)}
+              className="w-full py-2 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-600 transition-colors"
+            >
+              Reset Settings to Defaults
+            </button>
+          </div>
+        )}
+
+        {resetSettingsStep === 1 && (
+          <div className="space-y-3">
+            <div className="p-3 bg-yellow-100 border border-yellow-300 rounded-lg dark:bg-yellow-900/50 dark:border-yellow-700">
+              <p className="text-sm text-yellow-800 dark:text-yellow-300 font-bold flex items-center gap-2">
+                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Are you sure?
+              </p>
+              <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
+                This will restore defaults for page visibility, column visibility, and currency thresholds.
+                Your flight records, username, and password will remain unchanged.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setResetSettingsStep(0); }}
+                className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors dark:bg-zinc-600 dark:text-white dark:hover:bg-zinc-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResetSettings}
+                disabled={isLoading}
+                className="flex-1 py-2 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-600 transition-colors disabled:opacity-50"
+              >
+                {isLoading ? "Resetting..." : "Yes, Reset Settings"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {resetSettingsStep === 2 && (
+          <div className="p-3 bg-green-100 border border-green-300 rounded-lg dark:bg-green-900/30 dark:border-green-700">
+            <p className="text-sm text-green-700 dark:text-green-300 font-medium flex items-center gap-2">
+              <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Settings have been reset to defaults.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Wipe Database ──────────────────────────────────────────────────── */}
+      <div
+        className="bg-white rounded-xl shadow-md p-6 mb-6 border border-red-100 dark:bg-zinc-900 dark:border-red-800 animate-slide-up"
+        style={{ animationDelay: "350ms" }}
+      >
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Danger Zone</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Permanently delete all flight records for your account. This action cannot be undone.
+        </p>
+
+        {/* Step 1: initial warning */}
+        {wipeStep === 0 && (
+          <div className="space-y-3">
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/30 dark:border-red-800">
+              <p className="text-sm text-red-700 dark:text-red-400 font-medium flex items-center gap-2">
+                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                This will permanently delete every flight in your logbook. Your settings and account will be preserved.
+              </p>
+            </div>
+            <button
+              onClick={() => setWipeStep(1)}
+              className="w-full py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+            >
+              Delete All Flights
+            </button>
+          </div>
+        )}
+
+        {/* Step 2: confirmation text input */}
+        {wipeStep === 1 && (
+          <div className="space-y-3">
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/30 dark:border-red-800">
+              <p className="text-sm text-red-700 dark:text-red-400 font-medium">
+                Type <span className="font-bold">DELETE</span> below and click confirm to permanently erase your entire flight log.
+              </p>
+            </div>
+            <input
+              type="text"
+              value={wipeConfirmText}
+              onChange={(e) => setWipeConfirmText(e.target.value)}
+              placeholder='Type "DELETE" to confirm'
+              className="w-full px-4 py-2 border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-zinc-800 dark:border-red-700 dark:text-white"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setWipeStep(0); setWipeConfirmText(""); }}
+                className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors dark:bg-zinc-600 dark:text-white dark:hover:bg-zinc-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (wipeConfirmText === "DELETE") setWipeStep(2);
+                }}
+                disabled={wipeConfirmText !== "DELETE"}
+                className="flex-1 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                I Understand, Delete Everything
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: final confirmation + wipe execution */}
+        {wipeStep === 2 && (
+          <div className="space-y-3">
+            <div className="p-3 bg-red-100 border border-red-300 rounded-lg dark:bg-red-900/50 dark:border-red-700">
+              <p className="text-sm text-red-800 dark:text-red-300 font-bold flex items-center gap-2">
+                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Final warning — this is permanent.
+              </p>
+              <p className="text-sm text-red-700 dark:text-red-400 mt-1">
+                All flight records will be deleted immediately. Your account, settings, and preferences will remain intact.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setWipeStep(0); setWipeConfirmText(""); }}
+                className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors dark:bg-zinc-600 dark:text-white dark:hover:bg-zinc-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleWipeDatabase}
+                disabled={isLoading}
+                className="flex-1 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {isLoading ? "Deleting..." : "Yes, Delete Everything"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Success state */}
+        {wipeStep === 3 && (
+          <div className="p-3 bg-green-100 border border-green-300 rounded-lg dark:bg-green-900/30 dark:border-green-700">
+            <p className="text-sm text-green-700 dark:text-green-300 font-medium flex items-center gap-2">
+              <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              All flights have been deleted successfully.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ── Import error details (expandable panel) ─────────────────────────── */}

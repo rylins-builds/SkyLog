@@ -8,6 +8,7 @@ type Flight struct {
 	ID                    int     `json:"id"`
 	UserID                int     `json:"-"`
 	Date                  string  `json:"date"`
+	PilotInCommand        string  `json:"pilot_in_command"`
 	AircraftType          string  `json:"aircraft_type"`
 	AircraftReg           string  `json:"aircraft_reg"`
 	Departure             string  `json:"departure"`
@@ -20,7 +21,11 @@ type Flight struct {
 	MELTime               float64 `json:"mel_time"`
 	MESTime               float64 `json:"mes_time"`
 	HelicopterTime        float64 `json:"helicopter_time"`
+	GyroplaneTime         float64 `json:"gyroplane_time"`
+	PoweredLiftTime       float64 `json:"powered_lift_time"`
 	GliderTime            float64 `json:"glider_time"`
+	BalloonTime           float64 `json:"balloon_time"`
+	AirshipTime           float64 `json:"airship_time"`
 	SoloTime              float64 `json:"solo_time"`
 	PICTime               float64 `json:"pic_time"`
 	SICTime               float64 `json:"sic_time"`
@@ -30,9 +35,11 @@ type Flight struct {
 	NightTime             float64 `json:"night_time"`
 	ActInstrumentTime     float64 `json:"act_instrument_time"`
 	SimInstrumentTime     float64 `json:"sim_instrument_time"`
-	SimTime               float64 `json:"sim_time"`
-	PilotInCommand        string  `json:"pilot_in_command"`
-	Remarks               *string `json:"remarks"`
+	FullFlightSimulatorTime float64 `json:"full_flight_simulator_time"`
+	FlightTrainingDeviceTime float64 `json:"flight_training_device_time"`
+	AviationTrainingDeviceTime float64 `json:"aviation_training_device_time"`
+	
+	
 	TakeoffsDay           int     `json:"takeoffs_day"`
 	TakeoffsNight         int     `json:"takeoffs_night"`
 	LandingsDay           int     `json:"landings_day"`
@@ -40,12 +47,15 @@ type Flight struct {
 	PrecisionApproaches   int     `json:"precision_approaches"`
 	NonPrecisionApproaches int    `json:"non_precision_approaches"`
 	HoldingPatterns       int     `json:"holding_patterns"`
+	LaunchType            *string `json:"launch_type"`
+	Remarks               *string `json:"remarks"`
 	CreatedAt             string  `json:"created_at"`
 }
 
 // FlightCreate is the request body for POST /api/flights.
 type FlightCreate struct {
 	Date                  string  `json:"date"`
+	PilotInCommand        string  `json:"pilot_in_command"`
 	AircraftType          string  `json:"aircraft_type"`
 	AircraftReg           string  `json:"aircraft_reg"`
 	Departure             string  `json:"departure"`
@@ -58,7 +68,11 @@ type FlightCreate struct {
 	MELTime               float64 `json:"mel_time"`
 	MESTime               float64 `json:"mes_time"`
 	HelicopterTime        float64 `json:"helicopter_time"`
+	GyroplaneTime         float64 `json:"gyroplane_time"`
+	PoweredLiftTime       float64 `json:"powered_lift_time"`
 	GliderTime            float64 `json:"glider_time"`
+	BalloonTime           float64 `json:"balloon_time"`
+	AirshipTime           float64 `json:"airship_time"`
 	SoloTime              float64 `json:"solo_time"`
 	PICTime               float64 `json:"pic_time"`
 	SICTime               float64 `json:"sic_time"`
@@ -68,9 +82,11 @@ type FlightCreate struct {
 	NightTime             float64 `json:"night_time"`
 	ActInstrumentTime     float64 `json:"act_instrument_time"`
 	SimInstrumentTime     float64 `json:"sim_instrument_time"`
-	SimTime               float64 `json:"sim_time"`
-	PilotInCommand        string  `json:"pilot_in_command"`
-	Remarks               *string `json:"remarks"`
+	FullFlightSimulatorTime float64 `json:"full_flight_simulator_time"`
+	FlightTrainingDeviceTime float64 `json:"flight_training_device_time"`
+	AviationTrainingDeviceTime float64 `json:"aviation_training_device_time"`
+	
+	
 	TakeoffsDay           int     `json:"takeoffs_day"`
 	TakeoffsNight         int     `json:"takeoffs_night"`
 	LandingsDay           int     `json:"landings_day"`
@@ -78,12 +94,15 @@ type FlightCreate struct {
 	PrecisionApproaches   int     `json:"precision_approaches"`
 	NonPrecisionApproaches int    `json:"non_precision_approaches"`
 	HoldingPatterns       int     `json:"holding_patterns"`
+	LaunchType            *string `json:"launch_type"`
+	Remarks               *string `json:"remarks"`
 }
 
 // FlightUpdate is the request body for PUT /api/flights/{id}.
 // All fields are pointers so we can distinguish between "not provided" and "set to zero".
 type FlightUpdate struct {
 	Date                  *string  `json:"date"`
+	PilotInCommand        *string  `json:"pilot_in_command"`
 	AircraftType          *string  `json:"aircraft_type"`
 	AircraftReg           *string  `json:"aircraft_reg"`
 	Departure             *string  `json:"departure"`
@@ -96,7 +115,11 @@ type FlightUpdate struct {
 	MELTime               *float64 `json:"mel_time"`
 	MESTime               *float64 `json:"mes_time"`
 	HelicopterTime        *float64 `json:"helicopter_time"`
+	GyroplaneTime         *float64 `json:"gyroplane_time"`
+	PoweredLiftTime       *float64 `json:"powered_lift_time"`
 	GliderTime            *float64 `json:"glider_time"`
+	BalloonTime           *float64 `json:"balloon_time"`
+	AirshipTime           *float64 `json:"airship_time"`
 	SoloTime              *float64 `json:"solo_time"`
 	PICTime               *float64 `json:"pic_time"`
 	SICTime               *float64 `json:"sic_time"`
@@ -106,9 +129,11 @@ type FlightUpdate struct {
 	NightTime             *float64 `json:"night_time"`
 	ActInstrumentTime     *float64 `json:"act_instrument_time"`
 	SimInstrumentTime     *float64 `json:"sim_instrument_time"`
-	SimTime               *float64 `json:"sim_time"`
-	PilotInCommand        *string  `json:"pilot_in_command"`
-	Remarks               *string  `json:"remarks"`
+	FullFlightSimulatorTime *float64 `json:"full_flight_simulator_time"`
+	FlightTrainingDeviceTime *float64 `json:"flight_training_device_time"`
+	AviationTrainingDeviceTime *float64 `json:"aviation_training_device_time"`
+	
+	
 	TakeoffsDay           *int     `json:"takeoffs_day"`
 	TakeoffsNight         *int     `json:"takeoffs_night"`
 	LandingsDay           *int     `json:"landings_day"`
@@ -116,6 +141,8 @@ type FlightUpdate struct {
 	PrecisionApproaches   *int     `json:"precision_approaches"`
 	NonPrecisionApproaches *int    `json:"non_precision_approaches"`
 	HoldingPatterns       *int     `json:"holding_patterns"`
+	LaunchType            *string `json:"launch_type"`
+	Remarks               *string  `json:"remarks"`
 }
 
 // DashboardStats is aggregated flight statistics.
@@ -212,8 +239,14 @@ func (f *FlightCreate) Validate() map[string]string {
 	if f.TotalTime <= 0 {
 		errs["total_time"] = "Total time must be greater than 0"
 	}
-	if f.PilotInCommand == "" {
-		errs["pilot_in_command"] = "Pilot in command is required"
+	if (f.GliderTime > 0 || f.BalloonTime > 0 || f.AirshipTime > 0) && (f.LaunchType == nil || *f.LaunchType == "") {
+		errs["launch_type"] = "Launch type is required for glider or lighter-than-air flights"
+	}
+	if f.LaunchType != nil && *f.LaunchType != "" {
+		valid := *f.LaunchType == "aero_tow" || *f.LaunchType == "ground_launch" || *f.LaunchType == "powered_launch"
+		if !valid {
+			errs["launch_type"] = "Launch type must be aero_tow, ground_launch, or powered_launch"
+		}
 	}
 	return errs
 }

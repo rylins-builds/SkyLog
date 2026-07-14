@@ -25,6 +25,8 @@ export interface Flight {
   id: number;
   /** Flight date in YYYY-MM-DD format */
   date: string;
+  /** Name of the pilot in command */
+  pilot_in_command: string;
   /** Aircraft make/model (e.g. "Cessna 172S") */
   aircraft_type: string;
   /** Aircraft tail number / registration (e.g. "N2860Q") */
@@ -49,8 +51,16 @@ export interface Flight {
   mes_time: number;
   /** Helicopter time (hours) */
   helicopter_time: number;
+  /** Gyroplane time (hours) */
+  gyroplane_time: number;
+  /** Powered Lift time (hours) */
+  powered_lift_time: number;
   /** Glider time (hours) */
   glider_time: number;
+  /** Balloon time (hours) */
+  balloon_time: number;
+  /** Airship time (hours) */
+  airship_time: number;
   /** Solo flight time (hours) */
   solo_time: number;
   /** Pilot-in-Command time (hours) */
@@ -69,12 +79,12 @@ export interface Flight {
   act_instrument_time: number;
   /** Simulated instrument (hood / foggles) time (hours) */
   sim_instrument_time: number;
-  /** Flight simulator / training device time (hours) */
-  sim_time: number;
-  /** Name of the pilot in command */
-  pilot_in_command: string;
-  /** Free-text remarks or notes about the flight */
-  remarks: string | null;
+  /** Full flight simulator time (hours) */
+  full_flight_simulator_time: number;
+  /** Flight training device time (hours) */
+  flight_training_device_time: number;
+  /** Aviation training device time (hours) */
+  aviation_training_device_time: number;
   /** Number of day takeoffs */
   takeoffs_day: number;
   /** Number of night takeoffs */
@@ -89,6 +99,10 @@ export interface Flight {
   non_precision_approaches: number;
   /** Number of holding pattern entries */
   holding_patterns: number;
+  /** Launch type (aero_tow, ground_launch, powered_launch) */
+  launch_type: string | null;
+  /** Free-text remarks or notes about the flight */
+  remarks: string | null;
   /** Timestamp of when the record was created (ISO 8601 string) */
   created_at: string;
 }
@@ -103,6 +117,8 @@ export interface Flight {
 export interface FlightCreate {
   /** Flight date in YYYY-MM-DD format */
   date: string;
+  /** Name of the pilot in command */
+  pilot_in_command: string;
   /** Aircraft make/model (e.g. "Cessna 172S") */
   aircraft_type: string;
   /** Aircraft tail number / registration */
@@ -127,8 +143,16 @@ export interface FlightCreate {
   mes_time: number;
   /** Helicopter time (hours) */
   helicopter_time: number;
+  /** Gyroplane time (hours) */
+  gyroplane_time: number;
+  /** Powered Lift time (hours) */
+  powered_lift_time: number;
   /** Glider time (hours) */
   glider_time: number;
+  /** Balloon time (hours) */
+  balloon_time: number;
+  /** Airship time (hours) */
+  airship_time: number;
   /** Solo flight time (hours) */
   solo_time: number;
   /** Pilot-in-Command time (hours) */
@@ -147,12 +171,13 @@ export interface FlightCreate {
   act_instrument_time: number;
   /** Simulated instrument (hood) time (hours) */
   sim_instrument_time: number;
-  /** Flight simulator / training device time (hours) */
-  sim_time: number;
-  /** Name of the pilot in command */
-  pilot_in_command: string;
-  /** Free-text remarks or notes */
-  remarks?: string | null;
+  /** Full flight simulator time (hours) */
+  full_flight_simulator_time: number;
+  /** Flight training device time (hours) */
+  flight_training_device_time: number;
+  /** Aviation training device time (hours) */
+  aviation_training_device_time: number;
+  
   /** Number of day takeoffs */
   takeoffs_day: number;
   /** Number of night takeoffs */
@@ -167,6 +192,10 @@ export interface FlightCreate {
   non_precision_approaches?: number;
   /** Number of holding pattern entries */
   holding_patterns?: number;
+  /** Launch type (aero_tow, ground_launch, powered_launch) */
+  launch_type?: string | null;
+  /** Free-text remarks or notes */
+  remarks?: string | null;
 }
 
 /**

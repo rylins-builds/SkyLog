@@ -18,6 +18,7 @@ func registerFlightRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.HandleFunc("GET /api/flights/{id}", getFlight(db))
 	mux.HandleFunc("PUT /api/flights/{id}", updateFlight(db))
 	mux.HandleFunc("DELETE /api/flights/{id}", deleteFlight(db))
+	mux.HandleFunc("DELETE /api/flights", wipeFlights(db))
 	// Dashboard stats
 	mux.HandleFunc("GET /api/dashboard/stats", getDashboardStats(db))
 }
@@ -166,15 +167,17 @@ func createFlight(db *sql.DB) http.HandlerFunc {
 
 		result, err := db.ExecContext(r.Context(), `
 			INSERT INTO flights (
-				user_id, date, aircraft_type, aircraft_reg, departure, arrival,
+				user_id, date, pilot_in_command, aircraft_type, aircraft_reg, departure, arrival,
 				departure_time, arrival_time, total_time, sel_time, ses_time, mel_time, mes_time,
-				helicopter_time, glider_time, solo_time, pic_time, sic_time, dual_time, instructor_time,
-				xcountry_time, night_time, act_instrument_time, sim_instrument_time, sim_time,
-				pilot_in_command, remarks, takeoffs_day, takeoffs_night, landings_day,
-				landings_night, precision_approaches, non_precision_approaches, holding_patterns
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				helicopter_time, gyroplane_time, powered_lift_time, glider_time, balloon_time, airship_time, solo_time, pic_time, sic_time, dual_time, instructor_time,
+				xcountry_time, night_time, act_instrument_time, sim_instrument_time,
+				full_flight_simulator_time, flight_training_device_time, aviation_training_device_time,
+				takeoffs_day, takeoffs_night, landings_day,
+				landings_night, precision_approaches, non_precision_approaches, holding_patterns, launch_type, remarks
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			userID,
 			fc.Date,
+			fc.PilotInCommand,
 			fc.AircraftType,
 			fc.AircraftReg,
 			fc.Departure,
@@ -187,7 +190,11 @@ func createFlight(db *sql.DB) http.HandlerFunc {
 			fc.MELTime,
 			fc.MESTime,
 			fc.HelicopterTime,
+			fc.GyroplaneTime,
+			fc.PoweredLiftTime,
 			fc.GliderTime,
+			fc.BalloonTime,
+			fc.AirshipTime,
 			fc.SoloTime,
 			fc.PICTime,
 			fc.SICTime,
@@ -197,9 +204,9 @@ func createFlight(db *sql.DB) http.HandlerFunc {
 			nightTime,
 			fc.ActInstrumentTime,
 			fc.SimInstrumentTime,
-			fc.SimTime,
-			fc.PilotInCommand,
-			fc.Remarks,
+			fc.FullFlightSimulatorTime,
+			fc.FlightTrainingDeviceTime,
+			fc.AviationTrainingDeviceTime,
 			takeoffsDay,
 			takeoffsNight,
 			landingsDay,
@@ -207,6 +214,8 @@ func createFlight(db *sql.DB) http.HandlerFunc {
 			precisionApproaches,
 			nonPrecisionApproaches,
 			holdingPatterns,
+			fc.LaunchType,
+			fc.Remarks,
 		)
 		if err != nil {
 			log.Printf("createFlight insert: %v", err)
@@ -266,6 +275,9 @@ func updateFlight(db *sql.DB) http.HandlerFunc {
 		if update.Date != nil {
 			cols["date"] = *update.Date
 		}
+		if update.PilotInCommand != nil {
+			cols["pilot_in_command"] = *update.PilotInCommand
+		}
 		if update.AircraftType != nil {
 			// Use the named field path from FlightUpdate struct
 			cols["aircraft_type"] = *update.AircraftType
@@ -303,8 +315,20 @@ func updateFlight(db *sql.DB) http.HandlerFunc {
 		if update.HelicopterTime != nil {
 			cols["helicopter_time"] = *update.HelicopterTime
 		}
+		if update.GyroplaneTime != nil {
+			cols["gyroplane_time"] = *update.GyroplaneTime
+		}
+		if update.PoweredLiftTime != nil {
+			cols["powered_lift_time"] = *update.PoweredLiftTime
+		}
 		if update.GliderTime != nil {
 			cols["glider_time"] = *update.GliderTime
+		}
+		if update.BalloonTime != nil {
+			cols["balloon_time"] = *update.BalloonTime
+		}
+		if update.AirshipTime != nil {
+			cols["airship_time"] = *update.AirshipTime
 		}
 		if update.SoloTime != nil {
 			cols["solo_time"] = *update.SoloTime
@@ -333,14 +357,14 @@ func updateFlight(db *sql.DB) http.HandlerFunc {
 		if update.SimInstrumentTime != nil {
 			cols["sim_instrument_time"] = *update.SimInstrumentTime
 		}
-		if update.SimTime != nil {
-			cols["sim_time"] = *update.SimTime
+		if update.FullFlightSimulatorTime != nil {
+			cols["full_flight_simulator_time"] = *update.FullFlightSimulatorTime
 		}
-		if update.PilotInCommand != nil {
-			cols["pilot_in_command"] = *update.PilotInCommand
+		if update.FlightTrainingDeviceTime != nil {
+			cols["flight_training_device_time"] = *update.FlightTrainingDeviceTime
 		}
-		if update.Remarks != nil {
-			cols["remarks"] = *update.Remarks
+		if update.AviationTrainingDeviceTime != nil {
+			cols["aviation_training_device_time"] = *update.AviationTrainingDeviceTime
 		}
 		if update.TakeoffsDay != nil {
 			cols["takeoffs_day"] = *update.TakeoffsDay
@@ -362,6 +386,12 @@ func updateFlight(db *sql.DB) http.HandlerFunc {
 		}
 		if update.HoldingPatterns != nil {
 			cols["holding_patterns"] = *update.HoldingPatterns
+		}
+		if update.LaunchType != nil {
+			cols["launch_type"] = *update.LaunchType
+		}
+		if update.Remarks != nil {
+			cols["remarks"] = *update.Remarks
 		}
 
 		if len(cols) == 0 {
@@ -425,6 +455,29 @@ func deleteFlight(db *sql.DB) http.HandlerFunc {
 		}
 
 		w.WriteHeader(204)
+	}
+}
+
+// ── DELETE /api/flights (wipe all flights for user) ──
+
+func wipeFlights(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := getUserID(r, db)
+		if err != nil {
+			he := err.(*httpError)
+			writeError(w, he.Code, he.Message)
+			return
+		}
+
+		result, err := db.ExecContext(r.Context(),
+			"DELETE FROM flights WHERE user_id = ?", userID)
+		if err != nil {
+			writeError(w, 500, "Database error")
+			return
+		}
+
+		count, _ := result.RowsAffected()
+		writeJSON(w, 200, map[string]any{"deleted": count})
 	}
 }
 

@@ -26,6 +26,8 @@ func registerSettingsRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.HandleFunc("PUT /api/settings/password", changePassword(db))
 	mux.HandleFunc("GET /api/settings/visibility", getVisibility(db))
 	mux.HandleFunc("PUT /api/settings/visibility", saveVisibility(db))
+	mux.HandleFunc("GET /api/settings/has-glider-launch-type", hasGliderLaunchType(db))
+	mux.HandleFunc("DELETE /api/settings/reset", resetSettings(db))
 	// Currency
 	mux.HandleFunc("GET /api/currency/thresholds", getCurrencyThresholds(db))
 	mux.HandleFunc("PUT /api/currency/thresholds", saveCurrencyThresholds(db))
@@ -435,6 +437,35 @@ func changePassword(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+// ── GET /api/settings/has-glider-launch-type ──
+
+func hasGliderLaunchType(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := getUserID(r, db)
+		if err != nil {
+			he := err.(*httpError)
+			writeError(w, he.Code, he.Message)
+			return
+		}
+
+		var count int
+		err = db.QueryRowContext(r.Context(), `
+			SELECT COUNT(*) FROM flights
+			WHERE user_id = ?
+			  AND launch_type IS NOT NULL
+			  AND launch_type != ''
+			  AND (glider_time > 0 OR balloon_time > 0 OR airship_time > 0)
+		`, userID).Scan(&count)
+
+		if err != nil {
+			writeError(w, 500, "Database error")
+			return
+		}
+
+		writeJSON(w, 200, map[string]bool{"hasGliderLaunchType": count > 0})
+	}
+}
+
 // ── GET /api/currency/thresholds ──
 
 func getCurrencyThresholds(db *sql.DB) http.HandlerFunc {
@@ -525,6 +556,28 @@ func getVisibility(db *sql.DB) http.HandlerFunc {
 			"pageVisibility":   pageVis,
 			"columnVisibility": colVis,
 		})
+	}
+}
+
+// ── DELETE /api/settings/reset ──
+
+func resetSettings(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := getUserID(r, db)
+		if err != nil {
+			he := err.(*httpError)
+			writeError(w, he.Code, he.Message)
+			return
+		}
+
+		// Delete visibility preferences
+		_, _ = db.ExecContext(r.Context(),
+			"DELETE FROM user_visibility WHERE user_id = ?", userID)
+		// Delete currency thresholds
+		_, _ = db.ExecContext(r.Context(),
+			"DELETE FROM currency_thresholds WHERE user_id = ?", userID)
+
+		writeJSON(w, 200, map[string]string{"status": "ok"})
 	}
 }
 

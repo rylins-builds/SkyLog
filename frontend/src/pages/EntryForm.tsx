@@ -24,12 +24,13 @@
 import { useState, useEffect, useRef } from "react";
 import { api } from "../api/client";
 import type { Flight } from "../api/types";
-import { loadSettings, loadVisibilityFromApi, type ColumnVisibility } from "../api/settings";
+import { loadSettings, loadVisibilityFromApi, saveVisibilityToApi, saveSettings, type ColumnVisibility } from "../api/settings";
 
 /** All form field values are stored as strings (even numerics) to simplify
  *  two-way binding with <input> elements. They are parsed on submit. */
 interface FormState {
   date: string;
+  pilot_in_command: string;
   aircraft_type: string;
   aircraft_reg: string;
   departure: string;
@@ -42,7 +43,11 @@ interface FormState {
   mel_time: string;
   mes_time: string;
   helicopter_time: string;
+  gyroplane_time: string;
+  powered_lift_time: string;
   glider_time: string;
+  balloon_time: string;
+  airship_time: string;
   solo_time: string;
   pic_time: string;
   sic_time: string;
@@ -52,9 +57,9 @@ interface FormState {
   night_time: string;
   act_instrument_time: string;
   sim_instrument_time: string;
-  sim_time: string;
-  pilot_in_command: string;
-  remarks: string;
+  full_flight_simulator_time: string;
+  flight_training_device_time: string;
+  aviation_training_device_time: string;
   takeoffs_day: string;
   takeoffs_night: string;
   landings_day: string;
@@ -62,11 +67,14 @@ interface FormState {
   precision_approaches: string;
   non_precision_approaches: string;
   holding_patterns: string;
+  launch_type: string;
+  remarks: string;
 }
 
 /** Build the initial (empty) form state with date defaulting to today. */
 const initialForm = (): FormState => ({
   date: new Date().toISOString().split("T")[0],
+  pilot_in_command: "",
   aircraft_type: "",
   aircraft_reg: "",
   departure: "",
@@ -79,7 +87,11 @@ const initialForm = (): FormState => ({
   mel_time: "",
   mes_time: "",
   helicopter_time: "",
+  gyroplane_time: "",
+  powered_lift_time: "",
   glider_time: "",
+  balloon_time: "",
+  airship_time: "",
   solo_time: "",
   pic_time: "",
   sic_time: "",
@@ -89,9 +101,9 @@ const initialForm = (): FormState => ({
   night_time: "",
   act_instrument_time: "",
   sim_instrument_time: "",
-  sim_time: "",
-  pilot_in_command: "",
-  remarks: "",
+  full_flight_simulator_time: "",
+  flight_training_device_time: "",
+  aviation_training_device_time: "",
   takeoffs_day: "0",
   takeoffs_night: "0",
   landings_day: "0",
@@ -99,11 +111,14 @@ const initialForm = (): FormState => ({
   precision_approaches: "0",
   non_precision_approaches: "0",
   holding_patterns: "0",
+  launch_type: "",
+  remarks: "",
 });
 
 /** Convert a ``Flight`` object (from the API) into form state strings. */
 const flightToForm = (flight: Flight): FormState => ({
   date: flight.date,
+  pilot_in_command: flight.pilot_in_command,
   aircraft_type: flight.aircraft_type,
   aircraft_reg: flight.aircraft_reg,
   departure: flight.departure,
@@ -116,7 +131,11 @@ const flightToForm = (flight: Flight): FormState => ({
   mel_time: flight.mel_time.toString(),
   mes_time: flight.mes_time.toString(),
   helicopter_time: flight.helicopter_time.toString(),
+  gyroplane_time: flight.gyroplane_time.toString(),
+  powered_lift_time: flight.powered_lift_time.toString(),
   glider_time: flight.glider_time.toString(),
+  balloon_time: flight.balloon_time.toString(),
+  airship_time: flight.airship_time.toString(),
   solo_time: flight.solo_time.toString(),
   pic_time: flight.pic_time.toString(),
   sic_time: flight.sic_time.toString(),
@@ -126,9 +145,9 @@ const flightToForm = (flight: Flight): FormState => ({
   night_time: flight.night_time.toString(),
   act_instrument_time: flight.act_instrument_time.toString(),
   sim_instrument_time: flight.sim_instrument_time.toString(),
-  sim_time: flight.sim_time.toString(),
-  pilot_in_command: flight.pilot_in_command,
-  remarks: flight.remarks ?? "",
+  full_flight_simulator_time: flight.full_flight_simulator_time.toString(),
+  flight_training_device_time: flight.flight_training_device_time.toString(),
+  aviation_training_device_time: flight.aviation_training_device_time.toString(),
   takeoffs_day: flight.takeoffs_day.toString(),
   takeoffs_night: flight.takeoffs_night.toString(),
   landings_day: flight.landings_day.toString(),
@@ -136,6 +155,8 @@ const flightToForm = (flight: Flight): FormState => ({
   precision_approaches: flight.precision_approaches.toString(),
   non_precision_approaches: flight.non_precision_approaches.toString(),
   holding_patterns: flight.holding_patterns.toString(),
+  launch_type: flight.launch_type ?? "",
+  remarks: flight.remarks ?? "",
 });
 
 interface EntryFormProps {
@@ -156,6 +177,12 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
   // Tracks whether the user has manually typed into the total_time field.
   // When true, the auto-calc effect will skip updating total_time.
   const totalTimeManuallySet = useRef(false);
+
+  // Whether launch type is required based on glider/balloon/airship times
+  const needsLaunchType =
+    (parseFloat(form.glider_time) || 0) > 0 ||
+    (parseFloat(form.balloon_time) || 0) > 0 ||
+    (parseFloat(form.airship_time) || 0) > 0;
 
   // ═══ Column visibility from settings ═══
   // We read visibility from both localStorage (synchronous on mount)
@@ -235,7 +262,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
   }, [form.departure_time, form.arrival_time]);
 
   // ═══ Generic change handler for all inputs ═══
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const checked = type === "checkbox" ? (e.target as HTMLInputElement).checked : undefined;
     setForm((prev) => ({
@@ -268,7 +295,6 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
     if (!form.aircraft_reg.trim()) errs.aircraft_reg = "Required";
     if (!form.departure.trim()) errs.departure = "Required";
     if (!form.arrival.trim()) errs.arrival = "Required";
-    if (!form.pilot_in_command.trim()) errs.pilot_in_command = "Required";
     if (!form.total_time || parseFloat(form.total_time) <= 0) errs.total_time = "Must be > 0";
     // Validate all numeric time fields are non-negative
     if (form.sel_time && parseFloat(form.sel_time) < 0) errs.sel_time = "Cannot be negative";
@@ -276,6 +302,8 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
     if (form.mel_time && parseFloat(form.mel_time) < 0) errs.mel_time = "Cannot be negative";
     if (form.mes_time && parseFloat(form.mes_time) < 0) errs.mes_time = "Cannot be negative";
     if (form.helicopter_time && parseFloat(form.helicopter_time) < 0) errs.helicopter_time = "Cannot be negative";
+    if (form.gyroplane_time && parseFloat(form.gyroplane_time) < 0) errs.gyroplane_time = "Cannot be negative";
+    if (form.powered_lift_time && parseFloat(form.powered_lift_time) < 0) errs.powered_lift_time = "Cannot be negative";
     if (form.glider_time && parseFloat(form.glider_time) < 0) errs.glider_time = "Cannot be negative";
     if (form.solo_time && parseFloat(form.solo_time) < 0) errs.solo_time = "Cannot be negative";
     if (form.pic_time && parseFloat(form.pic_time) < 0) errs.pic_time = "Cannot be negative";
@@ -289,7 +317,14 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
     }
     if (form.act_instrument_time && parseFloat(form.act_instrument_time) < 0) errs.act_instrument_time = "Cannot be negative";
     if (form.sim_instrument_time && parseFloat(form.sim_instrument_time) < 0) errs.sim_instrument_time = "Cannot be negative";
-    if (form.sim_time && parseFloat(form.sim_time) < 0) errs.sim_time = "Cannot be negative";
+    if (form.full_flight_simulator_time && parseFloat(form.full_flight_simulator_time) < 0) errs.full_flight_simulator_time = "Cannot be negative";
+    if (form.flight_training_device_time && parseFloat(form.flight_training_device_time) < 0) errs.flight_training_device_time = "Cannot be negative";
+    if (form.aviation_training_device_time && parseFloat(form.aviation_training_device_time) < 0) errs.aviation_training_device_time = "Cannot be negative";
+    // Launch type is required when glider/balloon/airship time is logged
+    const needsLaunchType = (parseFloat(form.glider_time) || 0) > 0 || (parseFloat(form.balloon_time) || 0) > 0 || (parseFloat(form.airship_time) || 0) > 0;
+    if (needsLaunchType && !form.launch_type.trim()) {
+      errs.launch_type = "Launch type is required for glider or lighter-than-air flights";
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -304,6 +339,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
     // Build the payload with all fields parsed to their correct types
     const payload = {
       date: form.date,
+      pilot_in_command: form.pilot_in_command.trim(),
       aircraft_type: form.aircraft_type.trim(),
       aircraft_reg: form.aircraft_reg.trim().toUpperCase(),
       departure: form.departure.trim().toUpperCase(),
@@ -316,7 +352,11 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
       mel_time: parseFloat(form.mel_time) || 0,
       mes_time: parseFloat(form.mes_time) || 0,
       helicopter_time: parseFloat(form.helicopter_time) || 0,
+      gyroplane_time: parseFloat(form.gyroplane_time) || 0,
+      powered_lift_time: parseFloat(form.powered_lift_time) || 0,
       glider_time: parseFloat(form.glider_time) || 0,
+      balloon_time: parseFloat(form.balloon_time) || 0,
+      airship_time: parseFloat(form.airship_time) || 0,
       solo_time: parseFloat(form.solo_time) || 0,
       pic_time: parseFloat(form.pic_time) || 0,
       sic_time: parseFloat(form.sic_time) || 0,
@@ -326,9 +366,9 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
       night_time: parseFloat(form.night_time) || 0,
       act_instrument_time: parseFloat(form.act_instrument_time) || 0,
       sim_instrument_time: parseFloat(form.sim_instrument_time) || 0,
-      sim_time: parseFloat(form.sim_time) || 0,
-      pilot_in_command: form.pilot_in_command.trim(),
-      remarks: form.remarks.trim() || null,
+      full_flight_simulator_time: parseFloat(form.full_flight_simulator_time) || 0,
+      flight_training_device_time: parseFloat(form.flight_training_device_time) || 0,
+      aviation_training_device_time: parseFloat(form.aviation_training_device_time) || 0,
       takeoffs_day: parseInt(form.takeoffs_day) || 0,
       takeoffs_night: parseInt(form.takeoffs_night) || 0,
       landings_day: parseInt(form.landings_day) || 0,
@@ -336,6 +376,8 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
       precision_approaches: parseInt(form.precision_approaches) || 0,
       non_precision_approaches: parseInt(form.non_precision_approaches) || 0,
       holding_patterns: parseInt(form.holding_patterns) || 0,
+      launch_type: form.launch_type.trim() || null,
+      remarks: form.remarks.trim() || null,
     };
 
     try {
@@ -346,6 +388,18 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
         await api.createFlight(payload);
         setMessage({ type: "success", text: "Flight logged successfully!" });
         setForm(initialForm());  // Reset form for another entry
+
+        // If this was a glider/LTA flight with a launch type, auto-enable the
+        // Launch Type column visibility so it appears in the Logbook.
+        const gliderLtaFlight = payload.glider_time > 0 || (parseFloat(form.balloon_time) || 0) > 0 || (parseFloat(form.airship_time) || 0) > 0;
+        if (gliderLtaFlight && payload.launch_type) {
+          const currentSettings = loadSettings();
+          if (!currentSettings.columnVisibility.launchType) {
+            currentSettings.columnVisibility.launchType = true;
+            saveSettings(currentSettings);
+            saveVisibilityToApi(currentSettings.pageVisibility, currentSettings.columnVisibility).catch(() => {});
+          }
+        }
       }
       setErrors({});
     } catch (err) {
@@ -418,7 +472,6 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               name="pilot_in_command"
               value={form.pilot_in_command}
               onChange={handleChange}
-              required
               placeholder="e.g. Mike Brogan"
               error={errors.pilot_in_command}
             />
@@ -564,6 +617,32 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               error={errors.helicopter_time}
             />
           )}
+          {isFieldVisible("gyroplaneTime") && (
+            <Field
+              label="Gyroplane Time (hours)"
+              name="gyroplane_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.gyroplane_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.gyroplane_time}
+            />
+          )}
+          {isFieldVisible("poweredLiftTime") && (
+            <Field
+              label="Powered Lift Time (hours)"
+              name="powered_lift_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.powered_lift_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.powered_lift_time}
+            />
+          )}
           {isFieldVisible("gliderTime") && (
             <Field
               label="Glider Time (hours)"
@@ -576,6 +655,77 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               placeholder="0"
               error={errors.glider_time}
             />
+          )}
+          {isFieldVisible("balloonTime") && (
+            <Field
+              label="Balloon Time (hours)"
+              name="balloon_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.balloon_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.balloon_time}
+            />
+          )}
+          {isFieldVisible("airshipTime") && (
+            <Field
+              label="Airship Time (hours)"
+              name="airship_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.airship_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.airship_time}
+            />
+          )}
+          {/* Launch Type — only shown when glider/balloon/airship time > 0.
+              Appears right after the field that triggered it. */}
+          {needsLaunchType && (
+            <div className="min-w-0 max-w-full overflow-hidden sm:col-span-2">
+              {/* Prominent banner when launch type is required but not set */}
+              {needsLaunchType && !form.launch_type.trim() && (
+                <div className="bg-amber-50 border border-amber-300 text-amber-800 px-3 py-2 rounded-lg mb-2 text-sm font-medium flex items-center gap-2">
+                  <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>
+                    Launch type is required for glider or lighter-than-air flights.
+                  </span>
+                </div>
+              )}
+              <label htmlFor="launch_type" className="block text-sm font-medium text-gray-700 mb-1 dark:text-white">
+                Launch Type {needsLaunchType && <span className="text-red-500">*</span>}
+                {needsLaunchType && <span className="text-xs text-red-400 ml-1">(required)</span>}
+              </label>
+              <select
+                id="launch_type"
+                name="launch_type"
+                value={form.launch_type}
+                onChange={handleChange}
+                className={`w-full min-w-0 max-w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors ${
+                  errors.launch_type
+                    ? "border-red-400 focus:ring-red-500"
+                    : needsLaunchType
+                    ? "border-amber-400 focus:ring-amber-500"
+                    : "border-gray-300 focus:ring-blue-500"
+                }`}
+              >
+                <option value="">Select launch type...</option>
+                <option value="aero_tow">Aero-Tow</option>
+                <option value="ground_launch">Ground Launch</option>
+                <option value="powered_launch">Powered Launch</option>
+              </select>
+              {errors.launch_type && <p className="text-xs text-red-500 mt-1">{errors.launch_type}</p>}
+              {!errors.launch_type && needsLaunchType && !form.launch_type.trim() && (
+                <p className="text-xs text-amber-600 mt-1">
+                  This flight involves a glider or lighter-than-air aircraft. Select a launch method to continue.
+                </p>
+              )}
+            </div>
           )}
           {isFieldVisible("soloTime") && (
             <Field
@@ -694,17 +844,43 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               error={errors.sim_instrument_time}
             />
           )}
-          {isFieldVisible("simTime") && (
+          {isFieldVisible("fullFlightSimulatorTime") && (
             <Field
-              label="Simulator Time (hours)"
-              name="sim_time"
+              label="Full Flight Simulator Time (hours)"
+              name="full_flight_simulator_time"
               type="number"
               step="0.1"
               min="0"
-              value={form.sim_time}
+              value={form.full_flight_simulator_time}
               onChange={handleChange}
               placeholder="0"
-              error={errors.sim_time}
+              error={errors.full_flight_simulator_time}
+            />
+          )}
+          {isFieldVisible("flightTrainingDeviceTime") && (
+            <Field
+              label="Flight Training Device Time (hours)"
+              name="flight_training_device_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.flight_training_device_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.flight_training_device_time}
+            />
+          )}
+          {isFieldVisible("aviationTrainingDeviceTime") && (
+            <Field
+              label="Aviation Training Device Time (hours)"
+              name="aviation_training_device_time"
+              type="number"
+              step="0.1"
+              min="0"
+              value={form.aviation_training_device_time}
+              onChange={handleChange}
+              placeholder="0"
+              error={errors.aviation_training_device_time}
             />
           )}
           {isFieldVisible("takeoffsDay") && (
