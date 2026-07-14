@@ -300,6 +300,136 @@ function buildLaunchGrid(flights: Flight[], mappings: AircraftTypeMappings): Lau
   });
 }
 
+interface ClassSubRow {
+  label: string;
+  values: number[];
+}
+
+interface ClassTotalsGroup {
+  groupLabel: string;
+  subLabels: string[];
+  subCatKeys: (keyof Flight)[];
+  rows: ClassSubRow[];
+}
+
+function buildClassTotals(flights: Flight[], mappings: AircraftTypeMappings): ClassTotalsGroup[] {
+  const categoryToTypes: Record<string, string[]> = {};
+  for (const [aircraftType, categoryValue] of Object.entries(mappings)) {
+    if (!categoryToTypes[categoryValue]) categoryToTypes[categoryValue] = [];
+    categoryToTypes[categoryValue].push(aircraftType);
+  }
+
+  const filterByCat = (cat: string): Flight[] => {
+    const types = categoryToTypes[cat] ?? [];
+    const typesSet = new Set(types);
+    return flights.filter((f) => typesSet.has(f.aircraft_type ?? ""));
+  };
+
+  type FieldKey = "pic_time" | "sic_time" | "dual_time" | "total_time";
+
+  const sumField = (filtered: Flight[], field: FieldKey): number =>
+    filtered.reduce((a, f) => a + (Number(f[field]) || 0), 0);
+
+  interface CategoryDef {
+    groupLabel: string;
+    subLabels: string[];
+    subCatKeys: readonly string[];
+    rowDefs: { label: string; fields: FieldKey[] }[];
+  }
+
+  const categories: CategoryDef[] = [
+    {
+      groupLabel: "Airplane",
+      subLabels: ["SEL", "MEL", "SES", "MES"],
+      subCatKeys: ["sel", "mel", "ses", "mes"] as const,
+      rowDefs: [
+        { label: "PIC", fields: ["pic_time", "pic_time", "pic_time", "pic_time"] },
+        { label: "SIC", fields: ["sic_time", "sic_time", "sic_time", "sic_time"] },
+        { label: "Instruction Received", fields: ["dual_time", "dual_time", "dual_time", "dual_time"] },
+      ],
+    },
+    {
+      groupLabel: "Rotorcraft",
+      subLabels: ["Helicopter", "Gyroplane"],
+      subCatKeys: ["helicopter", "gyroplane"] as const,
+      rowDefs: [
+        { label: "Total Hours", fields: ["total_time", "total_time"] },
+      ],
+    },
+    {
+      groupLabel: "Lighter-than-Air",
+      subLabels: ["Balloon", "Airship"],
+      subCatKeys: ["balloon", "airship"] as const,
+      rowDefs: [
+        { label: "Total Hours", fields: ["total_time", "total_time"] },
+      ],
+    },
+  ];
+
+  return categories.map((cat) => {
+    const subRows: ClassSubRow[] = [];
+
+    for (const rowDef of cat.rowDefs) {
+      const values: number[] = [];
+      for (let i = 0; i < cat.subCatKeys.length; i++) {
+        const subCat = cat.subCatKeys[i];
+        const filtered = filterByCat(subCat);
+        values.push(sumField(filtered, rowDef.fields[i]));
+      }
+      subRows.push({ label: rowDef.label, values });
+    }
+
+    return {
+      groupLabel: cat.groupLabel,
+      subLabels: cat.subLabels,
+      subCatKeys: cat.subCatKeys as unknown as (keyof Flight)[],
+      rows: subRows,
+    };
+  });
+}
+
+// ── Simulated Flight Totals ────────────────────────────────────────────────
+
+interface SimFlightRow {
+  label: string;
+  pic: number;
+  sic: number;
+  helicopter: number;
+}
+
+function buildSimFlightTotals(flights: Flight[], mappings: AircraftTypeMappings): SimFlightRow[] {
+  const categoryToTypes: Record<string, string[]> = {};
+  for (const [aircraftType, categoryValue] of Object.entries(mappings)) {
+    if (!categoryToTypes[categoryValue]) categoryToTypes[categoryValue] = [];
+    categoryToTypes[categoryValue].push(aircraftType);
+  }
+
+  const filterByCat = (cat: string): Flight[] => {
+    const types = categoryToTypes[cat] ?? [];
+    const typesSet = new Set(types);
+    return flights.filter((f) => typesSet.has(f.aircraft_type ?? ""));
+  };
+
+  const sumField = (filtered: Flight[], field: keyof Flight): number =>
+    filtered.reduce((a, f) => a + (Number(f[field]) || 0), 0);
+
+  const categories: { label: string; catKey: string }[] = [
+    { label: "FFS", catKey: "full_flight_simulator" },
+    { label: "FTD", catKey: "flight_training_device" },
+    { label: "ATD", catKey: "aviation_training_device" },
+  ];
+
+  return categories.map((c) => {
+    const filtered = filterByCat(c.catKey);
+    return {
+      label: c.label,
+      pic: sumField(filtered, "pic_time"),
+      sic: sumField(filtered, "sic_time"),
+      helicopter: sumField(filtered, "helicopter_time"),
+    };
+  });
+}
+
 // ── Sub-components ─────────────────────────────────────────────────────────
 
 /** Shared column-header row for the experience grid. */
@@ -387,6 +517,8 @@ export default function FAA8710() {
 
   const experienceRows = useMemo(() => buildExperienceGrid(flights, mappings), [flights, mappings]);
   const launchRows = useMemo(() => buildLaunchGrid(flights, mappings), [flights, mappings]);
+  const classTotals = useMemo(() => buildClassTotals(flights, mappings), [flights, mappings]);
+  const simFlightRows = useMemo(() => buildSimFlightTotals(flights, mappings), [flights, mappings]);
 
   const uniqueTypes = useMemo(() => {
     const seen = new Set<string>();
@@ -526,6 +658,70 @@ export default function FAA8710() {
                   </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ═══ Class Totals ═══ */}
+      {classTotals.map((group) => (
+        <div key={group.groupLabel} className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-8 dark:bg-zinc-800 dark:border-zinc-600">
+          <div className="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200 dark:bg-zinc-900 dark:border-zinc-600">
+            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide dark:text-white">
+              {group.groupLabel} — Class Totals (hrs)
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b-2 border-gray-200 dark:border-zinc-600">
+                  <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white"></th>
+                  {group.subLabels.map((sl) => (
+                    <th key={sl} className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">{sl}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {group.rows.map((subRow) => (
+                  <tr key={subRow.label} className="border-b border-gray-100 hover:bg-gray-50 dark:border-zinc-700 dark:hover:bg-zinc-700 transition-colors">
+                    <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-700 dark:text-white">{subRow.label}</td>
+                    {subRow.values.map((v, i) => (
+                      <td key={i} className="px-4 sm:px-6 py-2.5 text-sm text-gray-900 dark:text-white text-right tabular-nums">{fmtHrs(v)}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
+
+      {/* ═══ Simulated Flight Totals ═══ */}
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-8 dark:bg-zinc-800 dark:border-zinc-600">
+        <div className="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200 dark:bg-zinc-900 dark:border-zinc-600">
+          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide dark:text-white">
+            Simulated Flight — Device Totals (hrs)
+          </h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b-2 border-gray-200 dark:border-zinc-600">
+                <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white"></th>
+                <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">PIC</th>
+                <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">SIC</th>
+                <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">Helicopter</th>
+              </tr>
+            </thead>
+            <tbody>
+              {simFlightRows.map((row) => (
+                <tr key={row.label} className="border-b border-gray-100 hover:bg-gray-50 dark:border-zinc-700 dark:hover:bg-zinc-700 transition-colors">
+                  <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-700 dark:text-white font-medium">{row.label}</td>
+                  <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-900 dark:text-white text-right tabular-nums">{fmtHrs(row.pic)}</td>
+                  <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-900 dark:text-white text-right tabular-nums">{fmtHrs(row.sic)}</td>
+                  <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-900 dark:text-white text-right tabular-nums">{fmtHrs(row.helicopter)}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
