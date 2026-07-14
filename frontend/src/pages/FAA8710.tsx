@@ -392,8 +392,8 @@ function buildClassTotals(flights: Flight[], mappings: AircraftTypeMappings): Cl
 
 interface SimFlightRow {
   label: string;
-  pic: number;
-  sic: number;
+  se: number;
+  me: number;
   helicopter: number;
 }
 
@@ -423,8 +423,8 @@ function buildSimFlightTotals(flights: Flight[], mappings: AircraftTypeMappings)
     const filtered = filterByCat(c.catKey);
     return {
       label: c.label,
-      pic: sumField(filtered, "pic_time"),
-      sic: sumField(filtered, "sic_time"),
+      se: sumField(filtered, "sel_time") + sumField(filtered, "ses_time"),
+      me: sumField(filtered, "mel_time") + sumField(filtered, "mes_time"),
       helicopter: sumField(filtered, "helicopter_time"),
     };
   });
@@ -708,8 +708,8 @@ export default function FAA8710() {
             <thead>
               <tr className="border-b-2 border-gray-200 dark:border-zinc-600">
                 <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white"></th>
-                <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">PIC</th>
-                <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">SIC</th>
+                <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">SE</th>
+                <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">ME</th>
                 <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">Helicopter</th>
               </tr>
             </thead>
@@ -717,8 +717,8 @@ export default function FAA8710() {
               {simFlightRows.map((row) => (
                 <tr key={row.label} className="border-b border-gray-100 hover:bg-gray-50 dark:border-zinc-700 dark:hover:bg-zinc-700 transition-colors">
                   <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-700 dark:text-white font-medium">{row.label}</td>
-                  <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-900 dark:text-white text-right tabular-nums">{fmtHrs(row.pic)}</td>
-                  <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-900 dark:text-white text-right tabular-nums">{fmtHrs(row.sic)}</td>
+                  <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-900 dark:text-white text-right tabular-nums">{fmtHrs(row.se)}</td>
+                  <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-900 dark:text-white text-right tabular-nums">{fmtHrs(row.me)}</td>
                   <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-900 dark:text-white text-right tabular-nums">{fmtHrs(row.helicopter)}</td>
                 </tr>
               ))}
