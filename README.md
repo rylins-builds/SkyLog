@@ -4,11 +4,11 @@ A privacy-first, self-hosted digital flight logbook for pilots. Track flights, m
 
 ## Features
 
-- **📊 Dashboard** — At-a-glance stats: total flights, hours, night time, landings, unique aircraft, and 30-day totals.
+- **✈️ Dashboard** — At-a-glance stats: total flights, hours, night time, landings, unique aircraft, and 30-day totals.
 - **📖 Logbook** — Full-featured flight table with search, sort, pagination, and configurable column visibility.
-- **✈️ Log / Edit Flights** — Add new flights or edit existing ones with a comprehensive form covering all 14 CFR Part 61 categories (SEL, SES, MEL, MES, Helicopter, Glider, Solo, PIC, SIC, Dual, Instructor, Cross-Country, Night, Instrument).
-- **🛡️ Currency Tracker** — Check currency status across day/night takeoffs/landings, instrument approaches, and holding procedures. Configurable thresholds per category.
-- **📋 FAA 8710 Prep** — Future hub for pre-populating FAA Form 8710 from logbook data.
+- **✈️ Log / Edit Flights** — Full flight entry form covering all time categories (SEL, SES, MEL, MES, Helicopter, Gyroplane, Powered Lift, Glider, Balloon, Airship), launch types, instrument approaches, holds, night operations, and remarks.
+- **📊 Currency Tracker** — Check currency status across day/night takeoffs/landings, instrument approaches, and holding procedures. Configurable thresholds per category.
+- **📋 FAA 8710** — Aeronautical experience summary in FAA Form 8710 format with flight time by aircraft/device, class totals (Airplane, Rotorcraft, Lighter-than-Air), glider/airship launch totals, and simulated flight device totals. Supports aircraft type to 8710-category mapping.
 - **⚙️ Settings** — Customize page visibility, column visibility per user, change username/password, toggle multi-user mode, and import/export flights as CSV.
 - **🔒 Self-Hosted** — Full data ownership. Single-user mode (auto-login) or multi-user mode with authentication.
 - **🌙 Dark Mode** — Respects system color scheme preferences.
@@ -61,6 +61,7 @@ skylog/
 │   ├── database.go           # SQLite connection & schema init
 │   ├── models.go             # Go structs (Flight, User, etc.)
 │   ├── flights.go            # Flight CRUD + dashboard stats
+│   ├── faa8710.go            # FAA 8710 aircraft type mappings
 │   ├── settings.go           # Auth, settings, currency, visibility
 │   ├── go.mod
 │   └── go.sum
@@ -79,7 +80,7 @@ skylog/
 │   │       ├── Logbook.tsx        # Searchable, sortable flight table
 │   │       ├── EntryForm.tsx      # Create / edit flight form
 │   │       ├── Currency.tsx       # Currency tracker with progress bars
-│   │       ├── FAA8710.tsx        # FAA Form 8710 stub
+│   │       ├── FAA8710.tsx        # FAA 8710 experience grid, class totals, mappings
 │   │       ├── Settings.tsx       # Page/column visibility, CSV import/export
 │   │       └── LoginPage.tsx      # Login / registration UI
 │   ├── package.json
@@ -98,7 +99,7 @@ skylog/
 | **Logbook** | click | Full flight table with search, sort, pagination |
 | **New Flight** | click | Add a flight with all FAR Part 61 time categories |
 | **Currency** | click | Track currency across 6 categories with configurable thresholds |
-| **FAA 8710** | click | Placeholder for future 8710 form generation |
+| **FAA 8710** | click | Aeronautical experience grid in Form 8710 format with class totals and aircraft type mapping |
 | **Settings** | click | Visibility toggles, user preferences, CSV import/export |
 
 ## API Endpoints
@@ -121,6 +122,7 @@ skylog/
 | PUT | `/api/settings/password` | Change password |
 | GET/PUT | `/api/settings/visibility` | Page/column visibility |
 | GET/PUT | `/api/currency/thresholds` | Currency thresholds |
+| GET/PUT | `/api/faa8710/mappings` | FAA 8710 aircraft type mappings |
 
 ## License
 
