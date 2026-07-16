@@ -2,8 +2,9 @@
  * SkyLog Dashboard Page
  *
  * Fully customizable dashboard where each user can show/hide and reorder
- * stat-card tiles. "Recent Flights" is always rendered as a static
- * section below the stat-card grid (not included in customization).
+ * stat-card tiles via drag-and-drop directly on the page.
+ * "Recent Flights" is always rendered as a static section below the
+ * stat-card grid (not included in customization).
  *
  * Layout is persisted per-user via the backend API.
  *
@@ -26,6 +27,8 @@ export default function Dashboard() {
   const [layout, setLayout] = useState<DashboardTileConfig[]>([]);
   const [layoutLoaded, setLayoutLoaded] = useState(false);
   const [showCustomizer, setShowCustomizer] = useState(false);
+  const [isCustomizing, setIsCustomizing] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   // ── Load layout + data on mount ──
   useEffect(() => {
@@ -40,8 +43,8 @@ export default function Dashboard() {
         setLayoutLoaded(true);
         setStats(statsRes);
         setRecentFlights(flights.slice(0, 5));
-      } catch (e: any) {
-        setError(e.message);
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Unknown error");
       }
     })();
   }, []);
@@ -53,26 +56,60 @@ export default function Dashboard() {
         await api.saveDashboardLayout(newLayout);
         setLayout(newLayout);
         setShowCustomizer(false);
-      } catch (e: any) {
-        setError(e.message);
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Unknown error");
       }
     },
     [],
   );
 
-  const toggleCustomizer = () => setShowCustomizer((v) => !v);
+  // ── Toggle customize mode ──
+  const toggleCustomize = () => {
+    if (isCustomizing) {
+      // Exiting customize mode — save the current layout
+      handleSaveLayout(layout);
+    }
+    setIsCustomizing(!isCustomizing);
+  };
 
-  // ── Helper: resolve value + icon for a stat tile ──
+  // ── Drag-and-drop handlers ──
+
+  const handleDragStart = (index: number) => {
+    setDragIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (dragIndex === null || dragIndex === targetIndex) return;
+
+    const newLayout = [...layout];
+    // Swap the dragged item with the target item in the array
+    [newLayout[dragIndex], newLayout[targetIndex]] = [newLayout[targetIndex], newLayout[dragIndex]];
+    // Re-index order values
+    const reindexed = newLayout.map((t, i) => ({ ...t, order: i }));
+    setLayout(reindexed);
+    setDragIndex(targetIndex);
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
+    // Persist the new order to the API
+    api.saveDashboardLayout(layout).catch((e: unknown) => {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    });
+  };
+
+  // ── Helper: resolve value for a stat tile ──
   function statValue(tileType: TileType): number | string | undefined {
     if (!stats) return undefined;
     switch (tileType) {
-      case "total-flights":    return stats.total_flights;
-      case "total-hours":      return `${stats.total_hours.toFixed(1)}`;
-      case "night-hours":      return `${stats.total_night_hours.toFixed(1)}`;
+      case "total-flights":     return stats.total_flights;
+      case "total-hours":       return `${stats.total_hours.toFixed(1)}`;
+      case "night-hours":       return `${stats.total_night_hours.toFixed(1)}`;
       case "hours-last-30-days": return `${stats.hours_last_30_days.toFixed(1)}`;
-      case "total-landings":   return stats.total_landings;
-      case "unique-aircraft":  return stats.unique_aircraft;
-      default:                 return undefined;
+      case "total-landings":    return stats.total_landings;
+      case "unique-aircraft":   return stats.unique_aircraft;
+      default:                  return undefined;
     }
   }
 
@@ -157,40 +194,87 @@ export default function Dashboard() {
 
   return (
     <div className="p-4 sm:p-8 max-w-6xl mx-auto animate-fade-in dark:bg-zinc-800">
-      {/* Header with customize button */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
           Dashboard
         </h1>
-        <button
-          onClick={toggleCustomizer}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 hover:text-gray-900 transition-colors dark:bg-zinc-900 dark:text-gray-300 dark:border-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-white"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-            />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <span className="hidden sm:inline">Customize</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Manage Tiles button — opens the slide-over panel */}
+          <button
+            onClick={() => setShowCustomizer(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 hover:text-gray-900 transition-colors dark:bg-zinc-900 dark:text-gray-300 dark:border-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-white"
+            title="Show or hide tiles"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+            <span className="hidden sm:inline">Tiles</span>
+          </button>
+          {/* Edit / Done toggle — enables drag-and-drop mode */}
+          <button
+            onClick={toggleCustomize}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+              isCustomizing
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 hover:text-gray-900 dark:bg-zinc-900 dark:text-gray-300 dark:border-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-white"
+            }`}
+            title={isCustomizing ? "Done rearranging" : "Rearrange tiles"}
+          >
+            {isCustomizing ? (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Done
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                Edit
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* ═══════════════════════════════════════════
-          Stat Card Tile Grid — customizable
+          Stat Card Tile Grid — reorderable via drag-and-drop
           ═══════════════════════════════════════════ */}
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8 dark:text-white dark:bg-zinc-800 dark:border-zinc-300">
-        {sortedTiles.map((tile) => {
+        {sortedTiles.map((tile, idx) => {
           const def = TILE_REGISTRY[tile.type];
           const spanClass = tile.width === 2 ? "col-span-2 sm:col-span-2 lg:col-span-2" : "";
           const value = statValue(tile.type);
           if (value === undefined) return null;
 
           return (
-            <div key={tile.type} className={spanClass}>
+            <div
+              key={tile.type}
+              className={`${spanClass} ${
+                isCustomizing
+                  ? "relative cursor-grab active:cursor-grabbing"
+                  : ""
+              }`}
+              draggable={isCustomizing}
+              onDragStart={() => handleDragStart(idx)}
+              onDragOver={(e) => handleDragOver(e, idx)}
+              onDragEnd={handleDragEnd}
+              style={
+                isCustomizing && dragIndex === idx
+                  ? { opacity: 0.5, transform: "scale(0.97)" }
+                  : {}
+              }
+            >
+              {isCustomizing && (
+                <div className="absolute -top-2 -left-2 z-10">
+                  <div className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-md">
+                    {idx + 1}
+                  </div>
+                </div>
+              )}
               <StatTile
                 label={def?.label ?? tile.type}
                 value={value}
@@ -201,12 +285,21 @@ export default function Dashboard() {
         })}
       </div>
 
+      {/* Reorder hint — shown in customize mode */}
+      {isCustomizing && (
+        <div className="mb-6 text-center animate-fade-in">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+            Drag tiles to rearrange. Click <strong>Done</strong> when finished.
+          </p>
+        </div>
+      )}
+
       {/* ═══════════════════════════════════════════
           Recent Flights — static, NOT customizable
           ═══════════════════════════════════════════ */}
       <RecentFlightsTile flights={recentFlights} />
 
-      {/* Customize slide-over panel */}
+      {/* Customize slide-over panel (show/hide tiles) */}
       {showCustomizer && (
         <DashboardCustomizer
           layout={layout}
