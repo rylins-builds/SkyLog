@@ -214,6 +214,23 @@ type CurrencyThresholdResponse struct {
 	DaysWindow int `json:"daysWindow"`
 }
 
+// DashboardLayoutTile represents a single tile in the user's dashboard layout.
+type DashboardLayoutTile struct {
+	Type   string `json:"type"`
+	Width  int    `json:"width"`
+	Order  int    `json:"order"`
+}
+
+// DashboardLayoutResponse is returned by GET /api/settings/dashboard-layout.
+type DashboardLayoutResponse struct {
+	Layout []DashboardLayoutTile `json:"layout"`
+}
+
+// DashboardLayoutSaveRequest is the body for PUT /api/settings/dashboard-layout.
+type DashboardLayoutSaveRequest struct {
+	Layout []DashboardLayoutTile `json:"layout"`
+}
+
 // Validate checks required fields and value constraints for FlightCreate.
 func (f *FlightCreate) Validate() map[string]string {
 	errs := make(map[string]string)

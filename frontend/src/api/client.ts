@@ -208,6 +208,19 @@ export const api = {
   resetSettings: () =>
     request<{ status: string }>("/settings/reset", { method: "DELETE" }),
 
+  // ═══ Dashboard Layout ═══
+
+  /** Get the current user's dashboard tile layout. */
+  getDashboardLayout: () =>
+    request<{ layout: { type: string; width: number; order: number }[] }>("/settings/dashboard-layout"),
+
+  /** Save the current user's dashboard tile layout. */
+  saveDashboardLayout: (layout: { type: string; width: number; order: number }[]) =>
+    request<{ status: string }>("/settings/dashboard-layout", {
+      method: "PUT",
+      body: JSON.stringify({ layout }),
+    }),
+
   // ═══ FAA 8710 Mappings ═══
 
   /** Get the user's aircraft-type-to-8710-category mappings. */

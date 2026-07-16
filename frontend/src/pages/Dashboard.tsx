@@ -1,41 +1,100 @@
 /**
  * SkyLog Dashboard Page
  *
- * This is the landing page shown after the user authenticates. It displays:
- *   1. **Stat cards** — aggregated flight metrics (total flights, hours, etc.)
- *      computed server-side via ``GET /api/dashboard/stats``.
- *   2. **Recent flights** — the 5 most recent entries in a compact table.
+ * Fully customizable dashboard where each user can show/hide and reorder
+ * tiles. Layouts are persisted per-user via the backend API.
  *
- * The page has three visual states managed by React:
- *   - **Loading** — skeleton placeholders while the API call is in flight.
- *   - **Empty** — a welcome message with a CTA to log the first flight.
- *   - **Data** — stat cards + recent flights table.
+ * State management:
+ *   - layout: loaded from API on mount (fallback to default from tileRegistry)
+ *   - stats: aggregated dashboard statistics
+ *   - recentFlights: 5 most recent flights for the RecentFlights tile
+ *   - showCustomizer: toggle the customization slide-over panel
  *
  * @module pages/Dashboard
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "../api/client";
 import type { DashboardStats, Flight } from "../api/types";
+import type { DashboardTileConfig, TileType } from "../dashboard/types";
+import { TILE_REGISTRY } from "../dashboard/tileRegistry";
+import { StatTile } from "../dashboard/tiles/StatTile";
+import { RecentFlightsTile } from "../dashboard/tiles/RecentFlightsTile";
+import { DashboardCustomizer } from "../dashboard/DashboardCustomizer";
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentFlights, setRecentFlights] = useState<Flight[]>([]);
   const [error, setError] = useState("");
+  const [layout, setLayout] = useState<DashboardTileConfig[]>([]);
+  const [layoutLoaded, setLayoutLoaded] = useState(false);
+  const [showCustomizer, setShowCustomizer] = useState(false);
 
-  // On mount, fetch both the aggregated stats and the full flight list
-  // in parallel, then take the 5 most recent for the "Recent Flights" table.
+  // ── Load layout + data on mount ──
   useEffect(() => {
-    Promise.all([
-      api.getDashboardStats(),
-      api.listFlights(),
-    ])
-      .then(([statsData, flightsData]) => {
-        setStats(statsData);
-        setRecentFlights(flightsData.slice(0, 5));
-      })
-      .catch((e) => setError(e.message));
+    (async () => {
+      try {
+        const [layoutRes, statsRes, flights] = await Promise.all([
+          api.getDashboardLayout(),
+          api.getDashboardStats(),
+          api.listFlights(),
+        ]);
+        setLayout(layoutRes.layout as DashboardTileConfig[]);
+        setLayoutLoaded(true);
+        setStats(statsRes);
+        setRecentFlights(flights.slice(0, 5));
+      } catch (e: any) {
+        setError(e.message);
+      }
+    })();
   }, []);
+
+  // ── Save layout to API ──
+  const handleSaveLayout = useCallback(
+    async (newLayout: DashboardTileConfig[]) => {
+      try {
+        await api.saveDashboardLayout(newLayout);
+        setLayout(newLayout);
+        setShowCustomizer(false);
+      } catch (e: any) {
+        setError(e.message);
+      }
+    },
+    [],
+  );
+
+  // ── Toggle customizer ──
+  const toggleCustomizer = () => setShowCustomizer((v) => !v);
+
+  // ── Helper: get value for a stat tile from stats ──
+  function statValue(tileType: TileType): number | string | undefined {
+    if (!stats) return undefined;
+    switch (tileType) {
+      case "total-flights":
+        return stats.total_flights;
+      case "total-hours":
+        return `${stats.total_hours.toFixed(1)}`;
+      case "night-hours":
+        return `${stats.total_night_hours.toFixed(1)}`;
+      case "hours-last-30-days":
+        return `${stats.hours_last_30_days.toFixed(1)}`;
+      case "total-landings":
+        return stats.total_landings;
+      case "unique-aircraft":
+        return stats.unique_aircraft;
+      default:
+        return undefined;
+    }
+  }
+
+  // ── Helper: icon for a tile ──
+  function tileIcon(tileType: TileType): string | undefined {
+    return TILE_REGISTRY[tileType]?.icon;
+  }
+
+  // ══════════════════════════════════════════
+  // Render states
+  // ══════════════════════════════════════════
 
   // ── Error state ──
   if (error) {
@@ -43,7 +102,12 @@ export default function Dashboard() {
       <div className="p-8 text-center animate-fade-in">
         <div className="inline-flex items-center gap-2 bg-red-100 text-red-700 px-4 py-3 rounded-lg dark:bg-red-900 dark:text-red-300">
           <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           <span>Failed to load dashboard: {error}</span>
         </div>
@@ -52,13 +116,20 @@ export default function Dashboard() {
   }
 
   // ── Loading state (skeleton) ──
-  if (!stats) {
+  if (!layoutLoaded || !stats) {
     return (
       <div className="p-4 sm:p-8 max-w-6xl mx-auto animate-fade-in">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">Dashboard</h1>
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+            Dashboard
+          </h1>
+        </div>
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-100 dark:bg-zinc-900">
+            <div
+              key={i}
+              className="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-100 dark:bg-zinc-900"
+            >
               <div className="skeleton h-4 w-24 mb-3" />
               <div className="skeleton h-8 w-20" />
             </div>
@@ -72,14 +143,17 @@ export default function Dashboard() {
   if (stats.total_flights === 0) {
     return (
       <div className="p-4 sm:p-8 max-w-6xl mx-auto animate-fade-in dark:bg-zinc-800">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6 dark:text-white">Dashboard</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6 dark:text-white">
+          Dashboard
+        </h1>
         <div className="text-center py-16">
           <div className="text-6xl mb-4">✈️</div>
-          <h2 className="text-xl font-semibold text-gray-700 mb-2 dark:text-white">Welcome to SkyLog!</h2>
+          <h2 className="text-xl font-semibold text-gray-700 mb-2 dark:text-white">
+            Welcome to SkyLog!
+          </h2>
           <p className="text-gray-500 mb-6 dark:text-white">
             Your flight data will appear here once you start logging.
           </p>
-          {/* Navigate to the Add Flight page via custom event */}
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("navigate", { detail: "add" }))}
             className="inline-flex items-center gap-2 bg-blue-600 dark:bg-blue-800 dark:text-white text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors btn-primary"
@@ -95,95 +169,72 @@ export default function Dashboard() {
   }
 
   // ── Data state ──
+
+  // Sort enabled tiles by order
+  const sortedTiles = layout.slice().sort((a, b) => a.order - b.order);
+
   return (
     <div className="p-4 sm:p-8 max-w-6xl mx-auto animate-fade-in dark:bg-zinc-800">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">Dashboard</h1>
-
-      {/* Stat Cards — each card shows one aggregated metric */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8 dark:text-white dark:bg-zinc-800 dark:border-zinc-300">
-        <StatCard label="Total Flights" value={stats.total_flights} icon="📊" />
-        <StatCard label="Total Hours" value={`${stats.total_hours.toFixed(1)}`} icon="⏱️" />
-        <StatCard label="Night Hours" value={`${stats.total_night_hours.toFixed(1)}`} icon="🌙" />
-        <StatCard label="Hours (Last 30 Days)" value={`${stats.hours_last_30_days.toFixed(1)}`} icon="📅" />
-        <StatCard label="Total Landings" value={stats.total_landings} icon="🛬" />
-        <StatCard label="Unique Aircraft" value={stats.unique_aircraft} icon="🛩️" />
+      {/* Header with customize button */}
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+          Dashboard
+        </h1>
+        <button
+          onClick={toggleCustomizer}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 hover:text-gray-900 transition-colors dark:bg-zinc-900 dark:text-gray-300 dark:border-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-white"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span className="hidden sm:inline">Customize</span>
+        </button>
       </div>
 
-      {/* Recent Flights Section — compact table of the 5 most recent entries */}
-      {recentFlights.length > 0 && (
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden animate-slide-up dark:bg-zinc-900 dark:border-zinc-600">
-          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Recent Flights</h2>
-            {/* Link to the full logbook page */}
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent("navigate", { detail: "logbook" }))}
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium dark:text-blue-400 dark:hover:text-blue-300"
-            >
-              View All →
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-center">
-              <thead>
-                <tr className="bg-gray-50 dark:bg-zinc-800">
-                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-600 dark:text-white">Date</th>
-                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-600 dark:text-white">Aircraft</th>
-                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-600 dark:text-white">Reg.</th>
-                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-600 dark:text-white">From → To</th>
-                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-600 dark:text-white">Total</th>
-                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-600 dark:text-white">PIC</th>
-                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-600 dark:text-white">SIC</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentFlights.map((flight, idx) => (
-                  <tr
-                    key={flight.id}
-                    className="border-b border-gray-50 hover:bg-gray-50 logbook-row dark:border-zinc-600 dark:hover:bg-zinc-700"
-                    // Stagger the entrance animation slightly for each row
-                    style={{ animationDelay: `${idx * 50}ms` }}
-                  >
-                    <td className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-white">{flight.date}</td>
-                    <td className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-white">{flight.aircraft_type}</td>
-                    <td className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-white">{flight.aircraft_reg}</td>
-                    <td className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-white">{flight.departure}→{flight.arrival}</td>
-                    <td className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-white">{flight.total_time.toFixed(1)}</td>
-                    <td className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-white">{flight.pic_time.toFixed(1)}</td>
-                    <td className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-white">{flight.sic_time.toFixed(1)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      {/* Tile grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8 dark:text-white dark:bg-zinc-800 dark:border-zinc-300">
+        {sortedTiles.map((tile) => {
+          const def = TILE_REGISTRY[tile.type];
+          const spanClass = tile.width === 2 ? "col-span-2 sm:col-span-2 lg:col-span-2" : "";
+
+          // Stat card tiles
+          if (tile.type !== "recent-flights") {
+            const value = statValue(tile.type);
+            if (value === undefined) return null;
+            return (
+              <div key={tile.type} className={spanClass}>
+                <StatTile
+                  label={def?.label ?? tile.type}
+                  value={value}
+                  icon={tileIcon(tile.type)}
+                />
+              </div>
+            );
+          }
+
+          // Recent flights tile
+          return (
+            <div key={tile.type} className={spanClass}>
+              <RecentFlightsTile flights={recentFlights} />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Customize slide-over panel */}
+      {showCustomizer && (
+        <DashboardCustomizer
+          layout={layout}
+          onSave={handleSaveLayout}
+          onClose={() => setShowCustomizer(false)}
+        />
       )}
-    </div>
-  );
-}
-
-/**
- * A single stat card displaying a labelled metric with an emoji icon.
- *
- * @param label - The human-readable label (e.g. "Total Flights").
- * @param value - The numeric or string value to display prominently.
- * @param icon - An emoji string to show alongside the label.
- */
-function StatCard({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: number | string;
-  icon?: string;
-}) {
-  return (
-    <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-100 stat-card animate-slide-up dark:bg-zinc-900 dark:border-zinc-600">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wide dark:text-gray-400">{label}</p>
-        {icon && <span className="text-lg sm:text-xl">{icon}</span>}
-      </div>
-      <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{value}</p>
     </div>
   );
 }

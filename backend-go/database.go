@@ -134,6 +134,11 @@ func initDB(ctx context.Context, db *sql.DB) error {
 			page_visibility    TEXT NOT NULL DEFAULT '{}',
 			column_visibility  TEXT NOT NULL DEFAULT '{}'
 		);
+
+		CREATE TABLE IF NOT EXISTS user_dashboard (
+			user_id           INTEGER PRIMARY KEY,
+			layout            TEXT NOT NULL DEFAULT '[]'
+		);
 	`
 
 	if _, err := tx.ExecContext(ctx, schema); err != nil {
