@@ -31,6 +31,9 @@ func registerSettingsRoutes(mux *http.ServeMux, db *sql.DB) {
 	// Currency
 	mux.HandleFunc("GET /api/currency/thresholds", getCurrencyThresholds(db))
 	mux.HandleFunc("PUT /api/currency/thresholds", saveCurrencyThresholds(db))
+	// Dashboard
+	mux.HandleFunc("GET /api/settings/dashboard-layout", getDashboardLayout(db))
+	mux.HandleFunc("PUT /api/settings/dashboard-layout", saveDashboardLayout(db))
 }
 
 // ── Password hashing ──
@@ -437,6 +440,88 @@ func changePassword(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+// ── GET /api/settings/dashboard-layout ──
+
+func getDashboardLayout(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := getUserID(r, db)
+		if err != nil {
+			he := err.(*httpError)
+			writeError(w, he.Code, he.Message)
+			return
+		}
+
+		var layoutJSON string
+		err = db.QueryRowContext(r.Context(),
+			"SELECT layout FROM user_dashboard WHERE user_id = ?", userID,
+		).Scan(&layoutJSON)
+		if err != nil {
+			// No saved layout — return default tile set
+			defaultLayout := getDefaultDashboardLayout()
+			writeJSON(w, 200, DashboardLayoutResponse{Layout: defaultLayout})
+			return
+		}
+
+		var layout []DashboardLayoutTile
+		if err := json.Unmarshal([]byte(layoutJSON), &layout); err != nil {
+			// Corrupted layout — return defaults
+			defaultLayout := getDefaultDashboardLayout()
+			writeJSON(w, 200, DashboardLayoutResponse{Layout: defaultLayout})
+			return
+		}
+
+		writeJSON(w, 200, DashboardLayoutResponse{Layout: layout})
+	}
+}
+
+// ── PUT /api/settings/dashboard-layout ──
+
+func saveDashboardLayout(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := getUserID(r, db)
+		if err != nil {
+			he := err.(*httpError)
+			writeError(w, he.Code, he.Message)
+			return
+		}
+
+		var req DashboardLayoutSaveRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, 422, "Invalid JSON body")
+			return
+		}
+
+		b, err := json.Marshal(req.Layout)
+		if err != nil {
+			writeError(w, 500, "Failed to serialise layout")
+			return
+		}
+
+		_, err = db.ExecContext(r.Context(),
+			`INSERT OR REPLACE INTO user_dashboard (user_id, layout) VALUES (?, ?)`,
+			userID, string(b))
+		if err != nil {
+			writeError(w, 500, "Database error")
+			return
+		}
+
+		writeJSON(w, 200, map[string]string{"status": "ok"})
+	}
+}
+
+// getDefaultDashboardLayout returns the default set of tiles for new users.
+func getDefaultDashboardLayout() []DashboardLayoutTile {
+	return []DashboardLayoutTile{
+		{Type: "total-flights", Width: 1, Order: 0},
+		{Type: "total-hours", Width: 1, Order: 1},
+		{Type: "night-hours", Width: 1, Order: 2},
+		{Type: "hours-last-30-days", Width: 1, Order: 3},
+		{Type: "total-landings", Width: 1, Order: 4},
+		{Type: "unique-aircraft", Width: 1, Order: 5},
+		{Type: "recent-flights", Width: 2, Order: 6},
+	}
+}
+
 // ── GET /api/settings/has-glider-launch-type ──
 
 func hasGliderLaunchType(db *sql.DB) http.HandlerFunc {
@@ -576,6 +661,9 @@ func resetSettings(db *sql.DB) http.HandlerFunc {
 		// Delete currency thresholds
 		_, _ = db.ExecContext(r.Context(),
 			"DELETE FROM currency_thresholds WHERE user_id = ?", userID)
+		// Delete dashboard layout
+		_, _ = db.ExecContext(r.Context(),
+			"DELETE FROM user_dashboard WHERE user_id = ?", userID)
 
 		writeJSON(w, 200, map[string]string{"status": "ok"})
 	}
