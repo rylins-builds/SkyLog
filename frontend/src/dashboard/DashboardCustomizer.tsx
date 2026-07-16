@@ -122,11 +122,7 @@ export function DashboardCustomizer({ layout, onSave, onClose }: DashboardCustom
                     key={tile.type}
                     definition={def}
                     enabled
-                    isFirst={tile.order === 0}
-                    isLast={tile.order === enabledTiles.length - 1}
                     onToggle={() => handleToggle(tile.type)}
-                    onMoveUp={() => handleMoveUp(tile.type)}
-                    onMoveDown={() => handleMoveDown(tile.type)}
                   />
                 );
               })}
@@ -145,11 +141,7 @@ export function DashboardCustomizer({ layout, onSave, onClose }: DashboardCustom
                     key={def.type}
                     definition={def}
                     enabled={false}
-                    isFirst
-                    isLast
                     onToggle={() => handleToggle(def.type)}
-                    onMoveUp={() => {}}
-                    onMoveDown={() => {}}
                   />
                 ))}
               </div>
@@ -183,14 +175,10 @@ export function DashboardCustomizer({ layout, onSave, onClose }: DashboardCustom
 interface TileRowProps {
   definition: TileDefinition;
   enabled: boolean;
-  isFirst: boolean;
-  isLast: boolean;
   onToggle: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
 }
 
-function TileRow({ definition, enabled, isFirst, isLast, onToggle, onMoveUp, onMoveDown }: TileRowProps) {
+function TileRow({ definition, enabled, onToggle }: TileRowProps) {
   return (
     <div
       className={`flex items-center justify-between px-4 py-3 rounded-lg border transition-colors ${
