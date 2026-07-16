@@ -4,7 +4,9 @@
  * This is the landing page shown after the user authenticates. It displays:
  *   1. **Stat cards** — aggregated flight metrics (total flights, hours, etc.)
  *      computed server-side via ``GET /api/dashboard/stats``.
+ *      Cards are reorderable via drag-and-drop with persistence to localStorage.
  *   2. **Recent flights** — the 5 most recent entries in a compact table.
+ *      (Not included in the customization system in this version.)
  *
  * The page has three visual states managed by React:
  *   - **Loading** — skeleton placeholders while the API call is in flight.
@@ -18,10 +20,77 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { DashboardStats, Flight } from "../api/types";
 
+// ═════════════════════════════════════════════════════
+// Stat Card Definitions
+// ═════════════════════════════════════════════════════
+
+interface StatCardDef {
+  key: string;
+  label: string;
+  icon: string;
+  getValue: (stats: DashboardStats) => string | number;
+}
+
+const ALL_STAT_CARDS: StatCardDef[] = [
+  { key: "total_flights", label: "Total Flights", icon: "📊", getValue: (s) => s.total_flights },
+  { key: "total_hours", label: "Total Hours", icon: "⏱️", getValue: (s) => `${s.total_hours.toFixed(1)}` },
+  { key: "night_hours", label: "Night Hours", icon: "🌙", getValue: (s) => `${s.total_night_hours.toFixed(1)}` },
+  { key: "hours_last_30", label: "Hours (Last 30 Days)", icon: "📅", getValue: (s) => `${s.hours_last_30_days.toFixed(1)}` },
+  { key: "total_landings", label: "Total Landings", icon: "🛬", getValue: (s) => s.total_landings },
+  { key: "unique_aircraft", label: "Unique Aircraft", icon: "🛩️", getValue: (s) => s.unique_aircraft },
+];
+
+const STORAGE_KEY = "skylog_dashboard_stat_order";
+
+/** Load saved card order from localStorage, falling back to the default order. */
+function loadCardOrder(): string[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {
+    // ignore corrupt data
+  }
+  return ALL_STAT_CARDS.map((c) => c.key);
+}
+
+/** Persist the current card order to localStorage. */
+function saveCardOrder(order: string[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
+}
+
+/** Build the ordered StatCardDef list, appending any new definitions not yet in the saved order. */
+function buildOrderedCards(cardOrder: string[]): StatCardDef[] {
+  const ordered: StatCardDef[] = [];
+  const used = new Set<string>();
+  for (const key of cardOrder) {
+    const def = ALL_STAT_CARDS.find((c) => c.key === key);
+    if (def) {
+      ordered.push(def);
+      used.add(key);
+    }
+  }
+  for (const def of ALL_STAT_CARDS) {
+    if (!used.has(def.key)) {
+      ordered.push(def);
+    }
+  }
+  return ordered;
+}
+
+// ═════════════════════════════════════════════════════
+// Component
+// ═════════════════════════════════════════════════════
+
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentFlights, setRecentFlights] = useState<Flight[]>([]);
   const [error, setError] = useState("");
+  const [cardOrder, setCardOrder] = useState<string[]>(() => loadCardOrder());
+  const [isCustomizing, setIsCustomizing] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   // On mount, fetch both the aggregated stats and the full flight list
   // in parallel, then take the 5 most recent for the "Recent Flights" table.
@@ -36,6 +105,55 @@ export default function Dashboard() {
       })
       .catch((e) => setError(e.message));
   }, []);
+
+  // ── Drag-and-drop handlers ──
+
+  const handleDragStart = (index: number) => {
+    setDragIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (dragIndex === null || dragIndex === targetIndex) return;
+    // Swap the dragged card with the card at the target position
+    const newOrder = [...cardOrder];
+    [newOrder[dragIndex], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[dragIndex]];
+    setCardOrder(newOrder);
+    setDragIndex(targetIndex);
+  };
+
+  const handleDrop = () => {
+    setDragIndex(null);
+    saveCardOrder(cardOrder);
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
+  };
+
+  // ── Move via arrow buttons (for mobile / accessibility) ──
+
+  const moveCard = (key: string, direction: "up" | "down") => {
+    const idx = cardOrder.indexOf(key);
+    if (idx === -1) return;
+    if (direction === "up" && idx === 0) return;
+    if (direction === "down" && idx === cardOrder.length - 1) return;
+    const newOrder = [...cardOrder];
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    [newOrder[idx], newOrder[swapIdx]] = [newOrder[swapIdx], newOrder[idx]];
+    setCardOrder(newOrder);
+    saveCardOrder(newOrder);
+  };
+
+  // ── Toggle customize mode ──
+
+  const toggleCustomize = () => {
+    if (isCustomizing) {
+      // Exiting — persist the final order
+      saveCardOrder(cardOrder);
+    }
+    setIsCustomizing(!isCustomizing);
+  };
 
   // ── Error state ──
   if (error) {
@@ -79,7 +197,6 @@ export default function Dashboard() {
           <p className="text-gray-500 mb-6 dark:text-white">
             Your flight data will appear here once you start logging.
           </p>
-          {/* Navigate to the Add Flight page via custom event */}
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("navigate", { detail: "add" }))}
             className="inline-flex items-center gap-2 bg-blue-600 dark:bg-blue-800 dark:text-white text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors btn-primary"
@@ -95,26 +212,70 @@ export default function Dashboard() {
   }
 
   // ── Data state ──
+  const orderedCards = buildOrderedCards(cardOrder);
+
   return (
     <div className="p-4 sm:p-8 max-w-6xl mx-auto animate-fade-in dark:bg-zinc-800">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">Dashboard</h1>
-
-      {/* Stat Cards — each card shows one aggregated metric */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8 dark:text-white dark:bg-zinc-800 dark:border-zinc-300">
-        <StatCard label="Total Flights" value={stats.total_flights} icon="📊" />
-        <StatCard label="Total Hours" value={`${stats.total_hours.toFixed(1)}`} icon="⏱️" />
-        <StatCard label="Night Hours" value={`${stats.total_night_hours.toFixed(1)}`} icon="🌙" />
-        <StatCard label="Hours (Last 30 Days)" value={`${stats.hours_last_30_days.toFixed(1)}`} icon="📅" />
-        <StatCard label="Total Landings" value={stats.total_landings} icon="🛬" />
-        <StatCard label="Unique Aircraft" value={stats.unique_aircraft} icon="🛩️" />
+      {/* Header — title + customize toggle (only visible in data state) */}
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+        <button
+          onClick={toggleCustomize}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            isCustomizing
+              ? "bg-blue-600 text-white hover:bg-blue-700"
+              : "text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-zinc-700"
+          }`}
+          title={isCustomizing ? "Done customizing" : "Customize card layout"}
+        >
+          {isCustomizing ? (
+            <>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Done
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+              Customize
+            </>
+          )}
+        </button>
       </div>
 
-      {/* Recent Flights Section — compact table of the 5 most recent entries */}
+      {/* ═══════════════════════════════════════════
+          Stat Cards — reorderable when customizing
+          ═══════════════════════════════════════════ */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
+        {orderedCards.map((card, idx) => (
+          <StatCard
+            key={card.key}
+            label={card.label}
+            value={card.getValue(stats)}
+            icon={card.icon}
+            isCustomizing={isCustomizing}
+            isFirst={idx === 0}
+            isLast={idx === orderedCards.length - 1}
+            onDragStart={() => handleDragStart(idx)}
+            onDragOver={(e) => handleDragOver(e, idx)}
+            onDrop={handleDrop}
+            onDragEnd={handleDragEnd}
+            onMoveUp={() => moveCard(card.key, "up")}
+            onMoveDown={() => moveCard(card.key, "down")}
+          />
+        ))}
+      </div>
+
+      {/* ═══════════════════════════════════════════
+          Recent Flights Section — static, NOT customizable
+          ═══════════════════════════════════════════ */}
       {recentFlights.length > 0 && (
         <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden animate-slide-up dark:bg-zinc-900 dark:border-zinc-600">
           <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100 flex items-center justify-between">
             <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Recent Flights</h2>
-            {/* Link to the full logbook page */}
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("navigate", { detail: "logbook" }))}
               className="text-sm text-blue-600 hover:text-blue-700 font-medium dark:text-blue-400 dark:hover:text-blue-300"
@@ -140,7 +301,6 @@ export default function Dashboard() {
                   <tr
                     key={flight.id}
                     className="border-b border-gray-50 hover:bg-gray-50 logbook-row dark:border-zinc-600 dark:hover:bg-zinc-700"
-                    // Stagger the entrance animation slightly for each row
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
                     <td className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-white">{flight.date}</td>
@@ -161,27 +321,86 @@ export default function Dashboard() {
   );
 }
 
+// ═════════════════════════════════════════════════════
+// StatCard Sub-Component
+// ═════════════════════════════════════════════════════
+
 /**
  * A single stat card displaying a labelled metric with an emoji icon.
- *
- * @param label - The human-readable label (e.g. "Total Flights").
- * @param value - The numeric or string value to display prominently.
- * @param icon - An emoji string to show alongside the label.
+ * When `isCustomizing` is true, the card becomes draggable and shows
+ * move up/down buttons for mobile/accessibility.
  */
 function StatCard({
   label,
   value,
   icon,
+  isCustomizing,
+  isFirst,
+  isLast,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  onMoveUp,
+  onMoveDown,
 }: {
   label: string;
-  value: number | string;
+  value: string | number;
   icon?: string;
+  isCustomizing: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+  onDragStart: () => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDrop: () => void;
+  onDragEnd: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
 }) {
   return (
-    <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-100 stat-card animate-slide-up dark:bg-zinc-900 dark:border-zinc-600">
+    <div
+      draggable={isCustomizing}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      className={`bg-white rounded-xl shadow-md p-4 sm:p-6 border stat-card animate-slide-up dark:bg-zinc-900 ${
+        isCustomizing
+          ? "border-blue-300 dark:border-blue-600 cursor-grab active:cursor-grabbing ring-2 ring-blue-200 dark:ring-blue-800"
+          : "border-gray-100 dark:border-zinc-600"
+      }`}
+    >
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wide dark:text-gray-400">{label}</p>
-        {icon && <span className="text-lg sm:text-xl">{icon}</span>}
+        <p className="text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wide dark:text-gray-400 truncate">
+          {label}
+        </p>
+        <div className="flex items-center gap-1 shrink-0">
+          {isCustomizing && (
+            <div className="flex flex-col gap-0.5 mr-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); onMoveUp(); }}
+                disabled={isFirst}
+                className="text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed p-0.5"
+                title="Move up"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onMoveDown(); }}
+                disabled={isLast}
+                className="text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed p-0.5"
+                title="Move down"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+          )}
+          {icon && <span className="text-lg sm:text-xl">{icon}</span>}
+        </div>
       </div>
       <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{value}</p>
     </div>
