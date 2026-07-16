@@ -510,6 +510,7 @@ func saveDashboardLayout(db *sql.DB) http.HandlerFunc {
 }
 
 // getDefaultDashboardLayout returns the default set of tiles for new users.
+// Matches the frontend's TILE_REGISTRY enabledByDefault tiles.
 func getDefaultDashboardLayout() []DashboardLayoutTile {
 	return []DashboardLayoutTile{
 		{Type: "total-flights", Width: 1, Order: 0},
@@ -518,7 +519,6 @@ func getDefaultDashboardLayout() []DashboardLayoutTile {
 		{Type: "hours-last-30-days", Width: 1, Order: 3},
 		{Type: "total-landings", Width: 1, Order: 4},
 		{Type: "unique-aircraft", Width: 1, Order: 5},
-		{Type: "recent-flights", Width: 2, Order: 6},
 	}
 }
 
