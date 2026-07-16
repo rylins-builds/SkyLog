@@ -66,7 +66,6 @@ export default function Dashboard() {
   // ── Toggle customize mode ──
   const toggleCustomize = () => {
     if (isCustomizing) {
-      // Exiting customize mode — save the current layout
       handleSaveLayout(layout);
     }
     setIsCustomizing(!isCustomizing);
@@ -83,9 +82,7 @@ export default function Dashboard() {
     if (dragIndex === null || dragIndex === targetIndex) return;
 
     const newLayout = [...layout];
-    // Swap the dragged item with the target item in the array
     [newLayout[dragIndex], newLayout[targetIndex]] = [newLayout[targetIndex], newLayout[dragIndex]];
-    // Re-index order values
     const reindexed = newLayout.map((t, i) => ({ ...t, order: i }));
     setLayout(reindexed);
     setDragIndex(targetIndex);
@@ -93,23 +90,50 @@ export default function Dashboard() {
 
   const handleDragEnd = () => {
     setDragIndex(null);
-    // Persist the new order to the API
     api.saveDashboardLayout(layout).catch((e: unknown) => {
       setError(e instanceof Error ? e.message : "Unknown error");
     });
   };
 
-  // ── Helper: resolve value for a stat tile ──
+  // ── Helper: resolve value for any tile type ──
   function statValue(tileType: TileType): number | string | undefined {
     if (!stats) return undefined;
     switch (tileType) {
-      case "total-flights":     return stats.total_flights;
-      case "total-hours":       return `${stats.total_hours.toFixed(1)}`;
-      case "night-hours":       return `${stats.total_night_hours.toFixed(1)}`;
-      case "hours-last-30-days": return `${stats.hours_last_30_days.toFixed(1)}`;
-      case "total-landings":    return stats.total_landings;
-      case "unique-aircraft":   return stats.unique_aircraft;
-      default:                  return undefined;
+      case "total-flights":                return stats.total_flights;
+      case "total-hours":                  return `${stats.total_hours.toFixed(1)}`;
+      case "night-hours":                  return `${stats.total_night_hours.toFixed(1)}`;
+      case "hours-last-30-days":           return `${stats.hours_last_30_days.toFixed(1)}`;
+      case "total-landings":               return stats.total_landings;
+      case "unique-aircraft":              return stats.unique_aircraft;
+      case "sel-time":                     return `${stats.sel_time.toFixed(1)}`;
+      case "ses-time":                     return `${stats.ses_time.toFixed(1)}`;
+      case "mel-time":                     return `${stats.mel_time.toFixed(1)}`;
+      case "mes-time":                     return `${stats.mes_time.toFixed(1)}`;
+      case "helicopter-time":              return `${stats.helicopter_time.toFixed(1)}`;
+      case "gyroplane-time":               return `${stats.gyroplane_time.toFixed(1)}`;
+      case "powered-lift-time":            return `${stats.powered_lift_time.toFixed(1)}`;
+      case "glider-time":                  return `${stats.glider_time.toFixed(1)}`;
+      case "balloon-time":                 return `${stats.balloon_time.toFixed(1)}`;
+      case "airship-time":                 return `${stats.airship_time.toFixed(1)}`;
+      case "solo-time":                    return `${stats.solo_time.toFixed(1)}`;
+      case "pic-time":                     return `${stats.pic_time.toFixed(1)}`;
+      case "sic-time":                     return `${stats.sic_time.toFixed(1)}`;
+      case "dual-time":                    return `${stats.dual_time.toFixed(1)}`;
+      case "instructor-time":              return `${stats.instructor_time.toFixed(1)}`;
+      case "xcountry-time":                return `${stats.xcountry_time.toFixed(1)}`;
+      case "act-instrument-time":          return `${stats.act_instrument_time.toFixed(1)}`;
+      case "sim-instrument-time":          return `${stats.sim_instrument_time.toFixed(1)}`;
+      case "full-flight-simulator-time":   return `${stats.full_flight_simulator_time.toFixed(1)}`;
+      case "flight-training-device-time":  return `${stats.flight_training_device_time.toFixed(1)}`;
+      case "aviation-training-device-time":return `${stats.aviation_training_device_time.toFixed(1)}`;
+      case "takeoffs-day":                 return stats.takeoffs_day;
+      case "takeoffs-night":               return stats.takeoffs_night;
+      case "landings-day":                 return stats.landings_day;
+      case "landings-night":               return stats.landings_night;
+      case "precision-approaches":         return stats.precision_approaches;
+      case "non-precision-approaches":     return stats.non_precision_approaches;
+      case "holding-patterns":             return stats.holding_patterns;
+      default:                             return undefined;
     }
   }
 

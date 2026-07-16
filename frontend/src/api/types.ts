@@ -202,6 +202,7 @@ export interface FlightCreate {
  * Aggregated statistics for the Dashboard page.
  * Computed server-side from the current user's flight data to avoid
  * sending all flight records to the client just for stats.
+ * Includes all FAA time categories alongside the core summary metrics.
  */
 export interface DashboardStats {
   /** Total number of flights logged */
@@ -216,4 +217,60 @@ export interface DashboardStats {
   total_landings: number;
   /** Number of unique aircraft registrations flown */
   unique_aircraft: number;
+  /** Single Engine Land time (hours) */
+  sel_time: number;
+  /** Single Engine Sea time (hours) */
+  ses_time: number;
+  /** Multi Engine Land time (hours) */
+  mel_time: number;
+  /** Multi Engine Sea time (hours) */
+  mes_time: number;
+  /** Helicopter time (hours) */
+  helicopter_time: number;
+  /** Gyroplane time (hours) */
+  gyroplane_time: number;
+  /** Powered Lift time (hours) */
+  powered_lift_time: number;
+  /** Glider time (hours) */
+  glider_time: number;
+  /** Balloon time (hours) */
+  balloon_time: number;
+  /** Airship time (hours) */
+  airship_time: number;
+  /** Solo flight time (hours) */
+  solo_time: number;
+  /** Pilot-in-Command time (hours) */
+  pic_time: number;
+  /** Second-in-Command time (hours) */
+  sic_time: number;
+  /** Dual instruction received time (hours) */
+  dual_time: number;
+  /** Instructor time (hours) */
+  instructor_time: number;
+  /** Cross-country time (hours) */
+  xcountry_time: number;
+  /** Actual instrument flight time (hours) — flown in actual IMC conditions */
+  act_instrument_time: number;
+  /** Simulated instrument (hood / foggles) time (hours) */
+  sim_instrument_time: number;
+  /** Full flight simulator time (hours) */
+  full_flight_simulator_time: number;
+  /** Flight training device time (hours) */
+  flight_training_device_time: number;
+  /** Aviation training device time (hours) */
+  aviation_training_device_time: number;
+  /** Number of day takeoffs */
+  takeoffs_day: number;
+  /** Number of night takeoffs */
+  takeoffs_night: number;
+  /** Number of day landings */
+  landings_day: number;
+  /** Number of night landings */
+  landings_night: number;
+  /** Number of precision instrument approaches (e.g. ILS, PAR) */
+  precision_approaches: number;
+  /** Number of non-precision instrument approaches (e.g. VOR, GPS LNAV) */
+  non_precision_approaches: number;
+  /** Number of holding pattern entries */
+  holding_patterns: number;
 }

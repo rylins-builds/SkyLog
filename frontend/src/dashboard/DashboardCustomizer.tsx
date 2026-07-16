@@ -212,32 +212,6 @@ function TileRow({ definition, enabled, isFirst, isLast, onToggle, onMoveUp, onM
       </div>
 
       <div className="flex items-center gap-1 shrink-0">
-        {/* Reorder buttons — only show for enabled tiles */}
-        {enabled && (
-          <>
-            <button
-              onClick={onMoveUp}
-              disabled={isFirst}
-              className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-20 disabled:cursor-not-allowed dark:hover:text-gray-300"
-              title="Move up"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-              </svg>
-            </button>
-            <button
-              onClick={onMoveDown}
-              disabled={isLast}
-              className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-20 disabled:cursor-not-allowed dark:hover:text-gray-300"
-              title="Move down"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </>
-        )}
-
         {/* Toggle switch */}
         <button
           onClick={onToggle}

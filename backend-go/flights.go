@@ -159,12 +159,6 @@ func createFlight(db *sql.DB) http.HandlerFunc {
 		nonPrecisionApproaches := fc.NonPrecisionApproaches
 		holdingPatterns := fc.HoldingPatterns
 
-		// If these were set to 0 in the request, we should default them.
-		// The JSON decoder will set them to 0 if not in the request body.
-		// Python's Pydantic defaults these with Field(default=0, ge=0).
-		// Since we can't distinguish here (Go zero value = 0), we use
-		// the values as-is — they'll be 0 which is what Python would default to.
-
 		result, err := db.ExecContext(r.Context(), `
 			INSERT INTO flights (
 				user_id, date, pilot_in_command, aircraft_type, aircraft_reg, departure, arrival,
@@ -269,7 +263,6 @@ func updateFlight(db *sql.DB) http.HandlerFunc {
 		}
 
 		// Build dynamic SET clause from non-nil fields.
-		// We use a map of column names to values.
 		cols := make(map[string]any)
 
 		if update.Date != nil {
@@ -279,7 +272,6 @@ func updateFlight(db *sql.DB) http.HandlerFunc {
 			cols["pilot_in_command"] = *update.PilotInCommand
 		}
 		if update.AircraftType != nil {
-			// Use the named field path from FlightUpdate struct
 			cols["aircraft_type"] = *update.AircraftType
 		}
 		if update.AircraftReg != nil {
@@ -395,12 +387,10 @@ func updateFlight(db *sql.DB) http.HandlerFunc {
 		}
 
 		if len(cols) == 0 {
-			// No fields to update — return existing record unchanged
 			writeJSON(w, 200, existing)
 			return
 		}
 
-		// Build SET clause
 		parts := make([]string, 0, len(cols))
 		args := make([]any, 0, len(cols)+1)
 		for col, val := range cols {
@@ -500,29 +490,28 @@ func getDashboardStats(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		var totalHours, totalNight, hours30 float64
 		row = db.QueryRowContext(r.Context(), "SELECT COALESCE(SUM(total_time), 0) FROM flights WHERE user_id = ?", userID)
-		if err := row.Scan(&totalHours); err != nil {
+		if err := row.Scan(&stats.TotalHours); err != nil {
 			writeError(w, 500, "Database error")
 			return
 		}
-		stats.TotalHours = math.Round(totalHours*100) / 100
+		stats.TotalHours = math.Round(stats.TotalHours*100) / 100
 
 		row = db.QueryRowContext(r.Context(), "SELECT COALESCE(SUM(night_time), 0) FROM flights WHERE user_id = ?", userID)
-		if err := row.Scan(&totalNight); err != nil {
+		if err := row.Scan(&stats.TotalNightHours); err != nil {
 			writeError(w, 500, "Database error")
 			return
 		}
-		stats.TotalNightHours = math.Round(totalNight*100) / 100
+		stats.TotalNightHours = math.Round(stats.TotalNightHours*100) / 100
 
 		row = db.QueryRowContext(r.Context(), `
 			SELECT COALESCE(SUM(total_time), 0) FROM flights 
 			WHERE user_id = ? AND date >= date('now', '-30 days')`, userID)
-		if err := row.Scan(&hours30); err != nil {
+		if err := row.Scan(&stats.HoursLast30Days); err != nil {
 			writeError(w, 500, "Database error")
 			return
 		}
-		stats.HoursLast30Days = math.Round(hours30*100) / 100
+		stats.HoursLast30Days = math.Round(stats.HoursLast30Days*100) / 100
 
 		row = db.QueryRowContext(r.Context(),
 			"SELECT COALESCE(SUM(landings_day + landings_night), 0) FROM flights WHERE user_id = ?", userID)
@@ -537,6 +526,79 @@ func getDashboardStats(db *sql.DB) http.HandlerFunc {
 			writeError(w, 500, "Database error")
 			return
 		}
+
+		// ── Expanded time category aggregates ──
+		// Use a single query for all SUM fields for efficiency
+		row = db.QueryRowContext(r.Context(), `
+			SELECT
+				COALESCE(SUM(sel_time), 0),
+				COALESCE(SUM(ses_time), 0),
+				COALESCE(SUM(mel_time), 0),
+				COALESCE(SUM(mes_time), 0),
+				COALESCE(SUM(helicopter_time), 0),
+				COALESCE(SUM(gyroplane_time), 0),
+				COALESCE(SUM(powered_lift_time), 0),
+				COALESCE(SUM(glider_time), 0),
+				COALESCE(SUM(balloon_time), 0),
+				COALESCE(SUM(airship_time), 0),
+				COALESCE(SUM(solo_time), 0),
+				COALESCE(SUM(pic_time), 0),
+				COALESCE(SUM(sic_time), 0),
+				COALESCE(SUM(dual_time), 0),
+				COALESCE(SUM(instructor_time), 0),
+				COALESCE(SUM(xcountry_time), 0),
+				COALESCE(SUM(act_instrument_time), 0),
+				COALESCE(SUM(sim_instrument_time), 0),
+				COALESCE(SUM(full_flight_simulator_time), 0),
+				COALESCE(SUM(flight_training_device_time), 0),
+				COALESCE(SUM(aviation_training_device_time), 0),
+				COALESCE(SUM(takeoffs_day), 0),
+				COALESCE(SUM(takeoffs_night), 0),
+				COALESCE(SUM(landings_day), 0),
+				COALESCE(SUM(landings_night), 0),
+				COALESCE(SUM(precision_approaches), 0),
+				COALESCE(SUM(non_precision_approaches), 0),
+				COALESCE(SUM(holding_patterns), 0)
+			FROM flights WHERE user_id = ?`, userID)
+		if err := row.Scan(
+			&stats.SELTime, &stats.SESTime, &stats.MELTime, &stats.MESTime,
+			&stats.HelicopterTime, &stats.GyroplaneTime, &stats.PoweredLiftTime,
+			&stats.GliderTime, &stats.BalloonTime, &stats.AirshipTime,
+			&stats.SoloTime, &stats.PICTime, &stats.SICTime,
+			&stats.DualTime, &stats.InstructorTime, &stats.XCountryTime,
+			&stats.ActInstrumentTime, &stats.SimInstrumentTime,
+			&stats.FullFlightSimulatorTime, &stats.FlightTrainingDeviceTime, &stats.AviationTrainingDeviceTime,
+			&stats.TakeoffsDay, &stats.TakeoffsNight,
+			&stats.LandingsDay, &stats.LandingsNight,
+			&stats.PrecisionApproaches, &stats.NonPrecisionApproaches,
+			&stats.HoldingPatterns,
+		); err != nil {
+			writeError(w, 500, "Database error")
+			return
+		}
+
+		// Round all float fields to 2 decimal places
+		stats.SELTime = math.Round(stats.SELTime*100) / 100
+		stats.SESTime = math.Round(stats.SESTime*100) / 100
+		stats.MELTime = math.Round(stats.MELTime*100) / 100
+		stats.MESTime = math.Round(stats.MESTime*100) / 100
+		stats.HelicopterTime = math.Round(stats.HelicopterTime*100) / 100
+		stats.GyroplaneTime = math.Round(stats.GyroplaneTime*100) / 100
+		stats.PoweredLiftTime = math.Round(stats.PoweredLiftTime*100) / 100
+		stats.GliderTime = math.Round(stats.GliderTime*100) / 100
+		stats.BalloonTime = math.Round(stats.BalloonTime*100) / 100
+		stats.AirshipTime = math.Round(stats.AirshipTime*100) / 100
+		stats.SoloTime = math.Round(stats.SoloTime*100) / 100
+		stats.PICTime = math.Round(stats.PICTime*100) / 100
+		stats.SICTime = math.Round(stats.SICTime*100) / 100
+		stats.DualTime = math.Round(stats.DualTime*100) / 100
+		stats.InstructorTime = math.Round(stats.InstructorTime*100) / 100
+		stats.XCountryTime = math.Round(stats.XCountryTime*100) / 100
+		stats.ActInstrumentTime = math.Round(stats.ActInstrumentTime*100) / 100
+		stats.SimInstrumentTime = math.Round(stats.SimInstrumentTime*100) / 100
+		stats.FullFlightSimulatorTime = math.Round(stats.FullFlightSimulatorTime*100) / 100
+		stats.FlightTrainingDeviceTime = math.Round(stats.FlightTrainingDeviceTime*100) / 100
+		stats.AviationTrainingDeviceTime = math.Round(stats.AviationTrainingDeviceTime*100) / 100
 
 		writeJSON(w, 200, stats)
 	}
