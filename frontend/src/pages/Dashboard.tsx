@@ -2,13 +2,10 @@
  * SkyLog Dashboard Page
  *
  * Fully customizable dashboard where each user can show/hide and reorder
- * tiles. Layouts are persisted per-user via the backend API.
+ * stat-card tiles. "Recent Flights" is always rendered as a static
+ * section below the stat-card grid (not included in customization).
  *
- * State management:
- *   - layout: loaded from API on mount (fallback to default from tileRegistry)
- *   - stats: aggregated dashboard statistics
- *   - recentFlights: 5 most recent flights for the RecentFlights tile
- *   - showCustomizer: toggle the customization slide-over panel
+ * Layout is persisted per-user via the backend API.
  *
  * @module pages/Dashboard
  */
@@ -21,70 +18,6 @@ import { TILE_REGISTRY } from "../dashboard/tileRegistry";
 import { StatTile } from "../dashboard/tiles/StatTile";
 import { RecentFlightsTile } from "../dashboard/tiles/RecentFlightsTile";
 import { DashboardCustomizer } from "../dashboard/DashboardCustomizer";
-
-// ═════════════════════════════════════════════════════
-// Stat Card Definitions
-// ═════════════════════════════════════════════════════
-
-interface StatCardDef {
-  key: string;
-  label: string;
-  icon: string;
-  getValue: (stats: DashboardStats) => string | number;
-}
-
-const ALL_STAT_CARDS: StatCardDef[] = [
-  { key: "total_flights", label: "Total Flights", icon: "📊", getValue: (s) => s.total_flights },
-  { key: "total_hours", label: "Total Hours", icon: "⏱️", getValue: (s) => `${s.total_hours.toFixed(1)}` },
-  { key: "night_hours", label: "Night Hours", icon: "🌙", getValue: (s) => `${s.total_night_hours.toFixed(1)}` },
-  { key: "hours_last_30", label: "Hours (Last 30 Days)", icon: "📅", getValue: (s) => `${s.hours_last_30_days.toFixed(1)}` },
-  { key: "total_landings", label: "Total Landings", icon: "🛬", getValue: (s) => s.total_landings },
-  { key: "unique_aircraft", label: "Unique Aircraft", icon: "🛩️", getValue: (s) => s.unique_aircraft },
-];
-
-const STORAGE_KEY = "skylog_dashboard_stat_order";
-
-/** Load saved card order from localStorage, falling back to the default order. */
-function loadCardOrder(): string[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch {
-    // ignore corrupt data
-  }
-  return ALL_STAT_CARDS.map((c) => c.key);
-}
-
-/** Persist the current card order to localStorage. */
-function saveCardOrder(order: string[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
-}
-
-/** Build the ordered StatCardDef list, appending any new definitions not yet in the saved order. */
-function buildOrderedCards(cardOrder: string[]): StatCardDef[] {
-  const ordered: StatCardDef[] = [];
-  const used = new Set<string>();
-  for (const key of cardOrder) {
-    const def = ALL_STAT_CARDS.find((c) => c.key === key);
-    if (def) {
-      ordered.push(def);
-      used.add(key);
-    }
-  }
-  for (const def of ALL_STAT_CARDS) {
-    if (!used.has(def.key)) {
-      ordered.push(def);
-    }
-  }
-  return ordered;
-}
-
-// ═════════════════════════════════════════════════════
-// Component
-// ═════════════════════════════════════════════════════
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -127,33 +60,20 @@ export default function Dashboard() {
     [],
   );
 
-  // ── Toggle customizer ──
   const toggleCustomizer = () => setShowCustomizer((v) => !v);
 
-  // ── Helper: get value for a stat tile from stats ──
+  // ── Helper: resolve value + icon for a stat tile ──
   function statValue(tileType: TileType): number | string | undefined {
     if (!stats) return undefined;
     switch (tileType) {
-      case "total-flights":
-        return stats.total_flights;
-      case "total-hours":
-        return `${stats.total_hours.toFixed(1)}`;
-      case "night-hours":
-        return `${stats.total_night_hours.toFixed(1)}`;
-      case "hours-last-30-days":
-        return `${stats.hours_last_30_days.toFixed(1)}`;
-      case "total-landings":
-        return stats.total_landings;
-      case "unique-aircraft":
-        return stats.unique_aircraft;
-      default:
-        return undefined;
+      case "total-flights":    return stats.total_flights;
+      case "total-hours":      return `${stats.total_hours.toFixed(1)}`;
+      case "night-hours":      return `${stats.total_night_hours.toFixed(1)}`;
+      case "hours-last-30-days": return `${stats.hours_last_30_days.toFixed(1)}`;
+      case "total-landings":   return stats.total_landings;
+      case "unique-aircraft":  return stats.unique_aircraft;
+      default:                 return undefined;
     }
-  }
-
-  // ── Helper: icon for a tile ──
-  function tileIcon(tileType: TileType): string | undefined {
-    return TILE_REGISTRY[tileType]?.icon;
   }
 
   // ══════════════════════════════════════════
@@ -233,8 +153,6 @@ export default function Dashboard() {
   }
 
   // ── Data state ──
-
-  // Sort enabled tiles by order
   const sortedTiles = layout.slice().sort((a, b) => a.order - b.order);
 
   return (
@@ -261,35 +179,32 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Tile grid */}
+      {/* ═══════════════════════════════════════════
+          Stat Card Tile Grid — customizable
+          ═══════════════════════════════════════════ */}
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8 dark:text-white dark:bg-zinc-800 dark:border-zinc-300">
         {sortedTiles.map((tile) => {
           const def = TILE_REGISTRY[tile.type];
           const spanClass = tile.width === 2 ? "col-span-2 sm:col-span-2 lg:col-span-2" : "";
+          const value = statValue(tile.type);
+          if (value === undefined) return null;
 
-          // Stat card tiles
-          if (tile.type !== "recent-flights") {
-            const value = statValue(tile.type);
-            if (value === undefined) return null;
-            return (
-              <div key={tile.type} className={spanClass}>
-                <StatTile
-                  label={def?.label ?? tile.type}
-                  value={value}
-                  icon={tileIcon(tile.type)}
-                />
-              </div>
-            );
-          }
-
-          // Recent flights tile
           return (
             <div key={tile.type} className={spanClass}>
-              <RecentFlightsTile flights={recentFlights} />
+              <StatTile
+                label={def?.label ?? tile.type}
+                value={value}
+                icon={def?.icon}
+              />
             </div>
           );
         })}
       </div>
+
+      {/* ═══════════════════════════════════════════
+          Recent Flights — static, NOT customizable
+          ═══════════════════════════════════════════ */}
+      <RecentFlightsTile flights={recentFlights} />
 
       {/* Customize slide-over panel */}
       {showCustomizer && (

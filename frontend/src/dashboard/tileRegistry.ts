@@ -101,15 +101,8 @@ export const TILE_REGISTRY: Record<TileType, TileDefinition> = {
     component: () => null,
     enabledByDefault: true,
   },
-  "recent-flights": {
-    type: "recent-flights",
-    label: "Recent Flights",
-    icon: "📋",
-    description: "Your 5 most recent flight entries",
-    defaultWidth: 2,
-    component: () => null,
-    enabledByDefault: true,
-  },
+  // Note: Recent Flights is rendered as a static section below the
+  // customizable stat tiles. It is not a tile in the customization system.
 };
 
 /**

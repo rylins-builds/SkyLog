@@ -9,15 +9,14 @@
 /** Width that a tile occupies in the grid (1 = 1 column, 2 = 2 columns). */
 export type TileWidth = 1 | 2;
 
-/** All available tile type identifiers. */
+/** All available tile type identifiers (stat cards only). */
 export type TileType =
   | "total-flights"
   | "total-hours"
   | "night-hours"
   | "hours-last-30-days"
   | "total-landings"
-  | "unique-aircraft"
-  | "recent-flights";
+  | "unique-aircraft";
 
 /**
  * A tile definition in the user's dashboard layout.
