@@ -50,26 +50,6 @@ export function DashboardCustomizer({ layout, onSave, onClose }: DashboardCustom
     });
   }
 
-  function handleMoveUp(tileType: TileType) {
-    setWorkingLayout((prev) => {
-      const sorted = prev.slice().sort((a, b) => a.order - b.order);
-      const idx = sorted.findIndex((t) => t.type === tileType);
-      if (idx <= 0) return prev;
-      [sorted[idx - 1], sorted[idx]] = [sorted[idx], sorted[idx - 1]];
-      return reindex(sorted);
-    });
-  }
-
-  function handleMoveDown(tileType: TileType) {
-    setWorkingLayout((prev) => {
-      const sorted = prev.slice().sort((a, b) => a.order - b.order);
-      const idx = sorted.findIndex((t) => t.type === tileType);
-      if (idx < 0 || idx >= sorted.length - 1) return prev;
-      [sorted[idx], sorted[idx + 1]] = [sorted[idx + 1], sorted[idx]];
-      return reindex(sorted);
-    });
-  }
-
   async function handleSave() {
     setSaving(true);
     try {
