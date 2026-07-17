@@ -31,8 +31,10 @@ export function DashboardCustomizer({ layout, onSave, onClose }: DashboardCustom
     (tileDef) => !workingLayout.some((t) => t.type === tileDef.type),
   );
 
+  /** Enabled tiles — filter out any tile types not found in the registry. */
   const enabledTiles = workingLayout
     .slice()
+    .filter((t) => TILE_REGISTRY[t.type as TileType] !== undefined)
     .sort((a, b) => a.order - b.order);
 
   function handleToggle(tileType: TileType) {
@@ -53,7 +55,7 @@ export function DashboardCustomizer({ layout, onSave, onClose }: DashboardCustom
   async function handleSave() {
     setSaving(true);
     try {
-      onSave(workingLayout);
+      await onSave(workingLayout);
     } finally {
       setSaving(false);
     }
@@ -97,6 +99,7 @@ export function DashboardCustomizer({ layout, onSave, onClose }: DashboardCustom
             <div className="space-y-2">
               {enabledTiles.map((tile) => {
                 const def = TILE_REGISTRY[tile.type];
+                if (!def) return null;
                 return (
                   <TileRow
                     key={tile.type}
