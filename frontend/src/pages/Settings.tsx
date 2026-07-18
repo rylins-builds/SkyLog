@@ -26,6 +26,7 @@ import {
   loadVisibilityFromApi,
   loadSettings as loadSettingsFromStorage,
 } from "../api/settings";
+import { type ThemeMode, getThemeMode, setThemeMode } from "../api/theme";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -150,6 +151,14 @@ export default function Settings() {
 
   /** Reset settings multi-step state: 0=idle, 1=warning shown, 2=done. */
   const [resetSettingsStep, setResetSettingsStep] = useState(0);
+
+  /** Current theme mode. */
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(() => getThemeMode());
+
+  const handleThemeChange = (mode: ThemeMode) => {
+    setThemeMode(mode);
+    setThemeModeState(mode);
+  };
 
   /** Execute the database wipe. */
   const handleWipeDatabase = async () => {
@@ -736,7 +745,6 @@ export default function Settings() {
     {
       title: "Time Categories",
       columns: [
-        { key: "totalTime", label: "Total Time" },
         { key: "selTime", label: "Single Engine Land" },
         { key: "sesTime", label: "Single Engine Sea" },
         { key: "melTime", label: "Multi Engine Land" },
@@ -810,6 +818,37 @@ export default function Settings() {
   return (
     <div className="p-4 sm:p-8 max-w-6xl mx-auto animate-fade-in dark:bg-zinc-800">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Settings</h1>
+
+      {/* ── Theme ──────────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100 dark:bg-zinc-900 dark:border-zinc-600 animate-slide-up">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Theme</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Choose your preferred appearance for SkyLog.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {([
+            { value: "system" as ThemeMode, label: "System Theme", icon: "🖥️", desc: "Follow your device setting" },
+            { value: "light" as ThemeMode, label: "Light Mode", icon: "☀️", desc: "Always light" },
+            { value: "dark" as ThemeMode, label: "Dark Mode", icon: "🌙", desc: "Always dark" },
+          ]).map(({ value, label, icon, desc }) => (
+            <button
+              key={value}
+              onClick={() => handleThemeChange(value)}
+              className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-colors text-left ${
+                themeMode === value
+                  ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/30"
+                  : "border-gray-200 bg-gray-50 hover:bg-gray-100 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+              }`}
+            >
+              <span className="text-2xl">{icon}</span>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">{label}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{desc}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* ── Page Visibility ─────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100 dark:bg-zinc-900 dark:border-zinc-600 animate-slide-up">

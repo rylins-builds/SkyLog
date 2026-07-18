@@ -12,13 +12,16 @@ import { TILE_REGISTRY, type TileDefinition } from "./tileRegistry";
 interface DashboardCustomizerProps {
   /** Current layout being customized. */
   layout: DashboardTileConfig[];
+  /** Tile types that should be hidden from the "Add Tiles" section
+   *  because their corresponding column is toggled off in Settings. */
+  hiddenTileTypes: TileType[];
   /** Called when the user saves changes. */
   onSave: (layout: DashboardTileConfig[]) => void;
   /** Called to close without saving. */
   onClose: () => void;
 }
 
-export function DashboardCustomizer({ layout, onSave, onClose }: DashboardCustomizerProps) {
+export function DashboardCustomizer({ layout, hiddenTileTypes, onSave, onClose }: DashboardCustomizerProps) {
   const [workingLayout, setWorkingLayout] = useState<DashboardTileConfig[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -26,9 +29,12 @@ export function DashboardCustomizer({ layout, onSave, onClose }: DashboardCustom
     setWorkingLayout(layout.map((t) => ({ ...t })));
   }, [layout]);
 
-  /** All tile types not currently in the layout (available to add). */
+  /** All tile types not currently in the layout (available to add),
+   *  excluding those hidden by column visibility settings. */
   const availableTiles = Object.values(TILE_REGISTRY).filter(
-    (tileDef) => !workingLayout.some((t) => t.type === tileDef.type),
+    (tileDef) =>
+      !workingLayout.some((t) => t.type === tileDef.type) &&
+      !hiddenTileTypes.includes(tileDef.type),
   );
 
   /** Enabled tiles — filter out any tile types not found in the registry. */

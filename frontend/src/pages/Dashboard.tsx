@@ -11,7 +11,7 @@
  * @module pages/Dashboard
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { api } from "../api/client";
 import type { DashboardStats, Flight } from "../api/types";
 import type { DashboardTileConfig, TileType } from "../dashboard/types";
@@ -19,6 +19,103 @@ import { TILE_REGISTRY } from "../dashboard/tileRegistry";
 import { StatTile } from "../dashboard/tiles/StatTile";
 import { RecentFlightsTile } from "../dashboard/tiles/RecentFlightsTile";
 import { DashboardCustomizer } from "../dashboard/DashboardCustomizer";
+import { loadSettings } from "../api/settings";
+import type { ColumnVisibility } from "../api/settings";
+
+/**
+ * Maps every ColumnVisibility key that has a corresponding dashboard
+ * TileType. When a column is toggled off in Settings, the matching
+ * tile is excluded from the "Add Tiles" section of the dashboard
+ * customizer. If the tile is already present on the dashboard it is
+ * replaced with the next available non-hidden tile.
+ */
+const COLUMN_TO_TILE: Record<string, TileType> = {
+  nightTime: "night-hours",
+  selTime: "sel-time",
+  sesTime: "ses-time",
+  melTime: "mel-time",
+  mesTime: "mes-time",
+  helicopterTime: "helicopter-time",
+  gyroplaneTime: "gyroplane-time",
+  poweredLiftTime: "powered-lift-time",
+  gliderTime: "glider-time",
+  balloonTime: "balloon-time",
+  airshipTime: "airship-time",
+  soloTime: "solo-time",
+  picTime: "pic-time",
+  sicTime: "sic-time",
+  dualTime: "dual-time",
+  instructorTime: "instructor-time",
+  xcountryTime: "xcountry-time",
+  actInstrumentTime: "act-instrument-time",
+  simInstrumentTime: "sim-instrument-time",
+  fullFlightSimulatorTime: "full-flight-simulator-time",
+  flightTrainingDeviceTime: "flight-training-device-time",
+  aviationTrainingDeviceTime: "aviation-training-device-time",
+  takeoffsDay: "takeoffs-day",
+  takeoffsNight: "takeoffs-night",
+  landingsDay: "landings-day",
+  landingsNight: "landings-night",
+  precisionApproaches: "precision-approaches",
+  nonPrecisionApproaches: "non-precision-approaches",
+  holdingPatterns: "holding-patterns",
+};
+
+/** Build the set of hidden tile types from current column visibility settings. */
+function getHiddenTileTypes(): Set<TileType> {
+  const settings = loadSettings();
+  const hidden = new Set<TileType>();
+  for (const [columnKey, tileType] of Object.entries(COLUMN_TO_TILE)) {
+    if (settings.columnVisibility[columnKey as keyof ColumnVisibility] === false) {
+      hidden.add(tileType);
+    }
+  }
+  return hidden;
+}
+
+/** Re-index tile orders to be sequential (0, 1, 2, ...). */
+function reindex(tiles: DashboardTileConfig[]): DashboardTileConfig[] {
+  return tiles.map((t, i) => ({ ...t, order: i }));
+}
+
+/**
+ * Remove any tiles whose type is in `hiddenTiles` and replace each
+ * removal with the next non-hidden tile from the registry's definition
+ * order that is not already present in the layout.
+ */
+function syncLayoutWithHiddenTiles(
+  layout: DashboardTileConfig[],
+  hiddenTiles: Set<TileType>,
+): DashboardTileConfig[] {
+  const alreadyPresent = new Set(layout.map((t) => t.type));
+
+  // Build the candidate list of replacements in registry definition order
+  const candidates: TileType[] = [];
+  for (const def of Object.values(TILE_REGISTRY)) {
+    if (!hiddenTiles.has(def.type) && !alreadyPresent.has(def.type)) {
+      candidates.push(def.type);
+    }
+  }
+
+  let candidateIdx = 0;
+  const result: DashboardTileConfig[] = [];
+
+  for (const tile of layout) {
+    if (hiddenTiles.has(tile.type)) {
+      // Replace with next available candidate
+      const replacementType = candidates[candidateIdx++];
+      if (replacementType) {
+        const def = TILE_REGISTRY[replacementType];
+        result.push({ type: replacementType, width: def.defaultWidth, order: 0 });
+      }
+      // No replacement available → tile is simply removed
+    } else {
+      result.push({ ...tile });
+    }
+  }
+
+  return reindex(result);
+}
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -30,6 +127,9 @@ export default function Dashboard() {
   const [isCustomizing, setIsCustomizing] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
+  // Ref to avoid re-entrant saves
+  const isSyncingRef = useRef(false);
+
   // ── Load layout + data on mount ──
   useEffect(() => {
     (async () => {
@@ -39,7 +139,22 @@ export default function Dashboard() {
           api.getDashboardStats(),
           api.listFlights(),
         ]);
-        setLayout(layoutRes.layout as DashboardTileConfig[]);
+        const rawLayout = layoutRes.layout as DashboardTileConfig[];
+
+        // Apply hidden-tile sync on initial load
+        const hiddenSet = getHiddenTileTypes();
+        const synced = syncLayoutWithHiddenTiles(rawLayout, hiddenSet);
+
+        // Persist the synced layout if it changed
+        if (synced.length !== rawLayout.length || synced.some((t, i) => t.type !== rawLayout[i].type)) {
+          try {
+            await api.saveDashboardLayout(synced);
+          } catch {
+            // Non-critical – local state will display correctly
+          }
+        }
+
+        setLayout(synced);
         setLayoutLoaded(true);
         setStats(statsRes);
         setRecentFlights(flights.slice(0, 5));
@@ -49,12 +164,40 @@ export default function Dashboard() {
     })();
   }, []);
 
+  // ── Listen for settings changes and sync layout ──
+  useEffect(() => {
+    const handler = () => {
+      if (isSyncingRef.current) return;
+      isSyncingRef.current = true;
+
+      setLayout((prev) => {
+        const hiddenSet = getHiddenTileTypes();
+        const synced = syncLayoutWithHiddenTiles(prev, hiddenSet);
+
+        // Persist if anything changed
+        if (synced.length !== prev.length || synced.some((t, i) => t.type !== prev[i].type)) {
+          api.saveDashboardLayout(synced).catch(() => {});
+        }
+
+        return synced;
+      });
+
+      isSyncingRef.current = false;
+    };
+
+    window.addEventListener("settingsUpdated", handler);
+    return () => window.removeEventListener("settingsUpdated", handler);
+  }, []);
+
   // ── Save layout to API ──
   const handleSaveLayout = useCallback(
     async (newLayout: DashboardTileConfig[]) => {
       try {
-        await api.saveDashboardLayout(newLayout);
-        setLayout(newLayout);
+        // Strip any tiles that are now hidden before persisting
+        const hiddenSet = getHiddenTileTypes();
+        const synced = syncLayoutWithHiddenTiles(newLayout, hiddenSet);
+        await api.saveDashboardLayout(synced);
+        setLayout(synced);
         setShowCustomizer(false);
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Unknown error");
@@ -136,6 +279,12 @@ export default function Dashboard() {
       default:                             return undefined;
     }
   }
+
+  // ── Compute tile types hidden because their column is toggled off ──
+  const computedHiddenTileTypes: TileType[] = (() => {
+    const hiddenSet = getHiddenTileTypes();
+    return [...hiddenSet].sort();
+  })();
 
   // ══════════════════════════════════════════
   // Render states
@@ -327,6 +476,7 @@ export default function Dashboard() {
       {showCustomizer && (
         <DashboardCustomizer
           layout={layout}
+          hiddenTileTypes={computedHiddenTileTypes}
           onSave={handleSaveLayout}
           onClose={() => setShowCustomizer(false)}
         />
