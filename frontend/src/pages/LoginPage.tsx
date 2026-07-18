@@ -110,7 +110,7 @@ export default function LoginPage({ onAuthenticated }: LoginPageProps) {
         </div>
 
         {/* ── Auth Card (cartoon brutalist style) ── */}
-        <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl border-2 border-black p-8">
+        <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl border-2 border-black dark:border-zinc-400 p-8">
           {mode === "login" ? (
             <>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 text-center">
