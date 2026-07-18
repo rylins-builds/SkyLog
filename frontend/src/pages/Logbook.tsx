@@ -702,7 +702,7 @@ export default function Logbook() {
               placeholder="Search flights..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-              className="pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm leading-tight placeholder:text-xs sm:placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-36 sm:w-56"
+              className="pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm leading-tight placeholder:text-xs sm:placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-36 sm:w-56 dark:bg-zinc-800 dark:text-white dark:placeholder:text-gray-500 dark:border-zinc-400"
             />
           </div>
         </div>
