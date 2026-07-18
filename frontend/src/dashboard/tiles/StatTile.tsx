@@ -14,7 +14,7 @@ interface StatTileProps {
 
 export function StatTile({ label, value, icon }: StatTileProps) {
   return (
-    <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-100 stat-card animate-slide-up dark:bg-zinc-900 dark:border-zinc-600">
+    <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 border border-gray-100 stat-card animate-slide-up dark:bg-zinc-900 dark:border-zinc-400">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wide dark:text-gray-400">
           {label}

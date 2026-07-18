@@ -265,7 +265,7 @@ export default function App() {
       {/* ════════════════════════════════════════
           Navigation Header (non-scrollable)
           ════════════════════════════════════════ */}
-      <header className="bg-white shadow-sm border-b border-gray-200 shrink-0 relative dark:bg-zinc-900 dark:border-zinc-900">
+      <header className="bg-white shadow-sm border-b border-gray-200 shrink-0 relative dark:bg-zinc-900 dark:border-zinc-400">
         <div className="max-w-6xl mx-auto px-2 sm:px-6">
           <div className="flex items-center justify-between h-14 sm:h-16">
             {/* Logo — hide text on smallest screens */}
@@ -323,7 +323,7 @@ export default function App() {
 
               {/* Logout button — rendered inline in the nav so it never overlaps */}
               {multiUserMode && (
-                <div className="ml-1 sm:ml-2 pl-1 sm:pl-2 border-l border-gray-300 dark:border-zinc-600">
+                <div className="ml-1 sm:ml-2 pl-1 sm:pl-2 border-l border-gray-300 dark:border-zinc-400">
                   <button
                     onClick={handleLogout}
                     className="inline-flex items-center gap-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950 whitespace-nowrap"

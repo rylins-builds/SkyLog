@@ -434,10 +434,10 @@ function buildSimFlightTotals(flights: Flight[], mappings: AircraftTypeMappings)
 
 /** Shared column-header row for the experience grid. */
 function ExpHeader() {
-  const th = "px-2 py-2 text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400 text-center border-r border-gray-200 dark:border-zinc-700";
+  const th = "px-2 py-2 text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400 text-center border-r border-gray-200 dark:border-zinc-400";
   const first = "px-3 py-2 text-[10px] sm:text-xs font-semibold text-gray-600 dark:text-white text-left sticky left-0 bg-gray-50 dark:bg-zinc-900 z-10";
   return (
-    <tr className="bg-gray-50 dark:bg-zinc-900 border-b-2 border-gray-200 dark:border-zinc-600">
+    <tr className="bg-gray-50 dark:bg-zinc-900 border-b-2 border-gray-200 dark:border-zinc-400">
       <th className={first}>Aircraft / Device</th>
       <th className={th}>Total</th>
       <th className={th}>Instruction Received</th>
@@ -460,8 +460,8 @@ function ExpHeader() {
 }
 
 function ExpRow({ row }: { row: TableRow }) {
-  const td = "px-2 py-2 text-[11px] sm:text-sm text-center border-r border-gray-100 dark:border-zinc-700 tabular-nums";
-  const lbl = "px-3 py-2 text-[11px] sm:text-sm font-medium text-gray-900 dark:text-white text-left sticky left-0 bg-white dark:bg-zinc-800 z-10 border-r border-gray-100 dark:border-zinc-700 whitespace-nowrap";
+  const td = "px-2 py-2 text-[11px] sm:text-sm text-center border-r border-gray-100 dark:border-zinc-400 tabular-nums";
+  const lbl = "px-3 py-2 text-[11px] sm:text-sm font-medium text-gray-900 dark:text-white text-left sticky left-0 bg-white dark:bg-zinc-800 z-10 border-r border-gray-100 dark:border-zinc-400 whitespace-nowrap";
   const tdDisabled = `${td} text-gray-300 dark:text-gray-600`;
 
   const greyed = (col: GreyedOutColumn) => row.greyedOutColumns.has(col);
@@ -472,7 +472,7 @@ function ExpRow({ row }: { row: TableRow }) {
   );
 
   return (
-    <tr className="border-b border-gray-100 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors">
+    <tr className="border-b border-gray-100 dark:border-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors">
       <td className={lbl}>{row.label}</td>
       <td className={`${td} text-gray-900 dark:text-white`}>{fmtHrs(row.total)}</td>
       <td className={`${td} text-gray-900 dark:text-white`}>{fmtHrs(row.dual)}</td>
@@ -592,8 +592,8 @@ export default function FAA8710() {
       </h1>
 
       {/* ═══ Experience Grid ═══ */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-8 dark:bg-zinc-800 dark:border-zinc-600">
-        <div className="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200 dark:bg-zinc-900 dark:border-zinc-600">
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-8 dark:bg-zinc-800 dark:border-zinc-400">
+        <div className="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200 dark:bg-zinc-900 dark:border-zinc-400">
           <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide dark:text-white">
             Flight Time by Aircraft / Device
           </h2>
@@ -614,8 +614,8 @@ export default function FAA8710() {
       </div>
 
       {/* ═══ Glider / Lighter-than-Air Launch Totals ═══ */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-8 dark:bg-zinc-800 dark:border-zinc-600">
-        <div className="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200 dark:bg-zinc-900 dark:border-zinc-600">
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-8 dark:bg-zinc-800 dark:border-zinc-400">
+        <div className="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200 dark:bg-zinc-900 dark:border-zinc-400">
           <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide dark:text-white">
             Glider & Lighter-than-Air — Flight & Launch Totals
           </h2>
@@ -623,7 +623,7 @@ export default function FAA8710() {
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b-2 border-gray-200 dark:border-zinc-600">
+              <tr className="border-b-2 border-gray-200 dark:border-zinc-400">
                 <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white">Category</th>
                 <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">PIC Flights</th>
                 <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">Dual Flights</th>
@@ -637,7 +637,7 @@ export default function FAA8710() {
               {launchRows.map((r) => {
                 const isGlider = r.label === "Glider";
                 return (
-                  <tr key={r.label} className="border-b border-gray-100 hover:bg-gray-50 dark:border-zinc-700 dark:hover:bg-zinc-700 transition-colors">
+                  <tr key={r.label} className="border-b border-gray-100 hover:bg-gray-50 dark:border-zinc-400 dark:hover:bg-zinc-700 transition-colors">
                     <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-700 dark:text-white font-medium">{r.label}</td>
                     {isGlider ? (
                       <>
@@ -665,8 +665,8 @@ export default function FAA8710() {
 
       {/* ═══ Class Totals ═══ */}
       {classTotals.map((group) => (
-        <div key={group.groupLabel} className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-8 dark:bg-zinc-800 dark:border-zinc-600">
-          <div className="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200 dark:bg-zinc-900 dark:border-zinc-600">
+        <div key={group.groupLabel} className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-8 dark:bg-zinc-800 dark:border-zinc-400">
+          <div className="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200 dark:bg-zinc-900 dark:border-zinc-400">
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide dark:text-white">
               {group.groupLabel} — Class Totals (hrs)
             </h2>
@@ -674,7 +674,7 @@ export default function FAA8710() {
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b-2 border-gray-200 dark:border-zinc-600">
+                <tr className="border-b-2 border-gray-200 dark:border-zinc-400">
                   <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white"></th>
                   {group.subLabels.map((sl) => (
                     <th key={sl} className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">{sl}</th>
@@ -683,7 +683,7 @@ export default function FAA8710() {
               </thead>
               <tbody>
                 {group.rows.map((subRow) => (
-                  <tr key={subRow.label} className="border-b border-gray-100 hover:bg-gray-50 dark:border-zinc-700 dark:hover:bg-zinc-700 transition-colors">
+                  <tr key={subRow.label} className="border-b border-gray-100 hover:bg-gray-50 dark:border-zinc-400 dark:hover:bg-zinc-700 transition-colors">
                     <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-700 dark:text-white">{subRow.label}</td>
                     {subRow.values.map((v, i) => (
                       <td key={i} className="px-4 sm:px-6 py-2.5 text-sm text-gray-900 dark:text-white text-right tabular-nums">{fmtHrs(v)}</td>
@@ -697,8 +697,8 @@ export default function FAA8710() {
       ))}
 
       {/* ═══ Simulated Flight Totals ═══ */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-8 dark:bg-zinc-800 dark:border-zinc-600">
-        <div className="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200 dark:bg-zinc-900 dark:border-zinc-600">
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-8 dark:bg-zinc-800 dark:border-zinc-400">
+        <div className="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200 dark:bg-zinc-900 dark:border-zinc-400">
           <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide dark:text-white">
             Simulated Flight — Device Totals (hrs)
           </h2>
@@ -706,7 +706,7 @@ export default function FAA8710() {
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b-2 border-gray-200 dark:border-zinc-600">
+              <tr className="border-b-2 border-gray-200 dark:border-zinc-400">
                 <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white"></th>
                 <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">SE</th>
                 <th className="px-4 sm:px-6 py-2 text-xs font-semibold text-gray-600 dark:text-white text-right">ME</th>
@@ -715,7 +715,7 @@ export default function FAA8710() {
             </thead>
             <tbody>
               {simFlightRows.map((row) => (
-                <tr key={row.label} className="border-b border-gray-100 hover:bg-gray-50 dark:border-zinc-700 dark:hover:bg-zinc-700 transition-colors">
+                <tr key={row.label} className="border-b border-gray-100 hover:bg-gray-50 dark:border-zinc-400 dark:hover:bg-zinc-700 transition-colors">
                   <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-700 dark:text-white font-medium">{row.label}</td>
                   <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-900 dark:text-white text-right tabular-nums">{fmtHrs(row.se)}</td>
                   <td className="px-4 sm:px-6 py-2.5 text-sm text-gray-900 dark:text-white text-right tabular-nums">{fmtHrs(row.me)}</td>
@@ -728,10 +728,10 @@ export default function FAA8710() {
       </div>
 
       {/* ═══ Aircraft Type Mappings ═══ */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden dark:bg-zinc-800 dark:border-zinc-600">
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden dark:bg-zinc-800 dark:border-zinc-400">
         <button
           onClick={() => setExpandedSection(expandedSection === "mappings" ? null : "mappings")}
-          className="w-full flex items-center justify-between px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200 dark:bg-zinc-900 dark:border-zinc-600 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+          className="w-full flex items-center justify-between px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200 dark:bg-zinc-900 dark:border-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
         >
           <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide dark:text-white">
             Aircraft / Simulator Type Mapping
@@ -757,7 +757,7 @@ export default function FAA8710() {
                 <div className="overflow-x-auto max-h-80">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="border-b-2 border-gray-200 dark:border-zinc-600">
+                      <tr className="border-b-2 border-gray-200 dark:border-zinc-400">
                         <th className="px-3 py-2 text-xs font-semibold text-gray-600 dark:text-white w-2/5">Aircraft Type</th>
                         <th className="px-3 py-2 text-xs font-semibold text-gray-600 dark:text-white w-3/5">8710 Category</th>
                       </tr>
@@ -770,7 +770,7 @@ export default function FAA8710() {
                             <select
                               value={mappings[t] ?? ""}
                               onChange={(e) => setMapping(t, (e.target.value || "") as MappingCategory | "")}
-                              className="w-full px-2 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:border-zinc-600 dark:text-white"
+                              className="w-full px-2 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:border-zinc-400 dark:text-white"
                             >
                               <option value="">— Unmapped —</option>
                               {(Object.keys(MAPPING_LABELS) as MappingCategory[]).map((cat) => (

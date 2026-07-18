@@ -376,7 +376,7 @@ export default function Dashboard() {
           {/* Manage Tiles button — opens the slide-over panel */}
           <button
             onClick={() => setShowCustomizer(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 hover:text-gray-900 transition-colors dark:bg-zinc-900 dark:text-gray-300 dark:border-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-white"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 hover:text-gray-900 transition-colors dark:bg-zinc-900 dark:text-gray-300 dark:border-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
             title="Show or hide tiles"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -390,7 +390,7 @@ export default function Dashboard() {
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               isCustomizing
                 ? "bg-blue-600 text-white hover:bg-blue-700"
-                : "text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 hover:text-gray-900 dark:bg-zinc-900 dark:text-gray-300 dark:border-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-white"
+                : "text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 hover:text-gray-900 dark:bg-zinc-900 dark:text-gray-300 dark:border-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
             }`}
             title={isCustomizing ? "Done rearranging" : "Rearrange tiles"}
           >

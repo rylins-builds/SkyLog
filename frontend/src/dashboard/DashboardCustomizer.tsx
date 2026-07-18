@@ -78,7 +78,7 @@ export function DashboardCustomizer({ layout, hiddenTileTypes, onSave, onClose }
       {/* Slide-over panel */}
       <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white dark:bg-zinc-900 shadow-2xl z-50 flex flex-col animate-slide-left">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-zinc-700">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-zinc-400">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">Customize Dashboard</h2>
           <button
             onClick={onClose}
@@ -139,7 +139,7 @@ export function DashboardCustomizer({ layout, hiddenTileTypes, onSave, onClose }
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 dark:border-zinc-700 flex gap-3">
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-zinc-400 flex gap-3">
           <button
             onClick={onClose}
             className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors dark:bg-zinc-800 dark:text-gray-300 dark:hover:bg-zinc-700"
@@ -172,8 +172,8 @@ function TileRow({ definition, enabled, onToggle }: TileRowProps) {
     <div
       className={`flex items-center justify-between px-4 py-3 rounded-lg border transition-colors ${
         enabled
-          ? "bg-white dark:bg-zinc-800 border-gray-200 dark:border-zinc-700"
-          : "bg-gray-50 dark:bg-zinc-800/50 border-gray-200 dark:border-zinc-700 opacity-70"
+          ? "bg-white dark:bg-zinc-800 border-gray-200 dark:border-zinc-400"
+          : "bg-gray-50 dark:bg-zinc-800/50 border-gray-200 dark:border-zinc-400 opacity-70"
       }`}
     >
       <div className="flex items-center gap-3 min-w-0">

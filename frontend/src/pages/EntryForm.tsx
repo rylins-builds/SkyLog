@@ -706,7 +706,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
                 name="launch_type"
                 value={form.launch_type}
                 onChange={handleChange}
-                className={`w-full min-w-0 max-w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors dark:bg-zinc-800 dark:text-white dark:border-zinc-600 ${
+                className={`w-full min-w-0 max-w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors dark:bg-zinc-800 dark:text-white dark:border-zinc-400 ${
                   errors.launch_type
                     ? "border-red-400 focus:ring-red-500"
                     : needsLaunchType
@@ -965,7 +965,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               onChange={handleChange}
               rows={3}
               placeholder="VFR flight, smooth conditions, worst landing ever, etc."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400 resize-none dark:bg-zinc-800 dark:text-white dark:placeholder:text-gray-500 dark:border-zinc-600"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400 resize-none dark:bg-zinc-800 dark:text-white dark:placeholder:text-gray-500 dark:border-zinc-400"
             />
           </div>
         )}
@@ -1073,7 +1073,7 @@ function Field({
         min={min}
         placeholder={placeholder}
         pattern={pattern}
-        className={`w-full min-w-0 max-w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400 dark:bg-zinc-800 dark:text-white dark:placeholder:text-gray-500 dark:border-zinc-600 ${
+        className={`w-full min-w-0 max-w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400 dark:bg-zinc-800 dark:text-white dark:placeholder:text-gray-500 dark:border-zinc-400 ${
           error
             ? "border-red-400 focus:ring-red-500 dark:border-red-500"
             : "border-gray-300 focus:ring-blue-500"

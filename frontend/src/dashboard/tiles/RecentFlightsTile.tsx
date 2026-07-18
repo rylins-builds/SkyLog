@@ -15,14 +15,14 @@ interface RecentFlightsTileProps {
 export function RecentFlightsTile({ flights }: RecentFlightsTileProps) {
   if (flights.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 text-center dark:bg-zinc-900 dark:border-zinc-600 animate-slide-up">
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 text-center dark:bg-zinc-900 dark:border-zinc-400 animate-slide-up">
         <p className="text-gray-500 dark:text-gray-400">No recent flights to display.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden animate-slide-up dark:bg-zinc-900 dark:border-zinc-600">
+    <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden animate-slide-up dark:bg-zinc-900 dark:border-zinc-400">
       <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100 flex items-center justify-between">
         <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Recent Flights</h2>
         <button
@@ -49,7 +49,7 @@ export function RecentFlightsTile({ flights }: RecentFlightsTileProps) {
             {flights.map((flight, idx) => (
               <tr
                 key={flight.id}
-                className="border-b border-gray-50 hover:bg-gray-50 logbook-row dark:border-zinc-600 dark:hover:bg-zinc-700"
+                className="border-b border-gray-50 hover:bg-gray-50 logbook-row dark:border-zinc-400 dark:hover:bg-zinc-700"
                 style={{ animationDelay: `${idx * 50}ms` }}
               >
                 <td className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 dark:text-white">{flight.date}</td>
