@@ -1,5 +1,9 @@
 # SkyLog
 
+> **⚠️ AI-Generated Code** — This app was almost entirely coded with the use of AI. I (the creator) unfortunately don't have the time to learn in-depth coding as I have a full-time job and family. Use at your own risk, but please help make the app better with commits!
+>
+> **⭐ Like SkyLog?** Give it a star to help get more involvement in its development!
+
 A privacy-first, self-hosted digital flight logbook for pilots. Track flights, maintain currency, and manage your aviation records — all on your own infrastructure.
 
 ## Features
