@@ -25,6 +25,7 @@ import { useState, useEffect, useRef } from "react";
 import { api } from "../api/client";
 import type { Flight } from "../api/types";
 import { loadSettings, loadVisibilityFromApi, saveVisibilityToApi, saveSettings, type ColumnVisibility } from "../api/settings";
+import AttachmentsSection from "../components/AttachmentsSection";
 
 /** All form field values are stored as strings (even numerics) to simplify
  *  two-way binding with <input> elements. They are parsed on submit. */
@@ -166,7 +167,12 @@ interface EntryFormProps {
 }
 
 export default function EntryForm({ editFlightId }: EntryFormProps) {
-  const isEditMode = editFlightId != null;
+  // After creating a flight, we capture its ID so the form transitions into
+  // edit mode — this enables the AttachmentsSection and turns the submit
+  // button into "Update Flight" for subsequent saves.
+  const [createdFlightId, setCreatedFlightId] = useState<number | null>(null);
+  const effectiveFlightId = editFlightId ?? createdFlightId;
+  const isEditMode = effectiveFlightId != null;
 
   const [form, setForm] = useState<FormState>(initialForm());
   const [saving, setSaving] = useState(false);
@@ -174,6 +180,11 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
   const [loadError, setLoadError] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Files staged for upload before the flight has been saved. They are
+  // submitted together with the flight in a single multipart request.
+  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
+  // Toggled to tell AttachmentsSection to clear its staged list after a save.
+  const [clearStaged, setClearStaged] = useState(false);
   // Tracks whether the user has manually typed into the total_time field.
   // When true, the auto-calc effect will skip updating total_time.
   const totalTimeManuallySet = useRef(false);
@@ -381,13 +392,28 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
     };
 
     try {
-      if (isEditMode) {
-        await api.updateFlight(editFlightId, payload);
+      if (isEditMode && effectiveFlightId != null) {
+        if (stagedFiles.length > 0) {
+          await api.updateFlightWithAttachments(effectiveFlightId, payload, stagedFiles);
+          setStagedFiles([]);
+          setClearStaged((v) => !v);
+        } else {
+          await api.updateFlight(effectiveFlightId, payload);
+        }
         setMessage({ type: "success", text: "Flight updated successfully!" });
       } else {
-        await api.createFlight(payload);
+        const created =
+          stagedFiles.length > 0
+            ? await api.createFlightWithAttachments(payload, stagedFiles)
+            : await api.createFlight(payload);
+        setStagedFiles([]);
+        setClearStaged((v) => !v);
         setMessage({ type: "success", text: "Flight logged successfully!" });
-        setForm(initialForm());  // Reset form for another entry
+        // Transition to edit mode so the user can immediately attach files
+        // and make further updates without re-entering data.
+        setCreatedFlightId(created.id);
+        setForm(flightToForm(created));
+        totalTimeManuallySet.current = false;
 
         // If this was a glider/LTA flight with a launch type, auto-enable the
         // Launch Type column visibility so it appears in the Logbook.
@@ -969,6 +995,14 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
             />
           </div>
         )}
+
+        {/* Attachments section — always visible. Files selected before the
+            flight is saved are staged and submitted with the form. */}
+        <AttachmentsSection
+          flightId={effectiveFlightId}
+          onStagedFilesChange={setStagedFiles}
+          clearStaged={clearStaged}
+        />
 
         {/* Success/Error message banner */}
         {message && (

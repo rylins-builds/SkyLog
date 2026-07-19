@@ -183,6 +183,16 @@ type DashboardStats struct {
 	HoldingPatterns          int     `json:"holding_patterns"`
 }
 
+// Attachment represents a file attached to a flight log entry.
+type Attachment struct {
+	ID          int    `json:"id"`
+	FlightID    int    `json:"flight_id"`
+	Filename    string `json:"filename"`
+	ContentType string `json:"content_type"`
+	Size        int64  `json:"size"`
+	CreatedAt   string `json:"created_at"`
+}
+
 // LoginRequest is the body for POST /api/auth/login.
 type LoginRequest struct {
 	Username string `json:"username"`

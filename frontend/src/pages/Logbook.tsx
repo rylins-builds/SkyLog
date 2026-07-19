@@ -21,6 +21,7 @@ import { useEffect, useState, useRef } from "react";
 import { api } from "../api/client";
 import type { Flight } from "../api/types";
 import { loadSettings, saveSettings, loadVisibilityFromApi, type ColumnVisibility } from "../api/settings";
+import { PaperclipIcon } from "../components/AttachmentsSection";
 
 // ── Domain-specific types ────────────────────────────────────────────────────
 
@@ -138,10 +139,26 @@ export default function Logbook() {
 
   // ── Data fetching ─────────────────────────────────────────────────────────
 
+  /** Map of flight ID → attachment count (only flights with ≥1 attachment). */
+  const [attachmentCounts, setAttachmentCounts] = useState<Map<number, number>>(new Map());
+
   /** Fetch all flights on mount. */
   useEffect(() => {
     api.listFlights().then(setFlights).catch((e) => setError(e.message));
   }, []);
+
+  /** Fetch attachment counts for all flights in parallel (fire-and-forget). */
+  useEffect(() => {
+    if (flights.length === 0) return;
+    const counts = new Map<number, number>();
+    Promise.all(
+      flights.map((f) =>
+        api.listAttachments(f.id).then((atts) => {
+          if (atts.length > 0) counts.set(f.id, atts.length);
+        }).catch(() => {}) // silently ignore per-flight failures
+      )
+    ).then(() => setAttachmentCounts(counts));
+  }, [flights]);
 
   /**
    * Fetch column visibility from the backend API on mount.
@@ -467,6 +484,13 @@ export default function Logbook() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
           </button>
+          {/* Attachment indicator — only shown when the flight has attachments */}
+          {(attachmentCounts.get(f.id) ?? 0) > 0 && (
+            <span className="inline-flex items-center gap-0.5 text-gray-400 dark:text-gray-500" title={`${attachmentCounts.get(f.id)} attachment${attachmentCounts.get(f.id) !== 1 ? "s" : ""}`}>
+              <PaperclipIcon className="w-3.5 h-3.5" />
+              <span className="text-xs">{attachmentCounts.get(f.id)}</span>
+            </span>
+          )}
           {/* Trash icon — triggers handleDelete with confirmation */}
           <button
             onClick={() => handleDelete(f.id)}

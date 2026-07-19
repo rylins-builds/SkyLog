@@ -34,6 +34,9 @@ func main() {
 	// Flight CRUD + dashboard
 	registerFlightRoutes(mux, db)
 
+	// Flight attachments
+	registerAttachmentRoutes(mux, db)
+
 	// Auth, settings, currency
 	registerSettingsRoutes(mux, db)
 

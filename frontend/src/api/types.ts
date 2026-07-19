@@ -199,6 +199,24 @@ export interface FlightCreate {
 }
 
 /**
+ * A file attachment associated with a flight log entry.
+ */
+export interface Attachment {
+  /** Unique database identifier (auto-increment) */
+  id: number;
+  /** The flight this attachment belongs to */
+  flight_id: number;
+  /** Original filename as uploaded */
+  filename: string;
+  /** MIME type of the file */
+  content_type: string;
+  /** File size in bytes */
+  size: number;
+  /** Timestamp of when the file was uploaded (ISO 8601 string) */
+  created_at: string;
+}
+
+/**
  * Aggregated statistics for the Dashboard page.
  * Computed server-side from the current user's flight data to avoid
  * sending all flight records to the client just for stats.

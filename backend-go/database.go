@@ -139,6 +139,18 @@ func initDB(ctx context.Context, db *sql.DB) error {
 			user_id           INTEGER PRIMARY KEY,
 			layout            TEXT NOT NULL DEFAULT '[]'
 		);
+
+		CREATE TABLE IF NOT EXISTS attachments (
+			id           INTEGER PRIMARY KEY AUTOINCREMENT,
+			flight_id    INTEGER NOT NULL,
+			user_id      INTEGER NOT NULL,
+			filename     TEXT    NOT NULL,
+			content_type TEXT    NOT NULL DEFAULT 'application/octet-stream',
+			size         INTEGER NOT NULL DEFAULT 0,
+			created_at   TEXT    DEFAULT (datetime('now')),
+			FOREIGN KEY (flight_id) REFERENCES flights(id) ON DELETE CASCADE
+		);
+		CREATE INDEX IF NOT EXISTS idx_attachments_flight ON attachments(flight_id);
 	`
 
 	if _, err := tx.ExecContext(ctx, schema); err != nil {

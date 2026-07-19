@@ -3,9 +3,13 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"math"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -126,6 +130,74 @@ func getFlight(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+// parseFlightPayload reads the flight JSON from the request. If the request is
+// multipart/form-data, the flight payload is expected in the "flight" field and
+// the returned multipart form contains any uploaded files (under the "files"
+// key). For plain application/json requests the multipart form is nil.
+func parseFlightPayload(w http.ResponseWriter, r *http.Request, v any) (*multipart.Form, error) {
+	ct := r.Header.Get("Content-Type")
+	if strings.HasPrefix(ct, "multipart/form-data") {
+		// Allow a generous body budget: JSON payload plus up to several 25 MB files.
+		r.Body = http.MaxBytesReader(w, r.Body, 4*maxAttachmentSize+1<<20)
+		if err := r.ParseMultipartForm(maxAttachmentUploadMem); err != nil {
+			return nil, &httpError{422, "Payload too large or invalid multipart form (max 25 MB per file)"}
+		}
+		flightJSON := r.FormValue("flight")
+		if flightJSON == "" {
+			return nil, &httpError{422, "Missing flight field"}
+		}
+		if err := json.Unmarshal([]byte(flightJSON), v); err != nil {
+			return nil, &httpError{422, "Invalid flight JSON"}
+		}
+		var form *multipart.Form
+		if r.MultipartForm != nil {
+			form = r.MultipartForm
+		}
+		return form, nil
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+		return nil, &httpError{422, "Invalid JSON body"}
+	}
+	return nil, nil
+}
+
+// saveFlightAttachments persists all files uploaded under the "files" key of a
+// multipart flight request. Returns the saved attachment records.
+func saveFlightAttachments(r *http.Request, db *sql.DB, form *multipart.Form, flightID, userID int) ([]Attachment, error) {
+	saved := []Attachment{}
+	if form == nil {
+		return saved, nil
+	}
+	for _, header := range form.File["files"] {
+		a, err := saveAttachmentFile(r, db, flightID, userID, header)
+		if err != nil {
+			// Roll back any files already saved in this batch.
+			for _, prev := range saved {
+				removeAttachmentRecord(db, prev)
+			}
+			return nil, err
+		}
+		saved = append(saved, *a)
+	}
+	return saved, nil
+}
+
+// removeAttachmentRecord deletes an attachment row and its file on disk.
+// Used to roll back partially saved batches.
+func removeAttachmentRecord(db *sql.DB, a Attachment) {
+	var ownerID int
+	if err := db.QueryRow("SELECT user_id FROM attachments WHERE id = ?", a.ID).Scan(&ownerID); err != nil {
+		return
+	}
+	db.Exec("DELETE FROM attachments WHERE id = ?", a.ID)
+	p := filepath.Join(attachmentsBaseDir(), strconv.Itoa(ownerID), strconv.Itoa(a.FlightID),
+		fmt.Sprintf("%d_%s", a.ID, a.Filename))
+	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+		log.Printf("removeAttachmentRecord remove %s: %v", p, err)
+	}
+}
+
 // ── POST /api/flights ──
 
 func createFlight(db *sql.DB) http.HandlerFunc {
@@ -138,8 +210,10 @@ func createFlight(db *sql.DB) http.HandlerFunc {
 		}
 
 		var fc FlightCreate
-		if err := json.NewDecoder(r.Body).Decode(&fc); err != nil {
-			writeError(w, 422, "Invalid JSON body")
+		multipartForm, err := parseFlightPayload(w, r, &fc)
+		if err != nil {
+			he := err.(*httpError)
+			writeError(w, he.Code, he.Message)
 			return
 		}
 
@@ -219,6 +293,18 @@ func createFlight(db *sql.DB) http.HandlerFunc {
 
 		flightID, _ := result.LastInsertId()
 
+		// Persist any attachments bundled with the create request. If saving
+		// fails, roll back the flight so the entry and its files stay in sync.
+		if _, err := saveFlightAttachments(r, db, multipartForm, int(flightID), userID); err != nil {
+			db.ExecContext(r.Context(), "DELETE FROM flights WHERE id = ?", flightID)
+			if he, ok := err.(*httpError); ok {
+				writeError(w, he.Code, he.Message)
+			} else {
+				writeError(w, 500, "Failed to store attachments")
+			}
+			return
+		}
+
 		f, err := scanFlight(db.QueryRowContext(r.Context(),
 			"SELECT * FROM flights WHERE id = ?", flightID))
 		if err != nil {
@@ -245,20 +331,17 @@ func updateFlight(db *sql.DB) http.HandlerFunc {
 		flightID, _ := strconv.Atoi(idStr)
 
 		// Verify ownership
-		existing, err := scanFlight(db.QueryRowContext(r.Context(),
-			"SELECT * FROM flights WHERE id = ? AND user_id = ?", flightID, userID))
-		if err == sql.ErrNoRows {
-			writeError(w, 404, "Flight not found")
-			return
-		}
-		if err != nil {
-			writeError(w, 500, "Database error")
+		if err := flightOwnedBy(r, db, flightID, userID); err != nil {
+			he := err.(*httpError)
+			writeError(w, he.Code, he.Message)
 			return
 		}
 
 		var update FlightUpdate
-		if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
-			writeError(w, 422, "Invalid JSON body")
+		multipartForm, err := parseFlightPayload(w, r, &update)
+		if err != nil {
+			he := err.(*httpError)
+			writeError(w, he.Code, he.Message)
 			return
 		}
 
@@ -386,23 +469,37 @@ func updateFlight(db *sql.DB) http.HandlerFunc {
 			cols["remarks"] = *update.Remarks
 		}
 
-		if len(cols) == 0 {
-			writeJSON(w, 200, existing)
-			return
+		// Persist any attachments bundled with the update request.
+		savedAttachments, attErr := saveFlightAttachments(r, db, multipartForm, flightID, userID)
+
+		if len(cols) > 0 {
+			parts := make([]string, 0, len(cols))
+			args := make([]any, 0, len(cols)+1)
+			for col, val := range cols {
+				parts = append(parts, col+" = ?")
+				args = append(args, val)
+			}
+			args = append(args, flightID)
+
+			query := "UPDATE flights SET " + strings.Join(parts, ", ") + " WHERE id = ?"
+			if _, err := db.ExecContext(r.Context(), query, args...); err != nil {
+				// Roll back attachments saved in this request so the flight row
+				// and its files stay in sync.
+				for _, prev := range savedAttachments {
+					removeAttachmentRecord(db, prev)
+				}
+				log.Printf("updateFlight: %v", err)
+				writeError(w, 500, "Database error")
+				return
+			}
 		}
 
-		parts := make([]string, 0, len(cols))
-		args := make([]any, 0, len(cols)+1)
-		for col, val := range cols {
-			parts = append(parts, col+" = ?")
-			args = append(args, val)
-		}
-		args = append(args, flightID)
-
-		query := "UPDATE flights SET " + strings.Join(parts, ", ") + " WHERE id = ?"
-		if _, err := db.ExecContext(r.Context(), query, args...); err != nil {
-			log.Printf("updateFlight: %v", err)
-			writeError(w, 500, "Database error")
+		if attErr != nil {
+			if he, ok := attErr.(*httpError); ok {
+				writeError(w, he.Code, he.Message)
+			} else {
+				writeError(w, 500, "Failed to store attachments")
+			}
 			return
 		}
 
@@ -444,6 +541,9 @@ func deleteFlight(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		// Remove any attachments (rows + files) for this flight.
+		deleteAttachmentsForFlight(db, flightID)
+
 		w.WriteHeader(204)
 	}
 }
@@ -459,11 +559,31 @@ func wipeFlights(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		// Collect flight IDs first so we can remove their attachments.
+		idRows, err := db.QueryContext(r.Context(),
+			"SELECT id FROM flights WHERE user_id = ?", userID)
+		if err != nil {
+			writeError(w, 500, "Database error")
+			return
+		}
+		var flightIDs []int
+		for idRows.Next() {
+			var id int
+			if err := idRows.Scan(&id); err == nil {
+				flightIDs = append(flightIDs, id)
+			}
+		}
+		idRows.Close()
+
 		result, err := db.ExecContext(r.Context(),
 			"DELETE FROM flights WHERE user_id = ?", userID)
 		if err != nil {
 			writeError(w, 500, "Database error")
 			return
+		}
+
+		for _, id := range flightIDs {
+			deleteAttachmentsForFlight(db, id)
 		}
 
 		count, _ := result.RowsAffected()
