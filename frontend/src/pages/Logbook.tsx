@@ -422,7 +422,18 @@ export default function Logbook() {
    * are never hidden by the column-visibility settings.
    */
   const allColumns: ColumnDef[] = [
-    { key: "date", label: "Date", alwaysVisible: true, render: (f) => f.date },
+    { key: "date", label: "Date", alwaysVisible: true, render: (f) => (
+      <div className="flex items-center justify-center gap-2.5">
+        {/* Attachment indicator — only shown when the flight has attachments */}
+        {(attachmentCounts.get(f.id) ?? 0) > 0 && (
+          <span className="inline-flex items-center gap-0.5 text-gray-400 dark:text-gray-500" title={`${attachmentCounts.get(f.id)} attachment${attachmentCounts.get(f.id) !== 1 ? "s" : ""}`}>
+            <PaperclipIcon className="w-3.5 h-3.5" />
+            <span className="text-xs">{attachmentCounts.get(f.id)}</span>
+          </span>
+        )}
+        <span>{f.date}</span>
+      </div>
+    )},
     { key: "pilotInCommand", label: "Pilot in Command", render: (f) => f.pilot_in_command },
     { key: "aircraftType", label: "Aircraft Type", render: (f) => f.aircraft_type },
     { key: "aircraftReg", label: "Aircraft Registration", render: (f) => f.aircraft_reg },
@@ -484,13 +495,6 @@ export default function Logbook() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
           </button>
-          {/* Attachment indicator — only shown when the flight has attachments */}
-          {(attachmentCounts.get(f.id) ?? 0) > 0 && (
-            <span className="inline-flex items-center gap-0.5 text-gray-400 dark:text-gray-500" title={`${attachmentCounts.get(f.id)} attachment${attachmentCounts.get(f.id) !== 1 ? "s" : ""}`}>
-              <PaperclipIcon className="w-3.5 h-3.5" />
-              <span className="text-xs">{attachmentCounts.get(f.id)}</span>
-            </span>
-          )}
           {/* Trash icon — triggers handleDelete with confirmation */}
           <button
             onClick={() => handleDelete(f.id)}
