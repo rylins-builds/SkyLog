@@ -36,7 +36,8 @@ type SortField =
   | "takeoffs_day" | "takeoffs_night"
   | "landings_day" | "landings_night"
   | "precision_approaches" | "non_precision_approaches"
-  | "holding_patterns";
+  | "holding_patterns"
+  | "attachments";
 
 /** Ascending or descending sort direction. */
 type SortDir = "asc" | "desc";
@@ -55,6 +56,7 @@ type FilterKey =
   | "landings_day" | "landings_night"
   | "precision_approaches" | "non_precision_approaches"
   | "holding_patterns"
+  | "has_attachments"
   | "";
 
 /** Describes a single table column: identity key, human-readable label, and rendering function. */
@@ -246,14 +248,15 @@ export default function Logbook() {
   if (activeFilter === "precision_approaches") filtered = filtered.filter((f) => f.precision_approaches > 0);
   if (activeFilter === "non_precision_approaches") filtered = filtered.filter((f) => f.non_precision_approaches > 0);
   if (activeFilter === "holding_patterns") filtered = filtered.filter((f) => f.holding_patterns > 0);
+  if (activeFilter === "has_attachments") filtered = filtered.filter((f) => (attachmentCounts.get(f.id) ?? 0) > 0);
 
   // ── Sorting ───────────────────────────────────────────────────────────────
 
   /** Sort the filtered list in-place by the selected field and direction. */
   filtered.sort((a, b) => {
-    // Use safe defaults (empty string or 0) for missing values
-    let aVal: string | number = a[sortField] ?? "";
-    let bVal: string | number = b[sortField] ?? "";
+    // "attachments" is not a Flight field — use the fetched attachment counts instead
+    let aVal: string | number = sortField === "attachments" ? (attachmentCounts.get(a.id) ?? 0) : a[sortField] ?? "";
+    let bVal: string | number = sortField === "attachments" ? (attachmentCounts.get(b.id) ?? 0) : b[sortField] ?? "";
     // String comparisons are case-insensitive
     if (typeof aVal === "string" && typeof bVal === "string") {
       aVal = aVal.toLowerCase();
@@ -326,6 +329,7 @@ export default function Logbook() {
     { label: "Precision Approaches", field: "precision_approaches" },
     { label: "Non-Precision Approaches", field: "non_precision_approaches" },
     { label: "Holding Patterns", field: "holding_patterns" },
+    { label: "Attachments", field: "attachments" },
   ];
 
   /** Every quick-filter option. */
@@ -354,6 +358,7 @@ export default function Logbook() {
     { label: "Precision Approaches", key: "precision_approaches" },
     { label: "Non-Precision Approaches", key: "non_precision_approaches" },
     { label: "Holding Patterns", key: "holding_patterns" },
+    { label: "Has Attachments", key: "has_attachments" },
   ];
 
   /**
@@ -401,12 +406,14 @@ export default function Logbook() {
 
   /** Sort options filtered to only include columns the user hasn't hidden. */
   const availableSortOptions = sortOptions.filter(
-    (opt) => columnVisibility[sortToColumnKey[opt.field]]
+    // "attachments" has no corresponding column, so it is always available
+    (opt) => opt.field === "attachments" || columnVisibility[sortToColumnKey[opt.field]]
   );
 
   /** Filter options filtered the same way. */
   const availableFilterOptions = filterOptions.filter(
-    (opt) => columnVisibility[sortToColumnKey[opt.key]]
+    // "has_attachments" has no corresponding column, so it is always available
+    (opt) => opt.key === "has_attachments" || columnVisibility[sortToColumnKey[opt.key]]
   );
 
   const activeSortLabel = sortOptions.find((o) => o.field === sortField)?.label ?? "Date";
