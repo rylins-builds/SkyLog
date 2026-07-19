@@ -189,6 +189,18 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
   // When true, the auto-calc effect will skip updating total_time.
   const totalTimeManuallySet = useRef(false);
 
+  // ═══ Previously-used values for autocomplete dropdowns ═══
+  // All flights are fetched once so we can offer suggestions for PIC,
+  // aircraft type/reg, and airports based on what's already in the logbook.
+  const [allFlights, setAllFlights] = useState<Flight[]>([]);
+  useEffect(() => {
+    api.listFlights().then(setAllFlights).catch(() => {});
+  }, []);
+
+  /** Return the unique, sorted, non-empty values of a text field across all flights. */
+  const uniqueValues = (pick: (f: Flight) => string): string[] =>
+    Array.from(new Set(allFlights.map(pick).filter((v) => v.trim() !== ""))).sort();
+
   // Whether launch type is required based on glider/balloon/airship times
   const needsLaunchType =
     (parseFloat(form.glider_time) || 0) > 0 ||
@@ -500,6 +512,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               onChange={handleChange}
               placeholder="e.g. Mike Brogan"
               error={errors.pilot_in_command}
+              list="pic-suggestions"
             />
           )}
           {isFieldVisible("aircraftType") && (
@@ -511,6 +524,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               required
               placeholder="e.g. Cessna 172"
               error={errors.aircraft_type}
+              list="aircraft-type-suggestions"
             />
           )}
           {isFieldVisible("aircraftReg") && (
@@ -522,6 +536,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               required
               placeholder="e.g. N2860Q"
               error={errors.aircraft_reg}
+              list="aircraft-reg-suggestions"
             />
           )}
           {isFieldVisible("departure") && (
@@ -533,6 +548,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               required
               placeholder="e.g. KLAW"
               error={errors.departure}
+              list="departure-suggestions"
             />
           )}
           {isFieldVisible("arrival") && (
@@ -544,6 +560,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               required
               placeholder="e.g. KMIB"
               error={errors.arrival}
+              list="arrival-suggestions"
             />
           )}
           {isFieldVisible("departureTime") && (
@@ -996,6 +1013,23 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
           </div>
         )}
 
+        {/* Autocomplete suggestion lists populated from previously logged flights */}
+        <datalist id="pic-suggestions">
+          {uniqueValues((f) => f.pilot_in_command).map((v) => <option key={v} value={v} />)}
+        </datalist>
+        <datalist id="aircraft-type-suggestions">
+          {uniqueValues((f) => f.aircraft_type).map((v) => <option key={v} value={v} />)}
+        </datalist>
+        <datalist id="aircraft-reg-suggestions">
+          {uniqueValues((f) => f.aircraft_reg).map((v) => <option key={v} value={v} />)}
+        </datalist>
+        <datalist id="departure-suggestions">
+          {uniqueValues((f) => f.departure).map((v) => <option key={v} value={v} />)}
+        </datalist>
+        <datalist id="arrival-suggestions">
+          {uniqueValues((f) => f.arrival).map((v) => <option key={v} value={v} />)}
+        </datalist>
+
         {/* Attachments section — always visible. Files selected before the
             flight is saved are staged and submitted with the form. */}
         <AttachmentsSection
@@ -1078,6 +1112,7 @@ function Field({
   placeholder,
   pattern,
   error,
+  list,
 }: {
   label: string;
   name: string;
@@ -1090,6 +1125,8 @@ function Field({
   placeholder?: string;
   pattern?: string;
   error?: string;
+  /** ID of a <datalist> element to attach for autocomplete suggestions. */
+  list?: string;
 }) {
   return (
     <div className="min-w-0 max-w-full overflow-hidden">
@@ -1107,6 +1144,7 @@ function Field({
         min={min}
         placeholder={placeholder}
         pattern={pattern}
+        list={list}
         className={`w-full min-w-0 max-w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400 dark:bg-zinc-800 dark:text-white dark:placeholder:text-gray-500 dark:border-zinc-400 ${
           error
             ? "border-red-400 focus:ring-red-500 dark:border-red-500"
