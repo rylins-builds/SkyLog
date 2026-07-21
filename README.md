@@ -8,7 +8,7 @@ A privacy-first, self-hosted digital flight logbook for pilots. Track flights, m
 
 ## Features
 
-- **✈️ Dashboard** — Fully customizable stat-tile dashboard with drag-and-drop reordering, show/hide toggles for 34+ tile types covering all flight time categories (SEL/SES/MEL/MES, helicopter, glider, etc.), instrument approaches, night operations, and 30-day totals. Recent flights table always shown below the tile grid. Layout persists per user.
+- **✈️ Dashboard** — Fully customizable stat-tile dashboard with drag-and-drop reordering, show/hide toggles for 34+ tile types covering all flight time categories (SEL/SES/MEL/MES, helicopter, glider, etc.), instrument approaches, night operations, and 30-day totals. Aircraft Type Totals table with per-type aggregated stats, respecting column visibility settings from Settings. Recent flights table always shown below the tile grid. Layout persists per user.
 - **📖 Logbook** — Full-featured flight table with search, sort, pagination, and configurable column visibility.
 - **✈️ Log / Edit Flights** — Full flight entry form covering all time categories (SEL, SES, MEL, MES, Helicopter, Gyroplane, Powered Lift, Glider, Balloon, Airship), launch types, instrument approaches, holds, night operations, and remarks.
 - **📊 Currency Tracker** — Check currency status across day/night takeoffs/landings, instrument approaches, and holding procedures. Configurable thresholds per category.
@@ -106,7 +106,7 @@ skylog/
 
 | Page | Route | Description |
 |------|-------|-------------|
-| **Dashboard** | default | Customizable tile grid (34+ stat types), drag-and-drop reordering, show/hide tiles, recent flights table |
+| **Dashboard** | default | Customizable tile grid (34+ stat types), drag-and-drop reordering, show/hide tiles, aircraft type stats table (respects column visibility), recent flights table |
 | **Logbook** | click | Full flight table with search, sort, pagination |
 | **New Flight** | click | Add a flight with all FAR Part 61 time categories |
 | **Currency** | click | Track currency across 6 categories with configurable thresholds |
