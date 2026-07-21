@@ -36,7 +36,7 @@ Create a `docker-compose.yml` file:
 ```yaml
 services:
   skylog:
-    image: ghcr.io/rmillspa/skylog:latest
+    image: ghcr.io/rylins-builds/skylog:latest
     container_name: skylog
     ports:
       - "3000:3000"
