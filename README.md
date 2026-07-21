@@ -53,7 +53,7 @@ Then run:
 docker compose up -d
 ```
 
-Then open **http://localhost:3000** in your browser.
+Then open **http://localhost:3000** (or the IP address of the machine you are running it on instead of localhost) in your browser.
 
 To build from source instead, replace `image: ghcr.io/rmillspa/skylog:latest` with `build: .` in the compose file.
 
