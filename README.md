@@ -104,8 +104,9 @@ skylog/
 │   │   │   ├── tileRegistry.ts    # Central registry of all 34+ tile types
 │   │   │   ├── DashboardCustomizer.tsx # Slide-over panel for show/hide tiles
 │   │   │   └── tiles/
-│   │   │       ├── StatTile.tsx        # Single stat card component
-│   │   │       └── RecentFlightsTile.tsx # Recent flights compact table
+│   │   │       ├── StatTile.tsx            # Single stat card component
+│   │   │       ├── RecentFlightsTile.tsx   # Recent flights compact table
+│   │   │       └── AircraftTypeStatsTile.tsx # Per-type aggregated stats table
 │   │   └── pages/
 │   │       ├── Dashboard.tsx      # Customizable tile grid with drag-and-drop reordering
 │   │       ├── Logbook.tsx        # Searchable, sortable flight table
@@ -144,6 +145,7 @@ skylog/
 | PUT | `/api/flights/{id}` | Update a flight |
 | DELETE | `/api/flights/{id}` | Delete a flight |
 | GET | `/api/dashboard/stats` | Aggregated flight stats |
+| GET | `/api/dashboard/aircraft-type-stats` | Per-aircraft-type aggregated statistics |
 | POST | `/api/auth/login` | Login |
 | POST | `/api/auth/create-user` | Register |
 | GET | `/api/auth/auto-login` | Auto-login (single-user mode) |
