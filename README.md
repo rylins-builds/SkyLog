@@ -61,7 +61,7 @@ If you'd rather build the image yourself — to customize the code, contribute c
 
 ```bash
 # Clone the repository
-git clone https://github.com/rmillspa/SkyLog.git
+git clone https://github.com/rylins-builds/SkyLog.git
 cd SkyLog
 
 # Build the Docker image and start it
