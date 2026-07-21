@@ -18,9 +18,11 @@ import type { DashboardTileConfig, TileType } from "../dashboard/types";
 import { TILE_REGISTRY } from "../dashboard/tileRegistry";
 import { StatTile } from "../dashboard/tiles/StatTile";
 import { RecentFlightsTile } from "../dashboard/tiles/RecentFlightsTile";
+import { AircraftTypeStatsTile } from "../dashboard/tiles/AircraftTypeStatsTile";
 import { DashboardCustomizer } from "../dashboard/DashboardCustomizer";
 import { loadSettings } from "../api/settings";
 import type { ColumnVisibility } from "../api/settings";
+import type { AircraftTypeStat } from "../api/types";
 
 /**
  * Maps every ColumnVisibility key that has a corresponding dashboard
@@ -120,6 +122,7 @@ function syncLayoutWithHiddenTiles(
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentFlights, setRecentFlights] = useState<Flight[]>([]);
+  const [aircraftTypeStats, setAircraftTypeStats] = useState<AircraftTypeStat[]>([]);
   const [error, setError] = useState("");
   const [layout, setLayout] = useState<DashboardTileConfig[]>([]);
   const [layoutLoaded, setLayoutLoaded] = useState(false);
@@ -158,6 +161,9 @@ export default function Dashboard() {
         setLayoutLoaded(true);
         setStats(statsRes);
         setRecentFlights(flights.slice(0, 5));
+
+        // Fetch aircraft type stats in parallel (non-blocking)
+        api.getAircraftTypeStats().then(setAircraftTypeStats).catch(() => {});
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Unknown error");
       }
@@ -471,6 +477,15 @@ export default function Dashboard() {
           Recent Flights — static, NOT customizable
           ═══════════════════════════════════════════ */}
       <RecentFlightsTile flights={recentFlights} />
+
+      {/* ═══════════════════════════════════════════
+          Aircraft Type Totals — static, NOT customizable
+          ═══════════════════════════════════════════ */}
+      {aircraftTypeStats.length > 0 && (
+        <div className="mt-6 sm:mt-8">
+          <AircraftTypeStatsTile stats={aircraftTypeStats} />
+        </div>
+      )}
 
       {/* Customize slide-over panel (show/hide tiles) */}
       {showCustomizer && (

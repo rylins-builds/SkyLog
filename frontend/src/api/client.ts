@@ -17,7 +17,7 @@
  * @module api/client
  */
 
-import type { Flight, FlightCreate, DashboardStats, Attachment } from "./types";
+import type { Flight, FlightCreate, DashboardStats, Attachment, AircraftTypeStat } from "./types";
 
 /** Base URL for all API requests. The Vite dev server proxies /api
  *  to the backend (configured in vite.config.ts). In production,
@@ -153,6 +153,9 @@ export const api = {
 
   /** Get aggregated dashboard statistics for the current user. */
   getDashboardStats: () => request<DashboardStats>("/dashboard/stats"),
+
+  /** Get per-aircraft-type aggregated statistics. */
+  getAircraftTypeStats: () => request<AircraftTypeStat[]>("/dashboard/aircraft-type-stats"),
 
   // ═══ Health ═══
 

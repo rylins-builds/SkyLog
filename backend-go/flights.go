@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // registerFlightRoutes adds all flight-related routes to the given mux.
@@ -25,6 +26,7 @@ func registerFlightRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.HandleFunc("DELETE /api/flights", wipeFlights(db))
 	// Dashboard stats
 	mux.HandleFunc("GET /api/dashboard/stats", getDashboardStats(db))
+	mux.HandleFunc("GET /api/dashboard/aircraft-type-stats", getAircraftTypeStats(db))
 }
 
 // ── Helpers ──
@@ -719,6 +721,153 @@ func getDashboardStats(db *sql.DB) http.HandlerFunc {
 		stats.FullFlightSimulatorTime = math.Round(stats.FullFlightSimulatorTime*100) / 100
 		stats.FlightTrainingDeviceTime = math.Round(stats.FlightTrainingDeviceTime*100) / 100
 		stats.AviationTrainingDeviceTime = math.Round(stats.AviationTrainingDeviceTime*100) / 100
+
+		writeJSON(w, 200, stats)
+	}
+}
+
+// ── GET /api/dashboard/aircraft-type-stats ──
+
+func getAircraftTypeStats(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := getUserID(r, db)
+		if err != nil {
+			he := err.(*httpError)
+			writeError(w, he.Code, he.Message)
+			return
+		}
+
+		// ── Get all distinct aircraft types ordered by total hours desc ──
+		rows, err := db.QueryContext(r.Context(), `
+			SELECT
+				aircraft_type,
+				COALESCE(SUM(total_time), 0),
+				COUNT(*),
+				COALESCE(SUM(sel_time), 0),
+				COALESCE(SUM(ses_time), 0),
+				COALESCE(SUM(mel_time), 0),
+				COALESCE(SUM(mes_time), 0),
+				COALESCE(SUM(helicopter_time), 0),
+				COALESCE(SUM(gyroplane_time), 0),
+				COALESCE(SUM(powered_lift_time), 0),
+				COALESCE(SUM(glider_time), 0),
+				COALESCE(SUM(balloon_time), 0),
+				COALESCE(SUM(airship_time), 0),
+				COALESCE(SUM(solo_time), 0),
+				COALESCE(SUM(pic_time), 0),
+				COALESCE(SUM(sic_time), 0),
+				COALESCE(SUM(dual_time), 0),
+				COALESCE(SUM(instructor_time), 0),
+				COALESCE(SUM(xcountry_time), 0),
+				COALESCE(SUM(night_time), 0),
+				COALESCE(SUM(act_instrument_time), 0),
+				COALESCE(SUM(sim_instrument_time), 0),
+				COALESCE(SUM(full_flight_simulator_time), 0),
+				COALESCE(SUM(flight_training_device_time), 0),
+				COALESCE(SUM(aviation_training_device_time), 0),
+				COALESCE(SUM(takeoffs_day), 0),
+				COALESCE(SUM(takeoffs_night), 0),
+				COALESCE(SUM(landings_day), 0),
+				COALESCE(SUM(landings_night), 0),
+				COALESCE(SUM(precision_approaches), 0),
+				COALESCE(SUM(non_precision_approaches), 0),
+				COALESCE(SUM(holding_patterns), 0),
+				MAX(date) AS last_flight_date
+			FROM flights
+			WHERE user_id = ?
+			GROUP BY aircraft_type
+			ORDER BY SUM(total_time) DESC`, userID)
+		if err != nil {
+			writeError(w, 500, "Database error")
+			return
+		}
+
+		var stats []AircraftTypeStat
+		now := time.Now()
+
+		for rows.Next() {
+			var s AircraftTypeStat
+			var lastFlightDate string
+			err := rows.Scan(
+				&s.AircraftType,
+				&s.TotalHours,
+				&s.FlightCount,
+				&s.SELTime,
+				&s.SESTime,
+				&s.MELTime,
+				&s.MESTime,
+				&s.HelicopterTime,
+				&s.GyroplaneTime,
+				&s.PoweredLiftTime,
+				&s.GliderTime,
+				&s.BalloonTime,
+				&s.AirshipTime,
+				&s.SoloTime,
+				&s.PICTime,
+				&s.SICTime,
+				&s.DualTime,
+				&s.InstructorTime,
+				&s.XCountryTime,
+				&s.NightTime,
+				&s.ActInstrumentTime,
+				&s.SimInstrumentTime,
+				&s.FullFlightSimulatorTime,
+				&s.FlightTrainingDeviceTime,
+				&s.AviationTrainingDeviceTime,
+				&s.TakeoffsDay,
+				&s.TakeoffsNight,
+				&s.LandingsDay,
+				&s.LandingsNight,
+				&s.PrecisionApproaches,
+				&s.NonPrecisionApproaches,
+				&s.HoldingPatterns,
+				&lastFlightDate,
+			)
+			if err != nil {
+				writeError(w, 500, "Database error")
+				return
+			}
+
+			// Round all float fields to 2 decimal places
+			s.TotalHours = math.Round(s.TotalHours*100) / 100
+			s.SELTime = math.Round(s.SELTime*100) / 100
+			s.SESTime = math.Round(s.SESTime*100) / 100
+			s.MELTime = math.Round(s.MELTime*100) / 100
+			s.MESTime = math.Round(s.MESTime*100) / 100
+			s.HelicopterTime = math.Round(s.HelicopterTime*100) / 100
+			s.GyroplaneTime = math.Round(s.GyroplaneTime*100) / 100
+			s.PoweredLiftTime = math.Round(s.PoweredLiftTime*100) / 100
+			s.GliderTime = math.Round(s.GliderTime*100) / 100
+			s.BalloonTime = math.Round(s.BalloonTime*100) / 100
+			s.AirshipTime = math.Round(s.AirshipTime*100) / 100
+			s.SoloTime = math.Round(s.SoloTime*100) / 100
+			s.PICTime = math.Round(s.PICTime*100) / 100
+			s.SICTime = math.Round(s.SICTime*100) / 100
+			s.DualTime = math.Round(s.DualTime*100) / 100
+			s.InstructorTime = math.Round(s.InstructorTime*100) / 100
+			s.XCountryTime = math.Round(s.XCountryTime*100) / 100
+			s.NightTime = math.Round(s.NightTime*100) / 100
+			s.ActInstrumentTime = math.Round(s.ActInstrumentTime*100) / 100
+			s.SimInstrumentTime = math.Round(s.SimInstrumentTime*100) / 100
+			s.FullFlightSimulatorTime = math.Round(s.FullFlightSimulatorTime*100) / 100
+			s.FlightTrainingDeviceTime = math.Round(s.FlightTrainingDeviceTime*100) / 100
+			s.AviationTrainingDeviceTime = math.Round(s.AviationTrainingDeviceTime*100) / 100
+
+			// Calculate days since last flight
+			if lastFlightDate != "" {
+				parsed, parseErr := time.Parse("2006-01-02", lastFlightDate)
+				if parseErr == nil {
+					s.DaysSinceLastFlight = math.Round(now.Sub(parsed).Hours()/24*100) / 100
+				}
+			}
+
+			stats = append(stats, s)
+		}
+		rows.Close()
+
+		if stats == nil {
+			stats = []AircraftTypeStat{}
+		}
 
 		writeJSON(w, 200, stats)
 	}

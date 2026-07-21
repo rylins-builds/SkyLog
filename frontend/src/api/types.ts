@@ -217,11 +217,78 @@ export interface Attachment {
 }
 
 /**
- * Aggregated statistics for the Dashboard page.
- * Computed server-side from the current user's flight data to avoid
- * sending all flight records to the client just for stats.
- * Includes all FAA time categories alongside the core summary metrics.
+ * Aggregated statistics for a single aircraft type.
+ * Returned by GET /api/dashboard/aircraft-type-stats.
  */
+export interface AircraftTypeStat {
+  /** Aircraft make/model (e.g. "Cessna 172S") */
+  aircraft_type: string;
+  /** Total flight time in this aircraft type (hours) */
+  total_hours: number;
+  /** Number of flights in this aircraft type */
+  flight_count: number;
+  /** Days since the most recent flight in this type */
+  days_since_last_flight: number;
+  /** Single Engine Land time in this type (hours) */
+  sel_time: number;
+  /** Single Engine Sea time in this type (hours) */
+  ses_time: number;
+  /** Multi Engine Land time in this type (hours) */
+  mel_time: number;
+  /** Multi Engine Sea time in this type (hours) */
+  mes_time: number;
+  /** Helicopter time in this type (hours) */
+  helicopter_time: number;
+  /** Gyroplane time in this type (hours) */
+  gyroplane_time: number;
+  /** Powered Lift time in this type (hours) */
+  powered_lift_time: number;
+  /** Glider time in this type (hours) */
+  glider_time: number;
+  /** Balloon time in this type (hours) */
+  balloon_time: number;
+  /** Airship time in this type (hours) */
+  airship_time: number;
+  /** Solo flight time in this type (hours) */
+  solo_time: number;
+  /** Pilot-in-Command time in this type (hours) */
+  pic_time: number;
+  /** Second-in-Command time in this type (hours) */
+  sic_time: number;
+  /** Dual instruction received time in this type (hours) */
+  dual_time: number;
+  /** Instructor time in this type (hours) */
+  instructor_time: number;
+  /** Cross-country time in this type (hours) */
+  xcountry_time: number;
+  /** Night flight time in this type (hours) */
+  night_time: number;
+  /** Actual instrument time in this type (hours) */
+  act_instrument_time: number;
+  /** Simulated instrument time in this type (hours) */
+  sim_instrument_time: number;
+  /** Full flight simulator time in this type (hours) */
+  full_flight_simulator_time: number;
+  /** Flight training device time in this type (hours) */
+  flight_training_device_time: number;
+  /** Aviation training device time in this type (hours) */
+  aviation_training_device_time: number;
+  /** Number of day takeoffs in this type */
+  takeoffs_day: number;
+  /** Number of night takeoffs in this type */
+  takeoffs_night: number;
+  /** Number of day landings in this type */
+  landings_day: number;
+  /** Number of night landings in this type */
+  landings_night: number;
+  /** Number of precision approaches in this type */
+  precision_approaches: number;
+  /** Number of non-precision approaches in this type */
+  non_precision_approaches: number;
+  /** Number of holding patterns in this type */
+  holding_patterns: number;
+}
+
 export interface DashboardStats {
   /** Total number of flights logged */
   total_flights: number;

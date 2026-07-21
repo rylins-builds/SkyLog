@@ -183,6 +183,43 @@ type DashboardStats struct {
 	HoldingPatterns          int     `json:"holding_patterns"`
 }
 
+// AircraftTypeStat holds aggregated stats for a single aircraft type.
+type AircraftTypeStat struct {
+	AircraftType          string  `json:"aircraft_type"`
+	TotalHours            float64 `json:"total_hours"`
+	FlightCount           int     `json:"flight_count"`
+	DaysSinceLastFlight   float64 `json:"days_since_last_flight"`
+	SELTime               float64 `json:"sel_time"`
+	SESTime               float64 `json:"ses_time"`
+	MELTime               float64 `json:"mel_time"`
+	MESTime               float64 `json:"mes_time"`
+	HelicopterTime        float64 `json:"helicopter_time"`
+	GyroplaneTime         float64 `json:"gyroplane_time"`
+	PoweredLiftTime       float64 `json:"powered_lift_time"`
+	GliderTime            float64 `json:"glider_time"`
+	BalloonTime           float64 `json:"balloon_time"`
+	AirshipTime           float64 `json:"airship_time"`
+	SoloTime              float64 `json:"solo_time"`
+	PICTime               float64 `json:"pic_time"`
+	SICTime               float64 `json:"sic_time"`
+	DualTime              float64 `json:"dual_time"`
+	InstructorTime        float64 `json:"instructor_time"`
+	XCountryTime          float64 `json:"xcountry_time"`
+	NightTime             float64 `json:"night_time"`
+	ActInstrumentTime     float64 `json:"act_instrument_time"`
+	SimInstrumentTime     float64 `json:"sim_instrument_time"`
+	FullFlightSimulatorTime float64 `json:"full_flight_simulator_time"`
+	FlightTrainingDeviceTime float64 `json:"flight_training_device_time"`
+	AviationTrainingDeviceTime float64 `json:"aviation_training_device_time"`
+	TakeoffsDay           int     `json:"takeoffs_day"`
+	TakeoffsNight         int     `json:"takeoffs_night"`
+	LandingsDay           int     `json:"landings_day"`
+	LandingsNight         int     `json:"landings_night"`
+	PrecisionApproaches   int     `json:"precision_approaches"`
+	NonPrecisionApproaches int    `json:"non_precision_approaches"`
+	HoldingPatterns       int     `json:"holding_patterns"`
+}
+
 // Attachment represents a file attached to a flight log entry.
 type Attachment struct {
 	ID          int    `json:"id"`
