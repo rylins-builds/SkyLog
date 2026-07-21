@@ -2,6 +2,7 @@
  * Settings.tsx — Application settings page for SkyLog.
  *
  * Provides a central UI for users to configure:
+ *  - Theme: system / light / dark mode
  *  - Page visibility: toggle optional pages (Currency, FAA 8710) on/off
  *  - Column visibility: show/hide individual columns in the Logbook table
  *  - User settings: change username, change password
@@ -14,6 +15,8 @@
  *
  * A custom DOM event ("settingsUpdated") is dispatched whenever settings are saved
  * so that other open tabs/components (e.g. Logbook) can react immediately.
+ *
+ * Each settings section is a collapsible card that starts closed.
  */
 
 import { useEffect, useState } from "react";
@@ -26,6 +29,7 @@ import {
   loadVisibilityFromApi,
   loadSettings as loadSettingsFromStorage,
 } from "../api/settings";
+import { type ThemeMode, getThemeMode, setThemeMode } from "../api/theme";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,6 +39,37 @@ interface SettingsState {
   columnVisibility: ColumnVisibility;
   username: string;
   showLoginPage: boolean;
+}
+
+// ── Collapsible Section wrapper ──────────────────────────────────────────────
+
+function CollapsibleSection({
+  title,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="bg-white rounded-xl shadow-md mb-6 border border-gray-100 dark:bg-zinc-900 dark:border-zinc-400 animate-fade-in">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-6 py-4 text-left"
+      >
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
+        <svg
+          className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${open ? "rotate-180" : ""}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && <div className="px-6 pb-6">{children}</div>}
+    </div>
+  );
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -150,6 +185,14 @@ export default function Settings() {
 
   /** Reset settings multi-step state: 0=idle, 1=warning shown, 2=done. */
   const [resetSettingsStep, setResetSettingsStep] = useState(0);
+
+  /** Current theme mode. */
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(() => getThemeMode());
+
+  const handleThemeChange = (mode: ThemeMode) => {
+    setThemeMode(mode);
+    setThemeModeState(mode);
+  };
 
   /** Execute the database wipe. */
   const handleWipeDatabase = async () => {
@@ -736,7 +779,6 @@ export default function Settings() {
     {
       title: "Time Categories",
       columns: [
-        { key: "totalTime", label: "Total Time" },
         { key: "selTime", label: "Single Engine Land" },
         { key: "sesTime", label: "Single Engine Sea" },
         { key: "melTime", label: "Multi Engine Land" },
@@ -811,10 +853,41 @@ export default function Settings() {
     <div className="p-4 sm:p-8 max-w-6xl mx-auto animate-fade-in dark:bg-zinc-800">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Settings</h1>
 
-      {/* ── Page Visibility ─────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100 dark:bg-zinc-900 dark:border-zinc-600 animate-slide-up">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Page Visibility</h2>
+      {/* ── Theme (always expanded) ──────────────────────────────────────────── */}
+      <div className="bg-white rounded-xl shadow-md mb-6 border border-gray-100 dark:bg-zinc-900 dark:border-zinc-400 animate-fade-in">
+        <div className="px-6 py-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Theme</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Choose your preferred appearance for SkyLog.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {([
+              { value: "system" as ThemeMode, label: "System Theme", icon: "🖥️", desc: "Follow your device setting" },
+              { value: "light" as ThemeMode, label: "Light Mode", icon: "☀️", desc: "Always light" },
+              { value: "dark" as ThemeMode, label: "Dark Mode", icon: "🌙", desc: "Always dark" },
+            ]).map(({ value, label, icon, desc }) => (
+              <button
+                key={value}
+                onClick={() => handleThemeChange(value)}
+                className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-colors text-left ${
+                  themeMode === value
+                    ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/30"
+                    : "border-gray-200 bg-gray-50 hover:bg-gray-100 dark:border-zinc-400 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                }`}
+              >
+                <span className="text-2xl">{icon}</span>
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{label}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{desc}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
+      {/* ── Page Visibility ─────────────────────────────────────────────────── */}
+      <CollapsibleSection title="Page Visibility">
         {/* Core pages — always on, rendered as informational cards */}
         <div className="mb-4">
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
@@ -860,21 +933,17 @@ export default function Settings() {
             ))}
           </div>
         </div>
-      </div>
+      </CollapsibleSection>
 
-      {/* ── Column Visibility ───────────────────────────────────────────────── */}
-      <div
-        className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100 dark:bg-zinc-900 dark:border-zinc-600 animate-slide-up"
-        style={{ animationDelay: "100ms" }}
-      >
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Column Visibility</h2>
+      {/* ── Time Category Visibility ─────────────────────────────────────────── */}
+      <CollapsibleSection title="Time Category Visibility">
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Hide columns in the Logbook and New Flight form
+          Show or hide time categories in the Logbook and New Flight form
         </p>
 
         {columnGroups.map((group, groupIndex) => (
           <div key={groupIndex} className="mb-6 last:mb-0">
-            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3 border-b border-gray-200 dark:border-zinc-700 pb-2">
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3 border-b border-gray-200 dark:border-zinc-400 pb-2">
               {group.title}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -906,7 +975,7 @@ export default function Settings() {
         ))}
 
         {/* Bulk show/hide buttons */}
-        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-700 flex flex-wrap gap-3">
+        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-400 flex flex-wrap gap-3">
           <button
             onClick={() => {
               const allVisible = Object.keys(settings.columnVisibility).reduce((acc, key) => {
@@ -932,15 +1001,10 @@ export default function Settings() {
             Hide All
           </button>
         </div>
-      </div>
+      </CollapsibleSection>
 
       {/* ── User Settings ───────────────────────────────────────────────────── */}
-      <div
-        className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100 dark:bg-zinc-900 dark:border-zinc-600 animate-slide-up"
-        style={{ animationDelay: "200ms" }}
-      >
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">User Settings</h2>
-
+      <CollapsibleSection title="User Settings">
         {/* Username */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Username</label>
@@ -949,7 +1013,7 @@ export default function Settings() {
               type="text"
               value={settings.username}
               onChange={(e) => setSettings(prev => ({ ...prev, username: e.target.value }))}
-              className="w-full sm:flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-zinc-800 dark:border-zinc-600 dark:text-white"
+              className="w-full sm:flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-zinc-800 dark:border-zinc-400 dark:text-white"
             />
             <button
               onClick={handleUsernameChange}
@@ -972,21 +1036,21 @@ export default function Settings() {
               placeholder="Current Password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-zinc-800 dark:border-zinc-600 dark:text-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-zinc-800 dark:border-zinc-400 dark:text-white"
             />
             <input
               type="password"
               placeholder="New Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-zinc-800 dark:border-zinc-600 dark:text-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-zinc-800 dark:border-zinc-400 dark:text-white"
             />
             <input
               type="password"
               placeholder="Confirm New Password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-zinc-800 dark:border-zinc-600 dark:text-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-zinc-800 dark:border-zinc-400 dark:text-white"
             />
             <button
               onClick={handlePasswordChange}
@@ -1000,7 +1064,7 @@ export default function Settings() {
 
         {/* Multi-user mode toggle — only visible to admins */}
         {isAdmin && (
-          <div className="pt-4 border-t border-gray-200 dark:border-zinc-700">
+          <div className="pt-4 border-t border-gray-200 dark:border-zinc-400">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Multi-User Mode
             </label>
@@ -1025,7 +1089,7 @@ export default function Settings() {
             </div>
           </div>
         )}
-      </div>
+      </CollapsibleSection>
 
       {/* ── Password confirmation modal (multi-user toggle) ────────────────── */}
       {showPasswordModal && (
@@ -1049,7 +1113,7 @@ export default function Settings() {
                   value={modalPassword}
                   onChange={(e) => setModalPassword(e.target.value)}
                   placeholder="Enter password"
-                  className="w-full px-4 py-2 border-2 border-black rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:text-white dark:border-zinc-500"
+                  className="w-full px-4 py-2 border-2 border-black rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:text-white dark:border-zinc-400"
                   autoFocus
                 />
               </div>
@@ -1063,7 +1127,7 @@ export default function Settings() {
                     value={modalConfirmPassword}
                     onChange={(e) => setModalConfirmPassword(e.target.value)}
                     placeholder="Confirm password"
-                    className="w-full px-4 py-2 border-2 border-black rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:text-white dark:border-zinc-500"
+                    className="w-full px-4 py-2 border-2 border-black rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:text-white dark:border-zinc-400"
                   />
                 </div>
               )}
@@ -1086,12 +1150,8 @@ export default function Settings() {
         </div>
       )}
 
-      {/* ── CSV Import / Export ──────────────────────────────────────────────── */}
-      <div
-        className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100 dark:bg-zinc-900 dark:border-zinc-600 animate-slide-up"
-        style={{ animationDelay: "300ms" }}
-      >
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">CSV Management</h2>
+      {/* ── CSV Management ─────────────────────────────────────────────────── */}
+      <CollapsibleSection title="CSV Management">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Export button */}
           <div className="flex-1">
@@ -1101,7 +1161,6 @@ export default function Settings() {
               className="w-full py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
             >
               <div className="flex items-center justify-center gap-2">
-                {/* Download icon */}
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
@@ -1110,12 +1169,11 @@ export default function Settings() {
             </button>
           </div>
 
-          {/* Import button — uses a hidden <input type="file"> triggered by the visible label */}
+          {/* Import button */}
           <div className="flex-1">
             <label className="block w-full">
               <div className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center cursor-pointer">
                 <div className="flex items-center justify-center gap-2">
-                  {/* Upload icon */}
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                   </svg>
@@ -1146,14 +1204,10 @@ export default function Settings() {
             Launch Type, Remarks
           </p>
         </div>
-      </div>
+      </CollapsibleSection>
 
       {/* ── Reset Settings ───────────────────────────────────────────────── */}
-      <div
-        className="bg-white rounded-xl shadow-md p-6 mb-6 border border-yellow-200 dark:bg-zinc-900 dark:border-yellow-700 animate-slide-up"
-        style={{ animationDelay: "335ms" }}
-      >
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Reset Settings</h2>
+      <CollapsibleSection title="Reset Settings">
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           Restore all page visibility, column visibility, and currency threshold settings to their factory defaults.
           Your flight data, account, and password will not be affected.
@@ -1220,19 +1274,14 @@ export default function Settings() {
             </p>
           </div>
         )}
-      </div>
+      </CollapsibleSection>
 
-      {/* ── Wipe Database ──────────────────────────────────────────────────── */}
-      <div
-        className="bg-white rounded-xl shadow-md p-6 mb-6 border border-red-100 dark:bg-zinc-900 dark:border-red-800 animate-slide-up"
-        style={{ animationDelay: "350ms" }}
-      >
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Danger Zone</h2>
+      {/* ── Danger Zone (Wipe Database) ────────────────────────────────────── */}
+      <CollapsibleSection title="Danger Zone">
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           Permanently delete all flight records for your account. This action cannot be undone.
         </p>
 
-        {/* Step 1: initial warning */}
         {wipeStep === 0 && (
           <div className="space-y-3">
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/30 dark:border-red-800">
@@ -1252,7 +1301,6 @@ export default function Settings() {
           </div>
         )}
 
-        {/* Step 2: confirmation text input */}
         {wipeStep === 1 && (
           <div className="space-y-3">
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/30 dark:border-red-800">
@@ -1287,7 +1335,6 @@ export default function Settings() {
           </div>
         )}
 
-        {/* Step 3: final confirmation + wipe execution */}
         {wipeStep === 2 && (
           <div className="space-y-3">
             <div className="p-3 bg-red-100 border border-red-300 rounded-lg dark:bg-red-900/50 dark:border-red-700">
@@ -1319,7 +1366,6 @@ export default function Settings() {
           </div>
         )}
 
-        {/* Success state */}
         {wipeStep === 3 && (
           <div className="p-3 bg-green-100 border border-green-300 rounded-lg dark:bg-green-900/30 dark:border-green-700">
             <p className="text-sm text-green-700 dark:text-green-300 font-medium flex items-center gap-2">
@@ -1330,11 +1376,11 @@ export default function Settings() {
             </p>
           </div>
         )}
-      </div>
+      </CollapsibleSection>
 
       {/* ── Import error details (expandable panel) ─────────────────────────── */}
       {showImportErrors && importErrors.length > 0 && (
-        <div className="mb-6 bg-white rounded-xl shadow-md border border-red-200 dark:bg-zinc-900 dark:border-red-800 animate-slide-up">
+        <div className="mb-6 bg-white rounded-xl shadow-md border border-red-200 dark:bg-zinc-900 dark:border-red-800 animate-fade-in">
           <button
             onClick={() => setShowImportErrors(!showImportErrors)}
             className="w-full flex items-center justify-between p-4 text-left"
@@ -1342,7 +1388,6 @@ export default function Settings() {
             <h3 className="text-sm font-semibold text-red-700 dark:text-red-400">
               Import Errors ({importErrors.length})
             </h3>
-            {/* Chevron that rotates when the panel is expanded */}
             <svg
               className={`w-5 h-5 text-red-500 transition-transform ${
                 showImportErrors ? "rotate-180" : ""
@@ -1362,7 +1407,7 @@ export default function Settings() {
               </thead>
               <tbody>
                 {importErrors.map((err, i) => (
-                  <tr key={i} className="border-b border-gray-100 dark:border-zinc-800 last:border-0">
+                  <tr key={i} className="border-b border-gray-100 dark:border-zinc-600 last:border-0">
                     <td className="py-2 pr-4 text-gray-500 dark:text-gray-400 font-mono">{err.row}</td>
                     <td className="py-2 text-gray-700 dark:text-gray-300 break-words">{err.error}</td>
                   </tr>
@@ -1390,12 +1435,10 @@ export default function Settings() {
       <button
         onClick={saveSettings}
         disabled={isLoading}
-        className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 animate-slide-up"
-        style={{ animationDelay: "400ms" }}
+        className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 animate-fade-in"
       >
         {isLoading ? (
           <span className="flex items-center justify-center gap-2">
-            {/* Spinning loader */}
             <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
               <path

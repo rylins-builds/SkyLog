@@ -16,6 +16,13 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { applyTheme, getThemeMode } from './api/theme'
+
+/**
+ * Apply the persisted theme before rendering so there is no flash
+ * of the wrong colour scheme.
+ */
+applyTheme(getThemeMode());
 
 /**
  * Mount the root <App /> component inside React StrictMode.

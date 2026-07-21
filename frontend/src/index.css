@@ -6,7 +6,7 @@
    styling and defines:
 
      1. Theme design tokens (@theme) — aviation colour palette.
-     2. Dark mode support via prefers-color-scheme.
+     2. Dark mode support via .dark class on <html>.
      3. Base layout styles for the #root element.
      4. Custom keyframe animations (fade-in, slide-up, pulse-soft).
      5. Utility classes for skeleton loading states.
@@ -17,19 +17,14 @@
 /* ── Tailwind CSS v4 Entry Point ── */
 @import "tailwindcss";
 
+/* ── Use class-based dark mode so the user can override system preference ── */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ── Theme Design Tokens (Tailwind v4 @theme) ── */
 @theme {
   --color-aviation: #0ea5e9;       /* Sky blue accent colour */
   --color-surface: #ffffff;        /* Default card/panel background */
   --color-muted: #6b7280;          /* Muted text colour */
-}
-
-@media (prefers-color-scheme: dark) {
-  html {
-    /* Inform the UA that we support dark colour schemes natively,
-       so scrollbars and form controls render in dark mode too. */
-    color-scheme: dark;
-  }
 }
 
 /* ── Base Styles ── */

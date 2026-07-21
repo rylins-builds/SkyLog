@@ -427,7 +427,7 @@ export default function Currency() {
     return (
       <div
         key={cat}
-        className="bg-white dark:bg-zinc-900 rounded-xl shadow-md border border-gray-100 dark:border-zinc-700 p-5 animate-slide-up relative"
+        className="bg-white dark:bg-zinc-900 rounded-xl shadow-md border border-gray-100 dark:border-zinc-400 p-5 animate-slide-up relative"
       >
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
@@ -470,7 +470,7 @@ export default function Currency() {
 
         {/* Inline edit panel */}
         {isEditing && (
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-700 animate-fade-in">
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-400 animate-fade-in">
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
@@ -481,7 +481,7 @@ export default function Currency() {
                   min={1}
                   value={editMin}
                   onChange={(e) => setEditMin(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full rounded-lg border border-gray-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 dark:border-zinc-400 dark:bg-zinc-800 dark:text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
@@ -493,7 +493,7 @@ export default function Currency() {
                   min={1}
                   value={editDays}
                   onChange={(e) => setEditDays(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full rounded-lg border border-gray-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-gray-300 dark:border-zinc-400 dark:bg-zinc-800 dark:text-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -698,8 +698,8 @@ export default function Currency() {
       </div>
 
       {/* ═══ Recent Entries Timeline ═══ */}
-      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md border border-gray-100 dark:border-zinc-700 overflow-hidden animate-slide-up">
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-zinc-700 flex items-center justify-between">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md border border-gray-100 dark:border-zinc-400 overflow-hidden animate-slide-up">
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-zinc-400 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Recent Entries
           </h2>

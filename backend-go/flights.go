@@ -3,11 +3,16 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"math"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // registerFlightRoutes adds all flight-related routes to the given mux.
@@ -21,6 +26,7 @@ func registerFlightRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.HandleFunc("DELETE /api/flights", wipeFlights(db))
 	// Dashboard stats
 	mux.HandleFunc("GET /api/dashboard/stats", getDashboardStats(db))
+	mux.HandleFunc("GET /api/dashboard/aircraft-type-stats", getAircraftTypeStats(db))
 }
 
 // ── Helpers ──
@@ -126,6 +132,74 @@ func getFlight(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+// parseFlightPayload reads the flight JSON from the request. If the request is
+// multipart/form-data, the flight payload is expected in the "flight" field and
+// the returned multipart form contains any uploaded files (under the "files"
+// key). For plain application/json requests the multipart form is nil.
+func parseFlightPayload(w http.ResponseWriter, r *http.Request, v any) (*multipart.Form, error) {
+	ct := r.Header.Get("Content-Type")
+	if strings.HasPrefix(ct, "multipart/form-data") {
+		// Allow a generous body budget: JSON payload plus up to several 25 MB files.
+		r.Body = http.MaxBytesReader(w, r.Body, 4*maxAttachmentSize+1<<20)
+		if err := r.ParseMultipartForm(maxAttachmentUploadMem); err != nil {
+			return nil, &httpError{422, "Payload too large or invalid multipart form (max 25 MB per file)"}
+		}
+		flightJSON := r.FormValue("flight")
+		if flightJSON == "" {
+			return nil, &httpError{422, "Missing flight field"}
+		}
+		if err := json.Unmarshal([]byte(flightJSON), v); err != nil {
+			return nil, &httpError{422, "Invalid flight JSON"}
+		}
+		var form *multipart.Form
+		if r.MultipartForm != nil {
+			form = r.MultipartForm
+		}
+		return form, nil
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+		return nil, &httpError{422, "Invalid JSON body"}
+	}
+	return nil, nil
+}
+
+// saveFlightAttachments persists all files uploaded under the "files" key of a
+// multipart flight request. Returns the saved attachment records.
+func saveFlightAttachments(r *http.Request, db *sql.DB, form *multipart.Form, flightID, userID int) ([]Attachment, error) {
+	saved := []Attachment{}
+	if form == nil {
+		return saved, nil
+	}
+	for _, header := range form.File["files"] {
+		a, err := saveAttachmentFile(r, db, flightID, userID, header)
+		if err != nil {
+			// Roll back any files already saved in this batch.
+			for _, prev := range saved {
+				removeAttachmentRecord(db, prev)
+			}
+			return nil, err
+		}
+		saved = append(saved, *a)
+	}
+	return saved, nil
+}
+
+// removeAttachmentRecord deletes an attachment row and its file on disk.
+// Used to roll back partially saved batches.
+func removeAttachmentRecord(db *sql.DB, a Attachment) {
+	var ownerID int
+	if err := db.QueryRow("SELECT user_id FROM attachments WHERE id = ?", a.ID).Scan(&ownerID); err != nil {
+		return
+	}
+	db.Exec("DELETE FROM attachments WHERE id = ?", a.ID)
+	p := filepath.Join(attachmentsBaseDir(), strconv.Itoa(ownerID), strconv.Itoa(a.FlightID),
+		fmt.Sprintf("%d_%s", a.ID, a.Filename))
+	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+		log.Printf("removeAttachmentRecord remove %s: %v", p, err)
+	}
+}
+
 // ── POST /api/flights ──
 
 func createFlight(db *sql.DB) http.HandlerFunc {
@@ -138,8 +212,10 @@ func createFlight(db *sql.DB) http.HandlerFunc {
 		}
 
 		var fc FlightCreate
-		if err := json.NewDecoder(r.Body).Decode(&fc); err != nil {
-			writeError(w, 422, "Invalid JSON body")
+		multipartForm, err := parseFlightPayload(w, r, &fc)
+		if err != nil {
+			he := err.(*httpError)
+			writeError(w, he.Code, he.Message)
 			return
 		}
 
@@ -158,12 +234,6 @@ func createFlight(db *sql.DB) http.HandlerFunc {
 		precisionApproaches := fc.PrecisionApproaches
 		nonPrecisionApproaches := fc.NonPrecisionApproaches
 		holdingPatterns := fc.HoldingPatterns
-
-		// If these were set to 0 in the request, we should default them.
-		// The JSON decoder will set them to 0 if not in the request body.
-		// Python's Pydantic defaults these with Field(default=0, ge=0).
-		// Since we can't distinguish here (Go zero value = 0), we use
-		// the values as-is — they'll be 0 which is what Python would default to.
 
 		result, err := db.ExecContext(r.Context(), `
 			INSERT INTO flights (
@@ -225,6 +295,18 @@ func createFlight(db *sql.DB) http.HandlerFunc {
 
 		flightID, _ := result.LastInsertId()
 
+		// Persist any attachments bundled with the create request. If saving
+		// fails, roll back the flight so the entry and its files stay in sync.
+		if _, err := saveFlightAttachments(r, db, multipartForm, int(flightID), userID); err != nil {
+			db.ExecContext(r.Context(), "DELETE FROM flights WHERE id = ?", flightID)
+			if he, ok := err.(*httpError); ok {
+				writeError(w, he.Code, he.Message)
+			} else {
+				writeError(w, 500, "Failed to store attachments")
+			}
+			return
+		}
+
 		f, err := scanFlight(db.QueryRowContext(r.Context(),
 			"SELECT * FROM flights WHERE id = ?", flightID))
 		if err != nil {
@@ -251,25 +333,21 @@ func updateFlight(db *sql.DB) http.HandlerFunc {
 		flightID, _ := strconv.Atoi(idStr)
 
 		// Verify ownership
-		existing, err := scanFlight(db.QueryRowContext(r.Context(),
-			"SELECT * FROM flights WHERE id = ? AND user_id = ?", flightID, userID))
-		if err == sql.ErrNoRows {
-			writeError(w, 404, "Flight not found")
-			return
-		}
-		if err != nil {
-			writeError(w, 500, "Database error")
+		if err := flightOwnedBy(r, db, flightID, userID); err != nil {
+			he := err.(*httpError)
+			writeError(w, he.Code, he.Message)
 			return
 		}
 
 		var update FlightUpdate
-		if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
-			writeError(w, 422, "Invalid JSON body")
+		multipartForm, err := parseFlightPayload(w, r, &update)
+		if err != nil {
+			he := err.(*httpError)
+			writeError(w, he.Code, he.Message)
 			return
 		}
 
 		// Build dynamic SET clause from non-nil fields.
-		// We use a map of column names to values.
 		cols := make(map[string]any)
 
 		if update.Date != nil {
@@ -279,7 +357,6 @@ func updateFlight(db *sql.DB) http.HandlerFunc {
 			cols["pilot_in_command"] = *update.PilotInCommand
 		}
 		if update.AircraftType != nil {
-			// Use the named field path from FlightUpdate struct
 			cols["aircraft_type"] = *update.AircraftType
 		}
 		if update.AircraftReg != nil {
@@ -394,25 +471,37 @@ func updateFlight(db *sql.DB) http.HandlerFunc {
 			cols["remarks"] = *update.Remarks
 		}
 
-		if len(cols) == 0 {
-			// No fields to update — return existing record unchanged
-			writeJSON(w, 200, existing)
-			return
+		// Persist any attachments bundled with the update request.
+		savedAttachments, attErr := saveFlightAttachments(r, db, multipartForm, flightID, userID)
+
+		if len(cols) > 0 {
+			parts := make([]string, 0, len(cols))
+			args := make([]any, 0, len(cols)+1)
+			for col, val := range cols {
+				parts = append(parts, col+" = ?")
+				args = append(args, val)
+			}
+			args = append(args, flightID)
+
+			query := "UPDATE flights SET " + strings.Join(parts, ", ") + " WHERE id = ?"
+			if _, err := db.ExecContext(r.Context(), query, args...); err != nil {
+				// Roll back attachments saved in this request so the flight row
+				// and its files stay in sync.
+				for _, prev := range savedAttachments {
+					removeAttachmentRecord(db, prev)
+				}
+				log.Printf("updateFlight: %v", err)
+				writeError(w, 500, "Database error")
+				return
+			}
 		}
 
-		// Build SET clause
-		parts := make([]string, 0, len(cols))
-		args := make([]any, 0, len(cols)+1)
-		for col, val := range cols {
-			parts = append(parts, col+" = ?")
-			args = append(args, val)
-		}
-		args = append(args, flightID)
-
-		query := "UPDATE flights SET " + strings.Join(parts, ", ") + " WHERE id = ?"
-		if _, err := db.ExecContext(r.Context(), query, args...); err != nil {
-			log.Printf("updateFlight: %v", err)
-			writeError(w, 500, "Database error")
+		if attErr != nil {
+			if he, ok := attErr.(*httpError); ok {
+				writeError(w, he.Code, he.Message)
+			} else {
+				writeError(w, 500, "Failed to store attachments")
+			}
 			return
 		}
 
@@ -454,6 +543,9 @@ func deleteFlight(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		// Remove any attachments (rows + files) for this flight.
+		deleteAttachmentsForFlight(db, flightID)
+
 		w.WriteHeader(204)
 	}
 }
@@ -469,11 +561,31 @@ func wipeFlights(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		// Collect flight IDs first so we can remove their attachments.
+		idRows, err := db.QueryContext(r.Context(),
+			"SELECT id FROM flights WHERE user_id = ?", userID)
+		if err != nil {
+			writeError(w, 500, "Database error")
+			return
+		}
+		var flightIDs []int
+		for idRows.Next() {
+			var id int
+			if err := idRows.Scan(&id); err == nil {
+				flightIDs = append(flightIDs, id)
+			}
+		}
+		idRows.Close()
+
 		result, err := db.ExecContext(r.Context(),
 			"DELETE FROM flights WHERE user_id = ?", userID)
 		if err != nil {
 			writeError(w, 500, "Database error")
 			return
+		}
+
+		for _, id := range flightIDs {
+			deleteAttachmentsForFlight(db, id)
 		}
 
 		count, _ := result.RowsAffected()
@@ -500,29 +612,28 @@ func getDashboardStats(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		var totalHours, totalNight, hours30 float64
 		row = db.QueryRowContext(r.Context(), "SELECT COALESCE(SUM(total_time), 0) FROM flights WHERE user_id = ?", userID)
-		if err := row.Scan(&totalHours); err != nil {
+		if err := row.Scan(&stats.TotalHours); err != nil {
 			writeError(w, 500, "Database error")
 			return
 		}
-		stats.TotalHours = math.Round(totalHours*100) / 100
+		stats.TotalHours = math.Round(stats.TotalHours*100) / 100
 
 		row = db.QueryRowContext(r.Context(), "SELECT COALESCE(SUM(night_time), 0) FROM flights WHERE user_id = ?", userID)
-		if err := row.Scan(&totalNight); err != nil {
+		if err := row.Scan(&stats.TotalNightHours); err != nil {
 			writeError(w, 500, "Database error")
 			return
 		}
-		stats.TotalNightHours = math.Round(totalNight*100) / 100
+		stats.TotalNightHours = math.Round(stats.TotalNightHours*100) / 100
 
 		row = db.QueryRowContext(r.Context(), `
 			SELECT COALESCE(SUM(total_time), 0) FROM flights 
 			WHERE user_id = ? AND date >= date('now', '-30 days')`, userID)
-		if err := row.Scan(&hours30); err != nil {
+		if err := row.Scan(&stats.HoursLast30Days); err != nil {
 			writeError(w, 500, "Database error")
 			return
 		}
-		stats.HoursLast30Days = math.Round(hours30*100) / 100
+		stats.HoursLast30Days = math.Round(stats.HoursLast30Days*100) / 100
 
 		row = db.QueryRowContext(r.Context(),
 			"SELECT COALESCE(SUM(landings_day + landings_night), 0) FROM flights WHERE user_id = ?", userID)
@@ -536,6 +647,226 @@ func getDashboardStats(db *sql.DB) http.HandlerFunc {
 		if err := row.Scan(&stats.UniqueAircraft); err != nil {
 			writeError(w, 500, "Database error")
 			return
+		}
+
+		// ── Expanded time category aggregates ──
+		// Use a single query for all SUM fields for efficiency
+		row = db.QueryRowContext(r.Context(), `
+			SELECT
+				COALESCE(SUM(sel_time), 0),
+				COALESCE(SUM(ses_time), 0),
+				COALESCE(SUM(mel_time), 0),
+				COALESCE(SUM(mes_time), 0),
+				COALESCE(SUM(helicopter_time), 0),
+				COALESCE(SUM(gyroplane_time), 0),
+				COALESCE(SUM(powered_lift_time), 0),
+				COALESCE(SUM(glider_time), 0),
+				COALESCE(SUM(balloon_time), 0),
+				COALESCE(SUM(airship_time), 0),
+				COALESCE(SUM(solo_time), 0),
+				COALESCE(SUM(pic_time), 0),
+				COALESCE(SUM(sic_time), 0),
+				COALESCE(SUM(dual_time), 0),
+				COALESCE(SUM(instructor_time), 0),
+				COALESCE(SUM(xcountry_time), 0),
+				COALESCE(SUM(act_instrument_time), 0),
+				COALESCE(SUM(sim_instrument_time), 0),
+				COALESCE(SUM(full_flight_simulator_time), 0),
+				COALESCE(SUM(flight_training_device_time), 0),
+				COALESCE(SUM(aviation_training_device_time), 0),
+				COALESCE(SUM(takeoffs_day), 0),
+				COALESCE(SUM(takeoffs_night), 0),
+				COALESCE(SUM(landings_day), 0),
+				COALESCE(SUM(landings_night), 0),
+				COALESCE(SUM(precision_approaches), 0),
+				COALESCE(SUM(non_precision_approaches), 0),
+				COALESCE(SUM(holding_patterns), 0)
+			FROM flights WHERE user_id = ?`, userID)
+		if err := row.Scan(
+			&stats.SELTime, &stats.SESTime, &stats.MELTime, &stats.MESTime,
+			&stats.HelicopterTime, &stats.GyroplaneTime, &stats.PoweredLiftTime,
+			&stats.GliderTime, &stats.BalloonTime, &stats.AirshipTime,
+			&stats.SoloTime, &stats.PICTime, &stats.SICTime,
+			&stats.DualTime, &stats.InstructorTime, &stats.XCountryTime,
+			&stats.ActInstrumentTime, &stats.SimInstrumentTime,
+			&stats.FullFlightSimulatorTime, &stats.FlightTrainingDeviceTime, &stats.AviationTrainingDeviceTime,
+			&stats.TakeoffsDay, &stats.TakeoffsNight,
+			&stats.LandingsDay, &stats.LandingsNight,
+			&stats.PrecisionApproaches, &stats.NonPrecisionApproaches,
+			&stats.HoldingPatterns,
+		); err != nil {
+			writeError(w, 500, "Database error")
+			return
+		}
+
+		// Round all float fields to 2 decimal places
+		stats.SELTime = math.Round(stats.SELTime*100) / 100
+		stats.SESTime = math.Round(stats.SESTime*100) / 100
+		stats.MELTime = math.Round(stats.MELTime*100) / 100
+		stats.MESTime = math.Round(stats.MESTime*100) / 100
+		stats.HelicopterTime = math.Round(stats.HelicopterTime*100) / 100
+		stats.GyroplaneTime = math.Round(stats.GyroplaneTime*100) / 100
+		stats.PoweredLiftTime = math.Round(stats.PoweredLiftTime*100) / 100
+		stats.GliderTime = math.Round(stats.GliderTime*100) / 100
+		stats.BalloonTime = math.Round(stats.BalloonTime*100) / 100
+		stats.AirshipTime = math.Round(stats.AirshipTime*100) / 100
+		stats.SoloTime = math.Round(stats.SoloTime*100) / 100
+		stats.PICTime = math.Round(stats.PICTime*100) / 100
+		stats.SICTime = math.Round(stats.SICTime*100) / 100
+		stats.DualTime = math.Round(stats.DualTime*100) / 100
+		stats.InstructorTime = math.Round(stats.InstructorTime*100) / 100
+		stats.XCountryTime = math.Round(stats.XCountryTime*100) / 100
+		stats.ActInstrumentTime = math.Round(stats.ActInstrumentTime*100) / 100
+		stats.SimInstrumentTime = math.Round(stats.SimInstrumentTime*100) / 100
+		stats.FullFlightSimulatorTime = math.Round(stats.FullFlightSimulatorTime*100) / 100
+		stats.FlightTrainingDeviceTime = math.Round(stats.FlightTrainingDeviceTime*100) / 100
+		stats.AviationTrainingDeviceTime = math.Round(stats.AviationTrainingDeviceTime*100) / 100
+
+		writeJSON(w, 200, stats)
+	}
+}
+
+// ── GET /api/dashboard/aircraft-type-stats ──
+
+func getAircraftTypeStats(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := getUserID(r, db)
+		if err != nil {
+			he := err.(*httpError)
+			writeError(w, he.Code, he.Message)
+			return
+		}
+
+		// ── Get all distinct aircraft types ordered by total hours desc ──
+		rows, err := db.QueryContext(r.Context(), `
+			SELECT
+				aircraft_type,
+				COALESCE(SUM(total_time), 0),
+				COUNT(*),
+				COALESCE(SUM(sel_time), 0),
+				COALESCE(SUM(ses_time), 0),
+				COALESCE(SUM(mel_time), 0),
+				COALESCE(SUM(mes_time), 0),
+				COALESCE(SUM(helicopter_time), 0),
+				COALESCE(SUM(gyroplane_time), 0),
+				COALESCE(SUM(powered_lift_time), 0),
+				COALESCE(SUM(glider_time), 0),
+				COALESCE(SUM(balloon_time), 0),
+				COALESCE(SUM(airship_time), 0),
+				COALESCE(SUM(solo_time), 0),
+				COALESCE(SUM(pic_time), 0),
+				COALESCE(SUM(sic_time), 0),
+				COALESCE(SUM(dual_time), 0),
+				COALESCE(SUM(instructor_time), 0),
+				COALESCE(SUM(xcountry_time), 0),
+				COALESCE(SUM(night_time), 0),
+				COALESCE(SUM(act_instrument_time), 0),
+				COALESCE(SUM(sim_instrument_time), 0),
+				COALESCE(SUM(full_flight_simulator_time), 0),
+				COALESCE(SUM(flight_training_device_time), 0),
+				COALESCE(SUM(aviation_training_device_time), 0),
+				COALESCE(SUM(takeoffs_day), 0),
+				COALESCE(SUM(takeoffs_night), 0),
+				COALESCE(SUM(landings_day), 0),
+				COALESCE(SUM(landings_night), 0),
+				COALESCE(SUM(precision_approaches), 0),
+				COALESCE(SUM(non_precision_approaches), 0),
+				COALESCE(SUM(holding_patterns), 0),
+				MAX(date) AS last_flight_date
+			FROM flights
+			WHERE user_id = ?
+			GROUP BY aircraft_type
+			ORDER BY SUM(total_time) DESC`, userID)
+		if err != nil {
+			writeError(w, 500, "Database error")
+			return
+		}
+
+		var stats []AircraftTypeStat
+		now := time.Now()
+
+		for rows.Next() {
+			var s AircraftTypeStat
+			var lastFlightDate string
+			err := rows.Scan(
+				&s.AircraftType,
+				&s.TotalHours,
+				&s.FlightCount,
+				&s.SELTime,
+				&s.SESTime,
+				&s.MELTime,
+				&s.MESTime,
+				&s.HelicopterTime,
+				&s.GyroplaneTime,
+				&s.PoweredLiftTime,
+				&s.GliderTime,
+				&s.BalloonTime,
+				&s.AirshipTime,
+				&s.SoloTime,
+				&s.PICTime,
+				&s.SICTime,
+				&s.DualTime,
+				&s.InstructorTime,
+				&s.XCountryTime,
+				&s.NightTime,
+				&s.ActInstrumentTime,
+				&s.SimInstrumentTime,
+				&s.FullFlightSimulatorTime,
+				&s.FlightTrainingDeviceTime,
+				&s.AviationTrainingDeviceTime,
+				&s.TakeoffsDay,
+				&s.TakeoffsNight,
+				&s.LandingsDay,
+				&s.LandingsNight,
+				&s.PrecisionApproaches,
+				&s.NonPrecisionApproaches,
+				&s.HoldingPatterns,
+				&lastFlightDate,
+			)
+			if err != nil {
+				writeError(w, 500, "Database error")
+				return
+			}
+
+			// Round all float fields to 2 decimal places
+			s.TotalHours = math.Round(s.TotalHours*100) / 100
+			s.SELTime = math.Round(s.SELTime*100) / 100
+			s.SESTime = math.Round(s.SESTime*100) / 100
+			s.MELTime = math.Round(s.MELTime*100) / 100
+			s.MESTime = math.Round(s.MESTime*100) / 100
+			s.HelicopterTime = math.Round(s.HelicopterTime*100) / 100
+			s.GyroplaneTime = math.Round(s.GyroplaneTime*100) / 100
+			s.PoweredLiftTime = math.Round(s.PoweredLiftTime*100) / 100
+			s.GliderTime = math.Round(s.GliderTime*100) / 100
+			s.BalloonTime = math.Round(s.BalloonTime*100) / 100
+			s.AirshipTime = math.Round(s.AirshipTime*100) / 100
+			s.SoloTime = math.Round(s.SoloTime*100) / 100
+			s.PICTime = math.Round(s.PICTime*100) / 100
+			s.SICTime = math.Round(s.SICTime*100) / 100
+			s.DualTime = math.Round(s.DualTime*100) / 100
+			s.InstructorTime = math.Round(s.InstructorTime*100) / 100
+			s.XCountryTime = math.Round(s.XCountryTime*100) / 100
+			s.NightTime = math.Round(s.NightTime*100) / 100
+			s.ActInstrumentTime = math.Round(s.ActInstrumentTime*100) / 100
+			s.SimInstrumentTime = math.Round(s.SimInstrumentTime*100) / 100
+			s.FullFlightSimulatorTime = math.Round(s.FullFlightSimulatorTime*100) / 100
+			s.FlightTrainingDeviceTime = math.Round(s.FlightTrainingDeviceTime*100) / 100
+			s.AviationTrainingDeviceTime = math.Round(s.AviationTrainingDeviceTime*100) / 100
+
+			// Calculate days since last flight
+			if lastFlightDate != "" {
+				parsed, parseErr := time.Parse("2006-01-02", lastFlightDate)
+				if parseErr == nil {
+					s.DaysSinceLastFlight = math.Round(now.Sub(parsed).Hours()/24*100) / 100
+				}
+			}
+
+			stats = append(stats, s)
+		}
+		rows.Close()
+
+		if stats == nil {
+			stats = []AircraftTypeStat{}
 		}
 
 		writeJSON(w, 200, stats)

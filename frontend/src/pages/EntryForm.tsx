@@ -25,6 +25,7 @@ import { useState, useEffect, useRef } from "react";
 import { api } from "../api/client";
 import type { Flight } from "../api/types";
 import { loadSettings, loadVisibilityFromApi, saveVisibilityToApi, saveSettings, type ColumnVisibility } from "../api/settings";
+import AttachmentsSection from "../components/AttachmentsSection";
 
 /** All form field values are stored as strings (even numerics) to simplify
  *  two-way binding with <input> elements. They are parsed on submit. */
@@ -166,7 +167,12 @@ interface EntryFormProps {
 }
 
 export default function EntryForm({ editFlightId }: EntryFormProps) {
-  const isEditMode = editFlightId != null;
+  // After creating a flight, we capture its ID so the form transitions into
+  // edit mode — this enables the AttachmentsSection and turns the submit
+  // button into "Update Flight" for subsequent saves.
+  const [createdFlightId, setCreatedFlightId] = useState<number | null>(null);
+  const effectiveFlightId = editFlightId ?? createdFlightId;
+  const isEditMode = effectiveFlightId != null;
 
   const [form, setForm] = useState<FormState>(initialForm());
   const [saving, setSaving] = useState(false);
@@ -174,9 +180,26 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
   const [loadError, setLoadError] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Files staged for upload before the flight has been saved. They are
+  // submitted together with the flight in a single multipart request.
+  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
+  // Toggled to tell AttachmentsSection to clear its staged list after a save.
+  const [clearStaged, setClearStaged] = useState(false);
   // Tracks whether the user has manually typed into the total_time field.
   // When true, the auto-calc effect will skip updating total_time.
   const totalTimeManuallySet = useRef(false);
+
+  // ═══ Previously-used values for autocomplete dropdowns ═══
+  // All flights are fetched once so we can offer suggestions for PIC,
+  // aircraft type/reg, and airports based on what's already in the logbook.
+  const [allFlights, setAllFlights] = useState<Flight[]>([]);
+  useEffect(() => {
+    api.listFlights().then(setAllFlights).catch(() => {});
+  }, []);
+
+  /** Return the unique, sorted, non-empty values of a text field across all flights. */
+  const uniqueValues = (pick: (f: Flight) => string): string[] =>
+    Array.from(new Set(allFlights.map(pick).filter((v) => v.trim() !== ""))).sort();
 
   // Whether launch type is required based on glider/balloon/airship times
   const needsLaunchType =
@@ -381,13 +404,28 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
     };
 
     try {
-      if (isEditMode) {
-        await api.updateFlight(editFlightId, payload);
+      if (isEditMode && effectiveFlightId != null) {
+        if (stagedFiles.length > 0) {
+          await api.updateFlightWithAttachments(effectiveFlightId, payload, stagedFiles);
+          setStagedFiles([]);
+          setClearStaged((v) => !v);
+        } else {
+          await api.updateFlight(effectiveFlightId, payload);
+        }
         setMessage({ type: "success", text: "Flight updated successfully!" });
       } else {
-        await api.createFlight(payload);
+        const created =
+          stagedFiles.length > 0
+            ? await api.createFlightWithAttachments(payload, stagedFiles)
+            : await api.createFlight(payload);
+        setStagedFiles([]);
+        setClearStaged((v) => !v);
         setMessage({ type: "success", text: "Flight logged successfully!" });
-        setForm(initialForm());  // Reset form for another entry
+        // Transition to edit mode so the user can immediately attach files
+        // and make further updates without re-entering data.
+        setCreatedFlightId(created.id);
+        setForm(flightToForm(created));
+        totalTimeManuallySet.current = false;
 
         // If this was a glider/LTA flight with a launch type, auto-enable the
         // Launch Type column visibility so it appears in the Logbook.
@@ -474,6 +512,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               onChange={handleChange}
               placeholder="e.g. Mike Brogan"
               error={errors.pilot_in_command}
+              list="pic-suggestions"
             />
           )}
           {isFieldVisible("aircraftType") && (
@@ -485,6 +524,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               required
               placeholder="e.g. Cessna 172"
               error={errors.aircraft_type}
+              list="aircraft-type-suggestions"
             />
           )}
           {isFieldVisible("aircraftReg") && (
@@ -496,6 +536,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               required
               placeholder="e.g. N2860Q"
               error={errors.aircraft_reg}
+              list="aircraft-reg-suggestions"
             />
           )}
           {isFieldVisible("departure") && (
@@ -507,6 +548,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               required
               placeholder="e.g. KLAW"
               error={errors.departure}
+              list="departure-suggestions"
             />
           )}
           {isFieldVisible("arrival") && (
@@ -518,6 +560,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               required
               placeholder="e.g. KMIB"
               error={errors.arrival}
+              list="arrival-suggestions"
             />
           )}
           {isFieldVisible("departureTime") && (
@@ -706,7 +749,7 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
                 name="launch_type"
                 value={form.launch_type}
                 onChange={handleChange}
-                className={`w-full min-w-0 max-w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors ${
+                className={`w-full min-w-0 max-w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors dark:bg-zinc-800 dark:text-white dark:border-zinc-400 ${
                   errors.launch_type
                     ? "border-red-400 focus:ring-red-500"
                     : needsLaunchType
@@ -965,10 +1008,35 @@ export default function EntryForm({ editFlightId }: EntryFormProps) {
               onChange={handleChange}
               rows={3}
               placeholder="VFR flight, smooth conditions, worst landing ever, etc."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400 resize-none dark:text-white"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400 resize-none dark:bg-zinc-800 dark:text-white dark:placeholder:text-gray-500 dark:border-zinc-400"
             />
           </div>
         )}
+
+        {/* Autocomplete suggestion lists populated from previously logged flights */}
+        <datalist id="pic-suggestions">
+          {uniqueValues((f) => f.pilot_in_command).map((v) => <option key={v} value={v} />)}
+        </datalist>
+        <datalist id="aircraft-type-suggestions">
+          {uniqueValues((f) => f.aircraft_type).map((v) => <option key={v} value={v} />)}
+        </datalist>
+        <datalist id="aircraft-reg-suggestions">
+          {uniqueValues((f) => f.aircraft_reg).map((v) => <option key={v} value={v} />)}
+        </datalist>
+        <datalist id="departure-suggestions">
+          {uniqueValues((f) => f.departure).map((v) => <option key={v} value={v} />)}
+        </datalist>
+        <datalist id="arrival-suggestions">
+          {uniqueValues((f) => f.arrival).map((v) => <option key={v} value={v} />)}
+        </datalist>
+
+        {/* Attachments section — always visible. Files selected before the
+            flight is saved are staged and submitted with the form. */}
+        <AttachmentsSection
+          flightId={effectiveFlightId}
+          onStagedFilesChange={setStagedFiles}
+          clearStaged={clearStaged}
+        />
 
         {/* Success/Error message banner */}
         {message && (
@@ -1044,6 +1112,7 @@ function Field({
   placeholder,
   pattern,
   error,
+  list,
 }: {
   label: string;
   name: string;
@@ -1056,6 +1125,8 @@ function Field({
   placeholder?: string;
   pattern?: string;
   error?: string;
+  /** ID of a <datalist> element to attach for autocomplete suggestions. */
+  list?: string;
 }) {
   return (
     <div className="min-w-0 max-w-full overflow-hidden">
@@ -1073,9 +1144,10 @@ function Field({
         min={min}
         placeholder={placeholder}
         pattern={pattern}
-        className={`w-full min-w-0 max-w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400 ${
+        list={list}
+        className={`w-full min-w-0 max-w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors placeholder:text-gray-400 dark:bg-zinc-800 dark:text-white dark:placeholder:text-gray-500 dark:border-zinc-400 ${
           error
-            ? "border-red-400 focus:ring-red-500"
+            ? "border-red-400 focus:ring-red-500 dark:border-red-500"
             : "border-gray-300 focus:ring-blue-500"
         }`}
       />

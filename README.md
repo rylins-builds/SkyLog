@@ -2,9 +2,13 @@
 
 A privacy-first, self-hosted digital flight logbook for pilots. Track flights, maintain currency, and manage your aviation records — all on your own infrastructure.
 
+> **⚠️ AI-Generated Code** — This app was almost entirely coded with the use of AI. I (the creator) unfortunately don't have the time to learn in-depth coding as I have a full-time job and family. Use at your own risk, but please help make the app better with commits!
+>
+> **⭐ Like SkyLog?** Give it a star to help get more involvement in its development!
+
 ## Features
 
-- **✈️ Dashboard** — At-a-glance stats: total flights, hours, night time, landings, unique aircraft, and 30-day totals.
+- **✈️ Dashboard** — Fully customizable stat-tile dashboard with drag-and-drop reordering, show/hide toggles for 34+ tile types covering all flight time categories (SEL/SES/MEL/MES, helicopter, glider, etc.), instrument approaches, night operations, and 30-day totals. Aircraft Type Totals table with per-type aggregated stats, respecting column visibility settings from Settings. Recent flights table always shown below the tile grid. Layout persists per user.
 - **📖 Logbook** — Full-featured flight table with search, sort, pagination, and configurable column visibility.
 - **✈️ Log / Edit Flights** — Full flight entry form covering all time categories (SEL, SES, MEL, MES, Helicopter, Gyroplane, Powered Lift, Glider, Balloon, Airship), launch types, instrument approaches, holds, night operations, and remarks.
 - **📊 Currency Tracker** — Check currency status across day/night takeoffs/landings, instrument approaches, and holding procedures. Configurable thresholds per category.
@@ -75,8 +79,15 @@ skylog/
 │   │   │   ├── client.ts         # Fetch-based API client
 │   │   │   ├── types.ts          # TypeScript interfaces (Flight, DashboardStats)
 │   │   │   └── settings.ts       # localStorage + API persistence helpers
+│   │   ├── dashboard/
+│   │   │   ├── types.ts           # TileType union, DashboardTileConfig interface
+│   │   │   ├── tileRegistry.ts    # Central registry of all 34+ tile types
+│   │   │   ├── DashboardCustomizer.tsx # Slide-over panel for show/hide tiles
+│   │   │   └── tiles/
+│   │   │       ├── StatTile.tsx        # Single stat card component
+│   │   │       └── RecentFlightsTile.tsx # Recent flights compact table
 │   │   └── pages/
-│   │       ├── Dashboard.tsx      # Stat cards + recent flights
+│   │       ├── Dashboard.tsx      # Customizable tile grid with drag-and-drop reordering
 │   │       ├── Logbook.tsx        # Searchable, sortable flight table
 │   │       ├── EntryForm.tsx      # Create / edit flight form
 │   │       ├── Currency.tsx       # Currency tracker with progress bars
@@ -95,7 +106,7 @@ skylog/
 
 | Page | Route | Description |
 |------|-------|-------------|
-| **Dashboard** | default | 6 stat cards + recent flights table |
+| **Dashboard** | default | Customizable tile grid (34+ stat types), drag-and-drop reordering, show/hide tiles, aircraft type stats table (respects column visibility), recent flights table |
 | **Logbook** | click | Full flight table with search, sort, pagination |
 | **New Flight** | click | Add a flight with all FAR Part 61 time categories |
 | **Currency** | click | Track currency across 6 categories with configurable thresholds |

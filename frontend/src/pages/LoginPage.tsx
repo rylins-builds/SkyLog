@@ -110,7 +110,7 @@ export default function LoginPage({ onAuthenticated }: LoginPageProps) {
         </div>
 
         {/* ── Auth Card (cartoon brutalist style) ── */}
-        <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl border-2 border-black p-8">
+        <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-xl border-2 border-black dark:border-zinc-400 p-8">
           {mode === "login" ? (
             <>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 text-center">
@@ -126,7 +126,7 @@ export default function LoginPage({ onAuthenticated }: LoginPageProps) {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Your username"
-                    className="w-full px-4 py-2.5 border-2 border-black rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:text-white dark:border-zinc-500"
+                    className="w-full px-4 py-2.5 border-2 border-black rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:text-white dark:border-zinc-400"
                     autoFocus
                   />
                 </div>
@@ -139,7 +139,7 @@ export default function LoginPage({ onAuthenticated }: LoginPageProps) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Your password"
-                    className="w-full px-4 py-2.5 border-2 border-black rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:text-white dark:border-zinc-500"
+                    className="w-full px-4 py-2.5 border-2 border-black rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:text-white dark:border-zinc-400"
                   />
                 </div>
 
@@ -194,7 +194,7 @@ export default function LoginPage({ onAuthenticated }: LoginPageProps) {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="e.g. pilot"
-                    className="w-full px-4 py-2.5 border-2 border-black rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:text-white dark:border-zinc-500"
+                    className="w-full px-4 py-2.5 border-2 border-black rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:text-white dark:border-zinc-400"
                     autoFocus
                   />
                 </div>
@@ -207,7 +207,7 @@ export default function LoginPage({ onAuthenticated }: LoginPageProps) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="At least 6 characters"
-                    className="w-full px-4 py-2.5 border-2 border-black rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:text-white dark:border-zinc-500"
+                    className="w-full px-4 py-2.5 border-2 border-black rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:text-white dark:border-zinc-400"
                   />
                 </div>
                 <div>
@@ -219,7 +219,7 @@ export default function LoginPage({ onAuthenticated }: LoginPageProps) {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Repeat password"
-                    className="w-full px-4 py-2.5 border-2 border-black rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:text-white dark:border-zinc-500"
+                    className="w-full px-4 py-2.5 border-2 border-black rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-700 dark:text-white dark:border-zinc-400"
                   />
                 </div>
 

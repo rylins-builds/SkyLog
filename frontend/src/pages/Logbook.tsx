@@ -21,6 +21,7 @@ import { useEffect, useState, useRef } from "react";
 import { api } from "../api/client";
 import type { Flight } from "../api/types";
 import { loadSettings, saveSettings, loadVisibilityFromApi, type ColumnVisibility } from "../api/settings";
+import { PaperclipIcon } from "../components/AttachmentsSection";
 
 // ── Domain-specific types ────────────────────────────────────────────────────
 
@@ -35,7 +36,8 @@ type SortField =
   | "takeoffs_day" | "takeoffs_night"
   | "landings_day" | "landings_night"
   | "precision_approaches" | "non_precision_approaches"
-  | "holding_patterns";
+  | "holding_patterns"
+  | "attachments";
 
 /** Ascending or descending sort direction. */
 type SortDir = "asc" | "desc";
@@ -54,6 +56,7 @@ type FilterKey =
   | "landings_day" | "landings_night"
   | "precision_approaches" | "non_precision_approaches"
   | "holding_patterns"
+  | "has_attachments"
   | "";
 
 /** Describes a single table column: identity key, human-readable label, and rendering function. */
@@ -138,10 +141,26 @@ export default function Logbook() {
 
   // ── Data fetching ─────────────────────────────────────────────────────────
 
+  /** Map of flight ID → attachment count (only flights with ≥1 attachment). */
+  const [attachmentCounts, setAttachmentCounts] = useState<Map<number, number>>(new Map());
+
   /** Fetch all flights on mount. */
   useEffect(() => {
     api.listFlights().then(setFlights).catch((e) => setError(e.message));
   }, []);
+
+  /** Fetch attachment counts for all flights in parallel (fire-and-forget). */
+  useEffect(() => {
+    if (flights.length === 0) return;
+    const counts = new Map<number, number>();
+    Promise.all(
+      flights.map((f) =>
+        api.listAttachments(f.id).then((atts) => {
+          if (atts.length > 0) counts.set(f.id, atts.length);
+        }).catch(() => {}) // silently ignore per-flight failures
+      )
+    ).then(() => setAttachmentCounts(counts));
+  }, [flights]);
 
   /**
    * Fetch column visibility from the backend API on mount.
@@ -229,14 +248,15 @@ export default function Logbook() {
   if (activeFilter === "precision_approaches") filtered = filtered.filter((f) => f.precision_approaches > 0);
   if (activeFilter === "non_precision_approaches") filtered = filtered.filter((f) => f.non_precision_approaches > 0);
   if (activeFilter === "holding_patterns") filtered = filtered.filter((f) => f.holding_patterns > 0);
+  if (activeFilter === "has_attachments") filtered = filtered.filter((f) => (attachmentCounts.get(f.id) ?? 0) > 0);
 
   // ── Sorting ───────────────────────────────────────────────────────────────
 
   /** Sort the filtered list in-place by the selected field and direction. */
   filtered.sort((a, b) => {
-    // Use safe defaults (empty string or 0) for missing values
-    let aVal: string | number = a[sortField] ?? "";
-    let bVal: string | number = b[sortField] ?? "";
+    // "attachments" is not a Flight field — use the fetched attachment counts instead
+    let aVal: string | number = sortField === "attachments" ? (attachmentCounts.get(a.id) ?? 0) : a[sortField] ?? "";
+    let bVal: string | number = sortField === "attachments" ? (attachmentCounts.get(b.id) ?? 0) : b[sortField] ?? "";
     // String comparisons are case-insensitive
     if (typeof aVal === "string" && typeof bVal === "string") {
       aVal = aVal.toLowerCase();
@@ -309,6 +329,7 @@ export default function Logbook() {
     { label: "Precision Approaches", field: "precision_approaches" },
     { label: "Non-Precision Approaches", field: "non_precision_approaches" },
     { label: "Holding Patterns", field: "holding_patterns" },
+    { label: "Attachments", field: "attachments" },
   ];
 
   /** Every quick-filter option. */
@@ -337,6 +358,7 @@ export default function Logbook() {
     { label: "Precision Approaches", key: "precision_approaches" },
     { label: "Non-Precision Approaches", key: "non_precision_approaches" },
     { label: "Holding Patterns", key: "holding_patterns" },
+    { label: "Has Attachments", key: "has_attachments" },
   ];
 
   /**
@@ -384,12 +406,14 @@ export default function Logbook() {
 
   /** Sort options filtered to only include columns the user hasn't hidden. */
   const availableSortOptions = sortOptions.filter(
-    (opt) => columnVisibility[sortToColumnKey[opt.field]]
+    // "attachments" has no corresponding column, so it is always available
+    (opt) => opt.field === "attachments" || columnVisibility[sortToColumnKey[opt.field]]
   );
 
   /** Filter options filtered the same way. */
   const availableFilterOptions = filterOptions.filter(
-    (opt) => columnVisibility[sortToColumnKey[opt.key]]
+    // "has_attachments" has no corresponding column, so it is always available
+    (opt) => opt.key === "has_attachments" || columnVisibility[sortToColumnKey[opt.key]]
   );
 
   const activeSortLabel = sortOptions.find((o) => o.field === sortField)?.label ?? "Date";
@@ -405,7 +429,18 @@ export default function Logbook() {
    * are never hidden by the column-visibility settings.
    */
   const allColumns: ColumnDef[] = [
-    { key: "date", label: "Date", alwaysVisible: true, render: (f) => f.date },
+    { key: "date", label: "Date", alwaysVisible: true, render: (f) => (
+      <div className="flex items-center justify-center gap-2.5">
+        {/* Attachment indicator — only shown when the flight has attachments */}
+        {(attachmentCounts.get(f.id) ?? 0) > 0 && (
+          <span className="inline-flex items-center gap-0.5 text-gray-400 dark:text-gray-500" title={`${attachmentCounts.get(f.id)} attachment${attachmentCounts.get(f.id) !== 1 ? "s" : ""}`}>
+            <PaperclipIcon className="w-3.5 h-3.5" />
+            <span className="text-xs">{attachmentCounts.get(f.id)}</span>
+          </span>
+        )}
+        <span>{f.date}</span>
+      </div>
+    )},
     { key: "pilotInCommand", label: "Pilot in Command", render: (f) => f.pilot_in_command },
     { key: "aircraftType", label: "Aircraft Type", render: (f) => f.aircraft_type },
     { key: "aircraftReg", label: "Aircraft Registration", render: (f) => f.aircraft_reg },
@@ -535,7 +570,7 @@ export default function Logbook() {
               className={`inline-flex items-center gap-1.5 px-1.5 sm:px-3 py-2 rounded-lg border text-sm font-medium leading-tight transition-colors ${
                 showSortMenu
                   ? "bg-blue-50 border-blue-300 text-blue-700 dark:bg-zinc-900 dark:border-blue-700 dark:text-blue-300"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-zinc-900 dark:border-zinc-600 dark:text-white dark:hover:bg-zinc-800"
+                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-zinc-900 dark:border-zinc-400 dark:text-white dark:hover:bg-zinc-800"
               }`}
             >
               {/* Sort icon */}
@@ -549,7 +584,7 @@ export default function Logbook() {
               </svg>
             </button>
             {showSortMenu && (
-              <div className="absolute left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 dark:bg-zinc-800 dark:border-zinc-600">
+              <div className="absolute left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 dark:bg-zinc-800 dark:border-zinc-400">
                 <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">
                   Sort by
                 </div>
@@ -622,7 +657,7 @@ export default function Logbook() {
                   ? "bg-amber-50 border-amber-300 text-amber-700"
                   : showFilterMenu
                   ? "bg-blue-50 border-blue-300 text-blue-700 dark:bg-zinc-900 dark:text-blue-300 dark:border-blue-700"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:text-white dark:bg-zinc-900 dark:border-zinc-600 dark:hover:bg-zinc-800"
+                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:text-white dark:bg-zinc-900 dark:border-zinc-400 dark:hover:bg-zinc-800"
               }`}
             >
               {/* Funnel icon */}
@@ -648,7 +683,7 @@ export default function Logbook() {
               )}
             </button>
             {showFilterMenu && (
-              <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 dark:bg-zinc-800 dark:border-zinc-600">
+              <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 dark:bg-zinc-800 dark:border-zinc-400">
                 <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Filter by</div>
                 <div className="max-h-64 overflow-y-auto">
                   {availableFilterOptions.map((opt) => (
@@ -702,14 +737,14 @@ export default function Logbook() {
               placeholder="Search flights..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-              className="pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm leading-tight placeholder:text-xs sm:placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-36 sm:w-56"
+              className="pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm leading-tight placeholder:text-xs sm:placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-36 sm:w-56 dark:bg-zinc-800 dark:text-white dark:placeholder:text-gray-500 dark:border-zinc-400"
             />
           </div>
         </div>
       </div>
 
       {/* ── Table ──────────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden dark:bg-zinc-800 dark:border-zinc-600">
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden dark:bg-zinc-800 dark:border-zinc-400">
         {filtered.length === 0 ? (
           /* Empty result state: search/filter narrowed results to zero */
           <div className="text-center py-12 text-gray-500 dark:text-white">
@@ -728,7 +763,7 @@ export default function Logbook() {
               <table className="w-full text-center">
                 <thead>
                   {/* Sticky header so column labels stay visible while scrolling vertically */}
-                  <tr className="border-b-2 border-gray-200 bg-gray-50 dark:bg-zinc-900 dark:border-zinc-600 sticky top-0 z-10">
+                  <tr className="border-b-2 border-gray-200 bg-gray-50 dark:bg-zinc-900 dark:border-zinc-400 sticky top-0 z-10">
                     {visibleColumns.map((col) => (
                       <th key={col.key} className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-600 dark:text-white">
                         {col.label}
@@ -761,14 +796,14 @@ export default function Logbook() {
             </div>
 
             {/* ── Pagination bar ───────────────────────────────────────────── */}
-            <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 border-t border-gray-200 text-xs sm:text-sm text-gray-600 dark:bg-zinc-900 dark:border-zinc-600 dark:text-gray-300">
+            <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 border-t border-gray-200 text-xs sm:text-sm text-gray-600 dark:bg-zinc-900 dark:border-zinc-400 dark:text-gray-300">
               {/* Page-size selector */}
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className="text-gray-500 dark:text-gray-400">Rows:</span>
                 <select
                   value={pageSize}
                   onChange={(e) => persistPageSize(Number(e.target.value))}
-                  className="px-1.5 sm:px-2 py-1 rounded border border-gray-300 bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:border-zinc-600 dark:text-white"
+                  className="px-1.5 sm:px-2 py-1 rounded border border-gray-300 bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:border-zinc-400 dark:text-white"
                 >
                   {PAGE_SIZE_OPTIONS.map((n) => (
                     <option key={n} value={n}>

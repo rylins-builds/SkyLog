@@ -17,7 +17,7 @@
  * @module api/client
  */
 
-import type { Flight, FlightCreate, DashboardStats } from "./types";
+import type { Flight, FlightCreate, DashboardStats, Attachment, AircraftTypeStat } from "./types";
 
 /** Base URL for all API requests. The Vite dev server proxies /api
  *  to the backend (configured in vite.config.ts). In production,
@@ -47,9 +47,23 @@ function getAuthHeaders(): Record<string, string> {
  * @returns The parsed JSON response, or undefined for 204 No Content.
  */
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const defaultHeaders = getAuthHeaders();
+  const extraHeaders = (options?.headers ?? {}) as Record<string, string>;
+  // Allow the caller to explicitly remove a default header by setting it to
+  // an empty string (used for multipart FormData uploads where the browser
+  // must set Content-Type automatically).
+  const headers: Record<string, string> = { ...defaultHeaders };
+  for (const [key, value] of Object.entries(extraHeaders)) {
+    if (value === "") {
+      delete headers[key];
+    } else {
+      headers[key] = value;
+    }
+  }
+
   const response = await fetch(`${API_BASE}${url}`, {
-    headers: { ...getAuthHeaders(), ...(options?.headers as Record<string, string> | undefined) },
     ...options,
+    headers,
   });
   if (!response.ok) {
     const error = await response.text();
@@ -92,6 +106,41 @@ export const api = {
       body: JSON.stringify(flight),
     }),
 
+  /**
+   * Create a flight and upload attachment files in the same request.
+   * The flight payload is sent as a JSON string in the "flight" multipart
+   * field; each file is appended under the "files" key.
+   */
+  createFlightWithAttachments: (flight: FlightCreate, files: File[]) => {
+    const formData = new FormData();
+    formData.append("flight", JSON.stringify(flight));
+    for (const file of files) {
+      formData.append("files", file);
+    }
+    return request<Flight>("/flights", {
+      method: "POST",
+      body: formData,
+      headers: { "Content-Type": "" }, // browser sets multipart Content-Type with boundary
+    });
+  },
+
+  /**
+   * Update a flight and upload attachment files in the same request.
+   * Mirrors createFlightWithAttachments but targets the existing flight.
+   */
+  updateFlightWithAttachments: (id: number, flight: Partial<FlightCreate>, files: File[]) => {
+    const formData = new FormData();
+    formData.append("flight", JSON.stringify(flight));
+    for (const file of files) {
+      formData.append("files", file);
+    }
+    return request<Flight>(`/flights/${id}`, {
+      method: "PUT",
+      body: formData,
+      headers: { "Content-Type": "" }, // browser sets multipart Content-Type with boundary
+    });
+  },
+
   /** Delete a flight entry by ID. Returns undefined on success. */
   deleteFlight: (id: number) =>
     request<void>(`/flights/${id}`, { method: "DELETE" }),
@@ -105,10 +154,62 @@ export const api = {
   /** Get aggregated dashboard statistics for the current user. */
   getDashboardStats: () => request<DashboardStats>("/dashboard/stats"),
 
+  /** Get per-aircraft-type aggregated statistics. */
+  getAircraftTypeStats: () => request<AircraftTypeStat[]>("/dashboard/aircraft-type-stats"),
+
   // ═══ Health ═══
 
   /** Simple health-check ping. */
   healthCheck: () => request<{ status: string }>("/health"),
+
+  // ═══ Attachments ═══
+
+  /** List all attachments for a flight. */
+  listAttachments: (flightId: number) =>
+    request<Attachment[]>(`/flights/${flightId}/attachments`),
+
+  /**
+   * Upload a file attachment to a flight.
+   * Uses FormData (multipart) — Content-Type is intentionally omitted so the
+   * browser sets it automatically with the correct boundary parameter.
+   */
+  uploadAttachment: (flightId: number, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request<Attachment>(`/flights/${flightId}/attachments`, {
+      method: "POST",
+      body: formData,
+      headers: { "Content-Type": "" }, // browser sets multipart Content-Type with boundary
+    });
+  },
+
+  /**
+   * Download an attachment by ID. Triggers a browser download via a
+   * temporary anchor element (the endpoint returns Content-Disposition: attachment).
+   */
+  downloadAttachment: (attachmentId: number, filename: string) => {
+    const token = localStorage.getItem("skylog_token");
+    const url = `${API_BASE}/attachments/${attachmentId}/download`;
+    // Fetch with auth header, then create a blob URL for the download.
+    return fetch(url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }).then(async (res) => {
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    });
+  },
+
+  /** Delete an attachment by ID. Returns undefined on success. */
+  deleteAttachment: (attachmentId: number) =>
+    request<void>(`/attachments/${attachmentId}`, { method: "DELETE" }),
 
   // ═══ User Settings ═══
 
@@ -207,6 +308,19 @@ export const api = {
   /** Reset all user settings (visibility and currency thresholds) to defaults. */
   resetSettings: () =>
     request<{ status: string }>("/settings/reset", { method: "DELETE" }),
+
+  // ═══ Dashboard Layout ═══
+
+  /** Get the current user's dashboard tile layout. */
+  getDashboardLayout: () =>
+    request<{ layout: { type: string; width: number; order: number }[] }>("/settings/dashboard-layout"),
+
+  /** Save the current user's dashboard tile layout. */
+  saveDashboardLayout: (layout: { type: string; width: number; order: number }[]) =>
+    request<{ status: string }>("/settings/dashboard-layout", {
+      method: "PUT",
+      body: JSON.stringify({ layout }),
+    }),
 
   // ═══ FAA 8710 Mappings ═══
 
