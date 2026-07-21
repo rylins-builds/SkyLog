@@ -11,13 +11,21 @@
  *
  * The bottom row shows combined totals across all aircraft types.
  *
+ * Columns can be individually hidden by toggling the corresponding
+ * category off in Settings → Column Visibility.
+ *
  * @module dashboard/tiles/AircraftTypeStatsTile
  */
 
 import type { AircraftTypeStat } from "../../api/types";
+import type { ColumnVisibility } from "../../api/settings";
 
 interface AircraftTypeStatsTileProps {
   stats: AircraftTypeStat[];
+  /** Optional: column visibility settings from user preferences.
+   *  When a column is set to false, it is hidden from the table.
+   *  If omitted, all columns are shown (backwards-compatible). */
+  columnVisibility?: ColumnVisibility;
 }
 
 function num(n: number) {
@@ -28,7 +36,61 @@ function nInt(n: number) {
   return n;
 }
 
-export function AircraftTypeStatsTile({ stats }: AircraftTypeStatsTileProps) {
+/** Subset of AircraftTypeStat keys that correspond to numeric time/count
+ *  columns shared between AircraftTypeStat records and the totals row. */
+type NumericStatKey = Exclude<keyof AircraftTypeStat, "aircraft_type" | "flight_count" | "days_since_last_flight">;
+
+/**
+ * Column definition: maps a ColumnVisibility key to the column's
+ * header label and the property name on AircraftTypeStat / totals.
+ *
+ * The first three columns (aircraft type, total hours, flights, days since)
+ * are always visible and not driven by column visibility settings.
+ */
+interface VisibleColumn {
+  /** Key in ColumnVisibility that controls this column's visibility. */
+  visibilityKey: keyof ColumnVisibility;
+  /** Header text displayed in the <th>. */
+  header: string;
+  /** Property name on AircraftTypeStat / totals object. */
+  dataKey: NumericStatKey;
+  /** Whether to format as integer (true) or decimal (false). */
+  integer: boolean;
+}
+
+const VISIBLE_COLUMNS: VisibleColumn[] = [
+  { visibilityKey: "selTime",                   header: "SEL",            dataKey: "sel_time",                     integer: false },
+  { visibilityKey: "sesTime",                   header: "SES",            dataKey: "ses_time",                     integer: false },
+  { visibilityKey: "melTime",                   header: "MEL",            dataKey: "mel_time",                     integer: false },
+  { visibilityKey: "mesTime",                   header: "MES",            dataKey: "mes_time",                     integer: false },
+  { visibilityKey: "helicopterTime",            header: "Helicopter",     dataKey: "helicopter_time",              integer: false },
+  { visibilityKey: "gyroplaneTime",             header: "Gyroplane",      dataKey: "gyroplane_time",               integer: false },
+  { visibilityKey: "poweredLiftTime",           header: "Powered Lift",   dataKey: "powered_lift_time",            integer: false },
+  { visibilityKey: "gliderTime",                header: "Glider",         dataKey: "glider_time",                  integer: false },
+  { visibilityKey: "balloonTime",               header: "Balloon",        dataKey: "balloon_time",                 integer: false },
+  { visibilityKey: "airshipTime",               header: "Airship",        dataKey: "airship_time",                 integer: false },
+  { visibilityKey: "soloTime",                  header: "Solo",           dataKey: "solo_time",                    integer: false },
+  { visibilityKey: "picTime",                   header: "PIC",            dataKey: "pic_time",                     integer: false },
+  { visibilityKey: "sicTime",                   header: "SIC",            dataKey: "sic_time",                     integer: false },
+  { visibilityKey: "dualTime",                  header: "Dual",           dataKey: "dual_time",                    integer: false },
+  { visibilityKey: "instructorTime",            header: "Instructor",     dataKey: "instructor_time",              integer: false },
+  { visibilityKey: "xcountryTime",              header: "X-Country",      dataKey: "xcountry_time",                integer: false },
+  { visibilityKey: "nightTime",                 header: "Night",          dataKey: "night_time",                   integer: false },
+  { visibilityKey: "actInstrumentTime",         header: "Act. Instr",     dataKey: "act_instrument_time",          integer: false },
+  { visibilityKey: "simInstrumentTime",         header: "Sim. Instr",     dataKey: "sim_instrument_time",          integer: false },
+  { visibilityKey: "fullFlightSimulatorTime",   header: "Full Sim",       dataKey: "full_flight_simulator_time",   integer: false },
+  { visibilityKey: "flightTrainingDeviceTime",  header: "FTD",            dataKey: "flight_training_device_time",  integer: false },
+  { visibilityKey: "aviationTrainingDeviceTime",header: "ATD",            dataKey: "aviation_training_device_time",integer: false },
+  { visibilityKey: "takeoffsDay",               header: "Day TO",         dataKey: "takeoffs_day",                 integer: true  },
+  { visibilityKey: "takeoffsNight",             header: "Night TO",       dataKey: "takeoffs_night",               integer: true  },
+  { visibilityKey: "landingsDay",               header: "Day Ldg",        dataKey: "landings_day",                 integer: true  },
+  { visibilityKey: "landingsNight",             header: "Night Ldg",      dataKey: "landings_night",               integer: true  },
+  { visibilityKey: "precisionApproaches",       header: "Precision",      dataKey: "precision_approaches",         integer: true  },
+  { visibilityKey: "nonPrecisionApproaches",    header: "Non-Prec.",      dataKey: "non_precision_approaches",     integer: true  },
+  { visibilityKey: "holdingPatterns",           header: "Holding",        dataKey: "holding_patterns",             integer: true  },
+];
+
+export function AircraftTypeStatsTile({ stats, columnVisibility }: AircraftTypeStatsTileProps) {
   if (stats.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 text-center dark:bg-zinc-900 dark:border-zinc-400 animate-slide-up">
@@ -36,6 +98,11 @@ export function AircraftTypeStatsTile({ stats }: AircraftTypeStatsTileProps) {
       </div>
     );
   }
+
+  // Determine which columns are visible
+  const activeColumns = columnVisibility
+    ? VISIBLE_COLUMNS.filter((col) => columnVisibility[col.visibilityKey] !== false)
+    : VISIBLE_COLUMNS;
 
   // Compute totals row
   const totals = stats.reduce(
@@ -130,35 +197,14 @@ export function AircraftTypeStatsTile({ stats }: AircraftTypeStatsTileProps) {
               <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">
                 Days Since
               </th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">SEL</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">SES</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">MEL</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">MES</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Helicopter</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Gyroplane</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Powered Lift</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Glider</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Balloon</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Airship</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Solo</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">PIC</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">SIC</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Dual</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Instructor</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">X-Country</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Night</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Act. Instr</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Sim. Instr</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Full Sim</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">FTD</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">ATD</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Day TO</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Night TO</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Day Ldg</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Night Ldg</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Precision</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Non-Prec.</th>
-              <th className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap">Holding</th>
+              {activeColumns.map((col) => (
+                <th
+                  key={col.visibilityKey}
+                  className="px-2 sm:px-3 py-2 font-semibold text-gray-600 dark:text-white whitespace-nowrap"
+                >
+                  {col.header}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -175,35 +221,16 @@ export function AircraftTypeStatsTile({ stats }: AircraftTypeStatsTileProps) {
                 <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">
                   {s.days_since_last_flight > 0 ? num(s.days_since_last_flight) : "—"}
                 </td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.sel_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.ses_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.mel_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.mes_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.helicopter_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.gyroplane_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.powered_lift_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.glider_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.balloon_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.airship_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.solo_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.pic_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.sic_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.dual_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.instructor_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.xcountry_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.night_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.act_instrument_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.sim_instrument_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.full_flight_simulator_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.flight_training_device_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(s.aviation_training_device_time)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{nInt(s.takeoffs_day)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{nInt(s.takeoffs_night)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{nInt(s.landings_day)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{nInt(s.landings_night)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{nInt(s.precision_approaches)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{nInt(s.non_precision_approaches)}</td>
-                <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{nInt(s.holding_patterns)}</td>
+                {activeColumns.map((col) => (
+                  <td
+                    key={col.visibilityKey}
+                    className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap"
+                  >
+                    {col.integer
+                      ? nInt(s[col.dataKey] as number)
+                      : num(s[col.dataKey] as number)}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
@@ -214,35 +241,16 @@ export function AircraftTypeStatsTile({ stats }: AircraftTypeStatsTileProps) {
               <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.total_hours)}</td>
               <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{totals.flight_count}</td>
               <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">—</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.sel_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.ses_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.mel_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.mes_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.helicopter_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.gyroplane_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.powered_lift_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.glider_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.balloon_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.airship_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.solo_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.pic_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.sic_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.dual_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.instructor_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.xcountry_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.night_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.act_instrument_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.sim_instrument_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.full_flight_simulator_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.flight_training_device_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{num(totals.aviation_training_device_time)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{nInt(totals.takeoffs_day)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{nInt(totals.takeoffs_night)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{nInt(totals.landings_day)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{nInt(totals.landings_night)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{nInt(totals.precision_approaches)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{nInt(totals.non_precision_approaches)}</td>
-              <td className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">{nInt(totals.holding_patterns)}</td>
+              {activeColumns.map((col) => (
+                <td
+                  key={col.visibilityKey}
+                  className="px-2 sm:px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap"
+                >
+                  {col.integer
+                    ? nInt(totals[col.dataKey] as number)
+                    : num(totals[col.dataKey] as number)}
+                </td>
+              ))}
             </tr>
           </tfoot>
         </table>

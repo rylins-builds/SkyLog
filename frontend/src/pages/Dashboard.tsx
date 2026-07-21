@@ -129,6 +129,9 @@ export default function Dashboard() {
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [isCustomizing, setIsCustomizing] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(
+    loadSettings().columnVisibility,
+  );
 
   // Ref to avoid re-entrant saves
   const isSyncingRef = useRef(false);
@@ -172,9 +175,14 @@ export default function Dashboard() {
 
   // ── Listen for settings changes and sync layout ──
   useEffect(() => {
-    const handler = () => {
+    const handler = (e: CustomEvent<{ columnVisibility?: ColumnVisibility }>) => {
       if (isSyncingRef.current) return;
       isSyncingRef.current = true;
+
+      // Update column visibility state so the aircraft type stats tile reacts
+      if (e.detail?.columnVisibility) {
+        setColumnVisibility(e.detail.columnVisibility);
+      }
 
       setLayout((prev) => {
         const hiddenSet = getHiddenTileTypes();
@@ -191,8 +199,8 @@ export default function Dashboard() {
       isSyncingRef.current = false;
     };
 
-    window.addEventListener("settingsUpdated", handler);
-    return () => window.removeEventListener("settingsUpdated", handler);
+    window.addEventListener("settingsUpdated", handler as EventListener);
+    return () => window.removeEventListener("settingsUpdated", handler as EventListener);
   }, []);
 
   // ── Save layout to API ──
@@ -483,7 +491,10 @@ export default function Dashboard() {
           ═══════════════════════════════════════════ */}
       {aircraftTypeStats.length > 0 && (
         <div className="mt-6 sm:mt-8">
-          <AircraftTypeStatsTile stats={aircraftTypeStats} />
+          <AircraftTypeStatsTile
+            stats={aircraftTypeStats}
+            columnVisibility={columnVisibility}
+          />
         </div>
       )}
 
