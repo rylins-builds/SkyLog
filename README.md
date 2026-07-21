@@ -55,10 +55,6 @@ docker compose up -d
 
 Then open **http://localhost:3000** in your browser.
 
-> **Note:** The GHCR package is private by default. To pull the image, either:
-> - **Make it public** — go to https://github.com/rmillspa/SkyLog/pkgs/container/skylog → Package Settings → Change visibility → Public, *or*
-> - **Authenticate** — `echo "YOUR_GITHUB_PAT" | docker login ghcr.io -u YOUR_USERNAME --password-stdin` (PAT needs `read:packages` scope)
-
 To build from source instead, replace `image: ghcr.io/rmillspa/skylog:latest` with `build: .` in the compose file.
 
 On first start the app auto-creates an admin user and logs you in directly (single-user mode). To enable password-based login, visit Settings → Multi-User Mode.
