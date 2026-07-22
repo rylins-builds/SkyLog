@@ -505,8 +505,10 @@ export default function FAA8710() {
   const [saveStatus, setSaveStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [expandedSection, setExpandedSection] = useState<string | null>("mappings");
 
+  const [loaded, setLoaded] = useState(false);
+
   useEffect(() => {
-    api.listFlights().then(setFlights).catch((e) => setError(e.message));
+    api.listFlights().then((data) => { setFlights(data); setLoaded(true); }).catch((e) => { setError(e.message); setLoaded(true); });
   }, []);
 
   useEffect(() => {
@@ -547,6 +549,37 @@ export default function FAA8710() {
       return next;
     });
   };
+
+  // ── Loading state ──
+  if (!loaded) {
+    return (
+      <div className="p-8 animate-fade-in max-w-7xl mx-auto">
+        <div className="skeleton h-9 w-72 rounded-lg mb-6" />
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden dark:bg-zinc-800 dark:border-zinc-400">
+          <div className="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200 dark:bg-zinc-900 dark:border-zinc-400">
+            <div className="skeleton h-5 w-48 rounded" />
+          </div>
+          <div className="p-4 sm:p-6 space-y-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex gap-4">
+                <div className="skeleton h-5 w-32 rounded" />
+                <div className="skeleton h-5 w-16 rounded" />
+                <div className="skeleton h-5 w-20 rounded" />
+                <div className="skeleton h-5 w-12 rounded" />
+                <div className="skeleton h-5 w-12 rounded" />
+                <div className="skeleton h-5 w-12 rounded" />
+                <div className="skeleton h-5 w-20 rounded" />
+                <div className="skeleton h-5 w-16 rounded" />
+                <div className="skeleton h-5 w-12 rounded" />
+                <div className="skeleton h-5 w-12 rounded" />
+                <div className="skeleton h-5 w-16 rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── Error state ──
   if (error) {

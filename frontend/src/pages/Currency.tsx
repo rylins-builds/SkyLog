@@ -198,13 +198,14 @@ export default function Currency() {
   const [editMin, setEditMin] = useState<number>(0);
   const [editDays, setEditDays] = useState<number>(0);
   const [error, setError] = useState("");
+  const [flightsLoaded, setFlightsLoaded] = useState(false);
 
   // Load flights
   useEffect(() => {
     api
       .listFlights()
-      .then(setFlights)
-      .catch((e) => setError(e.message));
+      .then((data) => { setFlights(data); setFlightsLoaded(true); })
+      .catch((e) => { setError(e.message); setFlightsLoaded(true); });
   }, []);
 
   // Load thresholds from API
@@ -518,7 +519,7 @@ export default function Currency() {
   }
 
   // ── Loading state ──
-  if (!thresholdsLoaded) {
+  if (!thresholdsLoaded || !flightsLoaded) {
     return (
       <div className="p-8 text-center animate-fade-in">
         <div className="text-5xl mb-4 animate-pulse">✈️</div>
