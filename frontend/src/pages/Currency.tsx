@@ -521,9 +521,39 @@ export default function Currency() {
   // ── Loading state ──
   if (!thresholdsLoaded || !flightsLoaded) {
     return (
-      <div className="p-8 text-center animate-fade-in">
-        <div className="text-5xl mb-4 animate-pulse">✈️</div>
-        <p className="text-gray-500 dark:text-gray-400">Loading currency data...</p>
+      <div className="p-4 sm:p-8 max-w-6xl mx-auto animate-fade-in">
+        {/* Title — always visible */}
+        <div className="flex items-center justify-between mb-4 sm:mb-8">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Currency</h1>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">Track your flight currency requirements across all categories</p>
+          </div>
+        </div>
+        {/* IFR card skeleton */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl shadow-md border border-blue-100 dark:border-blue-900/50 p-6 mb-8">
+          <div className="skeleton h-6 w-40 rounded mb-4" />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-white/70 dark:bg-zinc-900/70 rounded-lg p-3">
+                <div className="skeleton h-3 w-20 rounded mb-2" />
+                <div className="skeleton h-6 w-12 rounded mb-2" />
+                <div className="skeleton h-2 w-full rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Category cards skeleton */}
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">All Categories</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-white dark:bg-zinc-900 rounded-xl shadow-md border border-gray-100 dark:border-zinc-400 p-5">
+              <div className="skeleton h-5 w-32 rounded mb-3" />
+              <div className="skeleton h-3 w-20 rounded mb-3" />
+              <div className="skeleton h-2 w-full rounded mb-1" />
+              <div className="skeleton h-2 w-3/4 rounded" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
