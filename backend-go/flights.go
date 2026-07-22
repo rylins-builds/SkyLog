@@ -84,13 +84,14 @@ func listFlights(db *sql.DB) http.HandlerFunc {
 		}
 
 		rows, err := db.QueryContext(r.Context(),
-			"SELECT * FROM flights WHERE user_id = ? ORDER BY date DESC, id DESC", userID)
+			`SELECT f.*, COALESCE((SELECT COUNT(*) FROM attachments a WHERE a.flight_id = f.id), 0) AS attachment_count
+			 FROM flights f WHERE f.user_id = ? ORDER BY f.date DESC, f.id DESC`, userID)
 		if err != nil {
 			writeError(w, 500, "Database error")
 			return
 		}
 
-		flights, err := scanFlights(rows)
+		flights, err := scanFlights(rows, true)
 		if err != nil {
 			writeError(w, 500, "Database error")
 			return

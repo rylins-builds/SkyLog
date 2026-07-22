@@ -7,6 +7,7 @@ import "time"
 type Flight struct {
 	ID                    int     `json:"id"`
 	UserID                int     `json:"-"`
+	AttachmentCount       int     `json:"attachment_count"`
 	Date                  string  `json:"date"`
 	PilotInCommand        string  `json:"pilot_in_command"`
 	AircraftType          string  `json:"aircraft_type"`
