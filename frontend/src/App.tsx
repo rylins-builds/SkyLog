@@ -52,7 +52,31 @@ export default function App() {
   const [authState, setAuthState] = useState<"loading" | "login" | "authenticated">("loading");
 
   // ═══════════════════════════════════════════════
-  // 1. Initial Auth Check (on mount)
+  // 1. Complete authentication — loads default page before showing UI
+  // ═══════════════════════════════════════════════
+
+  /**
+   * Finalise authentication by loading the user's default page from the
+   * backend and then setting authState to "authenticated".  Because both
+   * setCurrentPage and setAuthState happen in the same synchronous batch
+   * after the await, React renders the authenticated UI once with the
+   * correct page — there is no flash of the dashboard first.
+   */
+  const completeAuth = async () => {
+    try {
+      const { page } = await api.getDefaultPage();
+      const validPages: Page[] = ["dashboard", "logbook", "currency", "FAA8710", "settings", "add"];
+      if (validPages.includes(page as Page)) {
+        setCurrentPage(page as Page);
+      }
+    } catch {
+      // Keep dashboard as default
+    }
+    setAuthState("authenticated");
+  };
+
+  // ═══════════════════════════════════════════════
+  // 2. Initial Auth Check (on mount)
   // ═══════════════════════════════════════════════
 
   useEffect(() => {
@@ -67,7 +91,7 @@ export default function App() {
             // Check if the token is still valid by making a lightweight request
             try {
               await api.getCurrentUser();
-              setAuthState("authenticated");
+              await completeAuth();
               return;
             } catch {
               // Token expired — clear it and show login
@@ -79,7 +103,7 @@ export default function App() {
           // Multi-user mode disabled — auto-login as admin
           const res = await api.autoLogin();
           localStorage.setItem("skylog_token", res.token);
-          setAuthState("authenticated");
+          await completeAuth();
         }
       } catch {
         // Backend unreachable — still try auto-login as fallback
@@ -87,7 +111,7 @@ export default function App() {
         try {
           const res = await api.autoLogin();
           localStorage.setItem("skylog_token", res.token);
-          setAuthState("authenticated");
+          await completeAuth();
         } catch {
           setAuthState("login");
         }
@@ -96,7 +120,7 @@ export default function App() {
   }, []);
 
   // ═══════════════════════════════════════════════
-  // 2. Load visibility settings after auth
+  // 3. Load visibility settings after auth
   // ═══════════════════════════════════════════════
 
   useEffect(() => {
@@ -107,7 +131,7 @@ export default function App() {
   }, [authState]);
 
   // ═══════════════════════════════════════════════
-  // 3. Listen for settings updates
+  // 4. Listen for settings updates
   // ═══════════════════════════════════════════════
 
   useEffect(() => {
@@ -119,7 +143,7 @@ export default function App() {
   }, []);
 
   // ═══════════════════════════════════════════════
-  // 4. Listen for child-component navigation events
+  // 5. Listen for child-component navigation events
   // ═══════════════════════════════════════════════
 
   useEffect(() => {
@@ -150,7 +174,7 @@ export default function App() {
   }, []);
 
   // ═══════════════════════════════════════════════
-  // 5. Listen for edit-flight events from Logbook
+  // 6. Listen for edit-flight events from Logbook
   // ═══════════════════════════════════════════════
 
   useEffect(() => {
@@ -164,7 +188,7 @@ export default function App() {
   }, []);
 
   // ═══════════════════════════════════════════════
-  // 6. Re-auth when multi-user mode changes
+  // 7. Re-auth when multi-user mode changes
   // ═══════════════════════════════════════════════
 
   useEffect(() => {
@@ -186,7 +210,7 @@ export default function App() {
   }, [authState]);
 
   // ═══════════════════════════════════════════════
-  // 7. Navigate to dashboard if current page hidden
+  // 8. Navigate to dashboard if current page hidden
   // ═══════════════════════════════════════════════
 
   useEffect(() => {
@@ -204,7 +228,7 @@ export default function App() {
   // ═══════════════════════════════════════════════
 
   const handleAuthenticated = () => {
-    setAuthState("authenticated");
+    completeAuth();
   };
 
   const handleLogout = () => {
