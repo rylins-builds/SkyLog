@@ -252,10 +252,7 @@ export default function LoginPage({ onAuthenticated }: LoginPageProps) {
           )}
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-gray-400 mt-6 dark:text-gray-500">
-          SkyLog Flight Logbook v0.1.0
-        </p>
+
       </div>
     </div>
   );
