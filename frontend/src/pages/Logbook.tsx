@@ -83,6 +83,9 @@ export default function Logbook() {
   /** If set, the API call failed and this is the error message to display. */
   const [error, setError] = useState("");
 
+  /** Whether initial flight data has finished loading. */
+  const [loaded, setLoaded] = useState(false);
+
   // ── Search & pagination ───────────────────────────────────────────────────
 
   /** Current free-text search string. Reset to "" to show all results. */
@@ -165,8 +168,10 @@ export default function Logbook() {
         // Both state updates batched → single render
         setFlights(flightList);
         setAttachmentCounts(counts);
+        setLoaded(true);
       } catch (e: any) {
         setError(e.message);
+        setLoaded(true);
       }
     })();
   }, []);
@@ -536,6 +541,38 @@ export default function Logbook() {
       col.alwaysVisible ||
       columnVisibility[col.key as keyof ColumnVisibility]
   );
+
+  // ── Loading state (data not yet available) ────────────────────────────────
+
+  if (!loaded) {
+    return (
+      <div className="p-8 text-center animate-fade-in max-w-[95%] mx-auto">
+        {/* Header skeleton */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
+          <div className="skeleton h-9 w-32 rounded-lg" />
+          <div className="flex items-center gap-2">
+            <div className="skeleton h-9 w-20 rounded-lg" />
+            <div className="skeleton h-9 w-20 rounded-lg" />
+            <div className="skeleton h-9 w-36 rounded-lg" />
+          </div>
+        </div>
+        {/* Table skeleton */}
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden dark:bg-zinc-800 dark:border-zinc-400">
+          <div className="p-4 sm:p-6 space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex gap-4">
+                <div className="skeleton h-5 w-24 rounded" />
+                <div className="skeleton h-5 w-20 rounded" />
+                <div className="skeleton h-5 w-28 rounded" />
+                <div className="skeleton h-5 w-16 rounded" />
+                <div className="skeleton h-5 w-20 rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── Empty state (no flights at all) ───────────────────────────────────────
 
