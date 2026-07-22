@@ -546,10 +546,10 @@ export default function Logbook() {
 
   if (!loaded) {
     return (
-      <div className="p-8 text-center animate-fade-in max-w-[95%] mx-auto">
-        {/* Header skeleton */}
+      <div className="p-4 sm:p-8 max-w-[95%] mx-auto animate-fade-in">
+        {/* Title — always visible */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
-          <div className="skeleton h-9 w-32 rounded-lg" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Logbook</h1>
           <div className="flex items-center gap-2">
             <div className="skeleton h-9 w-20 rounded-lg" />
             <div className="skeleton h-9 w-20 rounded-lg" />
