@@ -911,15 +911,15 @@ export default function Settings() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
             Choose which page SkyLog opens to when you launch the app.
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-3">
             {([
               { value: "dashboard", label: "Dashboard", icon: "✈️" },
               { value: "logbook", label: "Logbook", icon: "📖" },
-              { value: "currency", label: "Currency", icon: "📊" },
-              { value: "FAA8710", label: "FAA 8710", icon: "📋" },
+              { value: "currency", label: "Currency", icon: "📊", hidden: !settings.pageVisibility.currency },
+              { value: "FAA8710", label: "FAA 8710", icon: "📋", hidden: !settings.pageVisibility.FAA8710 },
               { value: "settings", label: "Settings", icon: "⚙️" },
               { value: "add", label: "New Flight", icon: "➕" },
-            ]).map(({ value, label, icon }) => (
+            ]).filter(opt => !opt.hidden).map(({ value, label, icon }) => (
               <button
                 key={value}
                 onClick={() => handleDefaultPageChange(value)}
