@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -34,6 +35,9 @@ func registerSettingsRoutes(mux *http.ServeMux, db *sql.DB) {
 	// Dashboard
 	mux.HandleFunc("GET /api/settings/dashboard-layout", getDashboardLayout(db))
 	mux.HandleFunc("PUT /api/settings/dashboard-layout", saveDashboardLayout(db))
+	// Default page
+	mux.HandleFunc("GET /api/settings/default-page", getDefaultPage(db))
+	mux.HandleFunc("PUT /api/settings/default-page", saveDefaultPage(db))
 }
 
 // ── Password hashing ──
@@ -690,6 +694,68 @@ func saveVisibility(db *sql.DB) http.HandlerFunc {
 			`INSERT OR REPLACE INTO user_visibility (user_id, page_visibility, column_visibility)
 			 VALUES (?, ?, ?)`,
 			userID, req.PageVisibility, req.ColumnVisibility)
+		if err != nil {
+			writeError(w, 500, "Database error")
+			return
+		}
+
+		writeJSON(w, 200, map[string]string{"status": "ok"})
+	}
+}
+
+// ── GET /api/settings/default-page ──
+
+func getDefaultPage(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := getUserID(r, db)
+		if err != nil {
+			he := err.(*httpError)
+			writeError(w, he.Code, he.Message)
+			return
+		}
+
+		key := fmt.Sprintf("default_page_%d", userID)
+		var val string
+		err = db.QueryRowContext(r.Context(),
+			"SELECT value FROM settings WHERE key = ?", key).Scan(&val)
+		if err != nil || val == "" {
+			writeJSON(w, 200, DefaultPageResponse{Page: "dashboard"})
+			return
+		}
+
+		writeJSON(w, 200, DefaultPageResponse{Page: val})
+	}
+}
+
+// ── PUT /api/settings/default-page ──
+
+func saveDefaultPage(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := getUserID(r, db)
+		if err != nil {
+			he := err.(*httpError)
+			writeError(w, he.Code, he.Message)
+			return
+		}
+
+		var req DefaultPageSaveRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, 422, "Invalid JSON body")
+			return
+		}
+
+		validPages := map[string]bool{
+			"dashboard": true, "logbook": true, "currency": true,
+			"FAA8710": true, "settings": true, "add": true,
+		}
+		if !validPages[req.Page] {
+			writeError(w, 422, "Invalid page. Must be one of: dashboard, logbook, currency, FAA8710, settings, add")
+			return
+		}
+
+		key := fmt.Sprintf("default_page_%d", userID)
+		_, err = db.ExecContext(r.Context(),
+			"INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", key, req.Page)
 		if err != nil {
 			writeError(w, 500, "Database error")
 			return

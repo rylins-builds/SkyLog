@@ -133,6 +133,12 @@ export default function Dashboard() {
     loadSettings().columnVisibility,
   );
 
+  // Refs for touch-based drag-and-drop (mobile/tablet support)
+  const touchDragIndex = useRef<number | null>(null);
+  const touchStartY = useRef<number>(0);
+  const touchStartX = useRef<number>(0);
+  const gridRef = useRef<HTMLDivElement>(null);
+
   // Ref to avoid re-entrant saves
   const isSyncingRef = useRef(false);
 
@@ -228,7 +234,19 @@ export default function Dashboard() {
     setIsCustomizing(!isCustomizing);
   };
 
-  // ── Drag-and-drop handlers ──
+  // ── Drag-and-drop handlers (desktop: HTML5 DnD, mobile: touch events) ──
+
+  const swapTiles = (fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx) return;
+    const newLayout = [...layout];
+    // Use the sorted order for consistent indexing
+    const sorted = newLayout.slice().sort((a, b) => a.order - b.order);
+    [sorted[fromIdx], sorted[toIdx]] = [sorted[toIdx], sorted[fromIdx]];
+    const reindexed = sorted.map((t, i) => ({ ...t, order: i }));
+    setLayout(reindexed);
+  };
+
+  // ── Desktop drag-and-drop ──
 
   const handleDragStart = (index: number) => {
     setDragIndex(index);
@@ -236,17 +254,48 @@ export default function Dashboard() {
 
   const handleDragOver = (e: React.DragEvent, targetIndex: number) => {
     e.preventDefault();
-    if (dragIndex === null || dragIndex === targetIndex) return;
-
-    const newLayout = [...layout];
-    [newLayout[dragIndex], newLayout[targetIndex]] = [newLayout[targetIndex], newLayout[dragIndex]];
-    const reindexed = newLayout.map((t, i) => ({ ...t, order: i }));
-    setLayout(reindexed);
+    swapTiles(dragIndex!, targetIndex);
     setDragIndex(targetIndex);
   };
 
   const handleDragEnd = () => {
     setDragIndex(null);
+    api.saveDashboardLayout(layout).catch((e: unknown) => {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    });
+  };
+
+  // ── Touch drag-and-drop (mobile / tablet) ──
+
+  const handleTouchStart = (e: React.TouchEvent, index: number) => {
+    if (!isCustomizing) return;
+    touchDragIndex.current = index;
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchDragIndex.current === null || !gridRef.current) return;
+    // Prevent page scrolling while dragging a tile
+    e.preventDefault();
+
+    const touch = e.touches[0];
+    const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (!targetEl) return;
+
+    // Walk up the DOM to find the closest tile wrapper (marked with data-tile-index)
+    const tileWrapper = targetEl.closest("[data-tile-index]") as HTMLElement | null;
+    if (!tileWrapper) return;
+
+    const targetIndex = parseInt(tileWrapper.getAttribute("data-tile-index")!, 10);
+    if (isNaN(targetIndex)) return;
+
+    swapTiles(touchDragIndex.current, targetIndex);
+    touchDragIndex.current = targetIndex;
+  };
+
+  const handleTouchEnd = () => {
+    touchDragIndex.current = null;
     api.saveDashboardLayout(layout).catch((e: unknown) => {
       setError(e instanceof Error ? e.message : "Unknown error");
     });
@@ -430,7 +479,10 @@ export default function Dashboard() {
       {/* ═══════════════════════════════════════════
           Stat Card Tile Grid — reorderable via drag-and-drop
           ═══════════════════════════════════════════ */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8 dark:text-white dark:bg-zinc-800 dark:border-zinc-300">
+      <div
+        ref={gridRef}
+        className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8 dark:text-white dark:bg-zinc-800 dark:border-zinc-300"
+      >
         {sortedTiles.map((tile, idx) => {
           const def = TILE_REGISTRY[tile.type];
           const spanClass = tile.width === 2 ? "col-span-2 sm:col-span-2 lg:col-span-2" : "";
@@ -440,15 +492,19 @@ export default function Dashboard() {
           return (
             <div
               key={tile.type}
+              data-tile-index={idx}
               className={`${spanClass} ${
                 isCustomizing
-                  ? "relative cursor-grab active:cursor-grabbing"
+                  ? "relative cursor-grab active:cursor-grabbing touch-none"
                   : ""
               }`}
               draggable={isCustomizing}
               onDragStart={() => handleDragStart(idx)}
               onDragOver={(e) => handleDragOver(e, idx)}
               onDragEnd={handleDragEnd}
+              onTouchStart={(e) => handleTouchStart(e, idx)}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
               style={
                 isCustomizing && dragIndex === idx
                   ? { opacity: 0.5, transform: "scale(0.97)" }

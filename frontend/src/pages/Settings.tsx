@@ -189,9 +189,21 @@ export default function Settings() {
   /** Current theme mode. */
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => getThemeMode());
 
+  /** Default page the app opens to. */
+  const [defaultPage, setDefaultPage] = useState("dashboard");
+
   const handleThemeChange = (mode: ThemeMode) => {
     setThemeMode(mode);
     setThemeModeState(mode);
+  };
+
+  const handleDefaultPageChange = async (page: string) => {
+    setDefaultPage(page);
+    try {
+      await api.saveDefaultPage(page);
+    } catch {
+      // Silently ignore - server will persist on next successful attempt
+    }
   };
 
   /** Execute the database wipe. */
@@ -277,6 +289,12 @@ export default function Settings() {
       setMultiUserMode(mum);
     }).catch(() => {});
     checkGliderLaunchType();
+    // Load default page preference from backend API only (no localStorage caching)
+    api.getDefaultPage().then(({ page }) => {
+      setDefaultPage(page);
+    }).catch(() => {
+      // Fallback: keep the default "dashboard"
+    });
     // Re-check when flights are added/imported
     window.addEventListener("flightsUpdated", checkGliderLaunchType);
     return () => window.removeEventListener("flightsUpdated", checkGliderLaunchType);
@@ -883,6 +901,47 @@ export default function Settings() {
               </button>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* ── Default Page (always expanded) ─────────────────────────────────── */}
+      <div className="bg-white rounded-xl shadow-md mb-6 border border-gray-100 dark:bg-zinc-900 dark:border-zinc-400 animate-fade-in">
+        <div className="px-6 py-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Default Page</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Choose which page SkyLog opens to when you launch the app.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {([
+              { value: "dashboard", label: "Dashboard", icon: "✈️" },
+              { value: "logbook", label: "Logbook", icon: "📖" },
+              { value: "currency", label: "Currency", icon: "📊", hidden: !settings.pageVisibility.currency },
+              { value: "FAA8710", label: "FAA 8710", icon: "📋", hidden: !settings.pageVisibility.FAA8710 },
+              { value: "settings", label: "Settings", icon: "⚙️" },
+              { value: "add", label: "New Flight", icon: "➕" },
+            ]).filter(opt => !opt.hidden).map(({ value, label, icon }) => (
+              <button
+                key={value}
+                onClick={() => handleDefaultPageChange(value)}
+                className={`flex-1 min-w-[140px] flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors ${
+                  defaultPage === value
+                    ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/30"
+                    : "border-gray-200 bg-gray-50 hover:bg-gray-100 dark:border-zinc-400 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                }`}
+              >
+                <span className="text-2xl">{icon}</span>
+                <span className="text-xs font-medium text-gray-900 dark:text-white text-center">{label}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">
+            {defaultPage === "dashboard" && "You'll land on the Dashboard with your stat tiles and recent flights."}
+            {defaultPage === "logbook" && "You'll land on the Logbook with your flight records table."}
+            {defaultPage === "add" && "You'll land on the New Flight form ready to log a flight."}
+            {defaultPage === "currency" && "You'll land on the Currency tracker showing your current status."}
+            {defaultPage === "FAA8710" && "You'll land on the FAA 8710 aeronautical experience summary."}
+            {defaultPage === "settings" && "You'll land on Settings to customize the app."}
+          </p>
         </div>
       </div>
 

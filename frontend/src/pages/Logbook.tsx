@@ -144,23 +144,32 @@ export default function Logbook() {
   /** Map of flight ID → attachment count (only flights with ≥1 attachment). */
   const [attachmentCounts, setAttachmentCounts] = useState<Map<number, number>>(new Map());
 
-  /** Fetch all flights on mount. */
+  /** Fetch all flights AND their attachment counts in one shot so
+   *  the table renders with attachment icons already present — no
+   *  two-stage pop-in. */
   useEffect(() => {
-    api.listFlights().then(setFlights).catch((e) => setError(e.message));
-  }, []);
+    (async () => {
+      try {
+        const flightList = await api.listFlights();
 
-  /** Fetch attachment counts for all flights in parallel (fire-and-forget). */
-  useEffect(() => {
-    if (flights.length === 0) return;
-    const counts = new Map<number, number>();
-    Promise.all(
-      flights.map((f) =>
-        api.listAttachments(f.id).then((atts) => {
-          if (atts.length > 0) counts.set(f.id, atts.length);
-        }).catch(() => {}) // silently ignore per-flight failures
-      )
-    ).then(() => setAttachmentCounts(counts));
-  }, [flights]);
+        // Fetch attachment counts for all flights in parallel
+        const counts = new Map<number, number>();
+        await Promise.all(
+          flightList.map((f) =>
+            api.listAttachments(f.id).then((atts) => {
+              if (atts.length > 0) counts.set(f.id, atts.length);
+            }).catch(() => {}) // silently ignore per-flight failures
+          )
+        );
+
+        // Both state updates batched → single render
+        setFlights(flightList);
+        setAttachmentCounts(counts);
+      } catch (e: any) {
+        setError(e.message);
+      }
+    })();
+  }, []);
 
   /**
    * Fetch column visibility from the backend API on mount.
@@ -765,7 +774,12 @@ export default function Logbook() {
                   {/* Sticky header so column labels stay visible while scrolling vertically */}
                   <tr className="border-b-2 border-gray-200 bg-gray-50 dark:bg-zinc-900 dark:border-zinc-400 sticky top-0 z-10">
                     {visibleColumns.map((col) => (
-                      <th key={col.key} className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-600 dark:text-white">
+                      <th
+                        key={col.key}
+                        className={`px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-600 dark:text-white ${
+                          col.key === "date" ? "sticky left-0 z-20 bg-gray-50 dark:bg-zinc-900" : ""
+                        }`}
+                      >
                         {col.label}
                       </th>
                     ))}
@@ -775,7 +789,7 @@ export default function Logbook() {
                   {paged.map((flight, idx) => (
                     <tr
                       key={flight.id}
-                      className="border-b border-gray-100 hover:bg-gray-50 dark:hover:bg-zinc-700 logbook-row"
+                      className="border-b border-gray-100 hover:bg-gray-50 dark:hover:bg-zinc-700 logbook-row group"
                       /* Staggered animation delay for a subtle cascade effect on page load */
                       style={{ animationDelay: `${idx * 30}ms` }}
                     >
@@ -784,6 +798,8 @@ export default function Logbook() {
                           key={col.key}
                           className={`px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900 whitespace-nowrap dark:text-white ${
                             col.key === "actions" ? "row-actions" : ""
+                          } ${
+                            col.key === "date" ? "sticky left-0 z-10 bg-white dark:bg-zinc-800 group-hover:bg-gray-50 dark:group-hover:bg-zinc-700" : ""
                           }`}
                         >
                           {col.render(flight)}

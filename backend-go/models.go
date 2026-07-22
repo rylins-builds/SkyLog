@@ -306,6 +306,16 @@ type DashboardLayoutSaveRequest struct {
 	Layout []DashboardLayoutTile `json:"layout"`
 }
 
+// DefaultPageResponse is returned by GET /api/settings/default-page.
+type DefaultPageResponse struct {
+	Page string `json:"page"`
+}
+
+// DefaultPageSaveRequest is the body for PUT /api/settings/default-page.
+type DefaultPageSaveRequest struct {
+	Page string `json:"page"`
+}
+
 // Validate checks required fields and value constraints for FlightCreate.
 func (f *FlightCreate) Validate() map[string]string {
 	errs := make(map[string]string)

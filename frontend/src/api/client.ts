@@ -322,6 +322,19 @@ export const api = {
       body: JSON.stringify({ layout }),
     }),
 
+  // ═══ Default Page ═══
+
+  /** Get the user's default page setting. */
+  getDefaultPage: () =>
+    request<{ page: string }>("/settings/default-page"),
+
+  /** Save the user's default page setting. */
+  saveDefaultPage: (page: string) =>
+    request<{ status: string }>("/settings/default-page", {
+      method: "PUT",
+      body: JSON.stringify({ page }),
+    }),
+
   // ═══ FAA 8710 Mappings ═══
 
   /** Get the user's aircraft-type-to-8710-category mappings. */

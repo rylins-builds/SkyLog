@@ -141,7 +141,7 @@ skylog/
 │
 ├── docker-compose.yml
 ├── Dockerfile
-└── skylog_data/                  # Persistent SQLite DB volume (Docker)
+
 ```
 
 ## Pages
