@@ -23,6 +23,8 @@
 export interface Flight {
   /** Unique database identifier (auto-increment) */
   id: number;
+  /** Number of file attachments for this flight */
+  attachment_count: number;
   /** Flight date in YYYY-MM-DD format */
   date: string;
   /** Name of the pilot in command */

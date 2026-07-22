@@ -230,11 +230,13 @@ func initDB(ctx context.Context, db *sql.DB) error {
 }
 
 // scanFlight scans a single sql.Row/Row into a Flight struct.
+// When scanning rows returned by a query that includes an extra attachment_count
+// column, pass scanCount=true to scan and populate the AttachmentCount field.
 func scanFlight(scanner interface {
 	Scan(dest ...any) error
-}) (Flight, error) {
+}, scanCount ...bool) (Flight, error) {
 	var f Flight
-	err := scanner.Scan(
+	dest := []any{
 		&f.ID, &f.UserID, &f.Date,
 		&f.PilotInCommand,
 		&f.AircraftType, &f.AircraftReg,
@@ -252,16 +254,20 @@ func scanFlight(scanner interface {
 		&f.HoldingPatterns,
 		&f.LaunchType, &f.Remarks,
 		&f.CreatedAt,
-	)
+	}
+	if len(scanCount) > 0 && scanCount[0] {
+		dest = append(dest, &f.AttachmentCount)
+	}
+	err := scanner.Scan(dest...)
 	return f, err
 }
 
 // scanFlights scans all rows from a *sql.Rows into a []Flight.
-func scanFlights(rows *sql.Rows) ([]Flight, error) {
+func scanFlights(rows *sql.Rows, withCount ...bool) ([]Flight, error) {
 	defer rows.Close()
 	var flights []Flight
 	for rows.Next() {
-		f, err := scanFlight(rows)
+		f, err := scanFlight(rows, withCount...)
 		if err != nil {
 			return nil, fmt.Errorf("scan flight: %w", err)
 		}

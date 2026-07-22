@@ -144,30 +144,12 @@ export default function Logbook() {
 
   // ── Data fetching ─────────────────────────────────────────────────────────
 
-  /** Map of flight ID → attachment count (only flights with ≥1 attachment). */
-  const [attachmentCounts, setAttachmentCounts] = useState<Map<number, number>>(new Map());
-
-  /** Fetch all flights AND their attachment counts in one shot so
-   *  the table renders with attachment icons already present — no
-   *  two-stage pop-in. */
+  /** Fetch all flights. Attachment count comes back directly from the API. */
   useEffect(() => {
     (async () => {
       try {
         const flightList = await api.listFlights();
-
-        // Fetch attachment counts for all flights in parallel
-        const counts = new Map<number, number>();
-        await Promise.all(
-          flightList.map((f) =>
-            api.listAttachments(f.id).then((atts) => {
-              if (atts.length > 0) counts.set(f.id, atts.length);
-            }).catch(() => {}) // silently ignore per-flight failures
-          )
-        );
-
-        // Both state updates batched → single render
         setFlights(flightList);
-        setAttachmentCounts(counts);
         setLoaded(true);
       } catch (e: any) {
         setError(e.message);
@@ -262,15 +244,15 @@ export default function Logbook() {
   if (activeFilter === "precision_approaches") filtered = filtered.filter((f) => f.precision_approaches > 0);
   if (activeFilter === "non_precision_approaches") filtered = filtered.filter((f) => f.non_precision_approaches > 0);
   if (activeFilter === "holding_patterns") filtered = filtered.filter((f) => f.holding_patterns > 0);
-  if (activeFilter === "has_attachments") filtered = filtered.filter((f) => (attachmentCounts.get(f.id) ?? 0) > 0);
+  if (activeFilter === "has_attachments") filtered = filtered.filter((f) => f.attachment_count > 0);
 
   // ── Sorting ───────────────────────────────────────────────────────────────
 
   /** Sort the filtered list in-place by the selected field and direction. */
   filtered.sort((a, b) => {
-    // "attachments" is not a Flight field — use the fetched attachment counts instead
-    let aVal: string | number = sortField === "attachments" ? (attachmentCounts.get(a.id) ?? 0) : a[sortField] ?? "";
-    let bVal: string | number = sortField === "attachments" ? (attachmentCounts.get(b.id) ?? 0) : b[sortField] ?? "";
+    // "attachments" is not a Flight field — use attachment_count from the API
+    let aVal: string | number = sortField === "attachments" ? a.attachment_count : a[sortField] ?? "";
+    let bVal: string | number = sortField === "attachments" ? b.attachment_count : b[sortField] ?? "";
     // String comparisons are case-insensitive
     if (typeof aVal === "string" && typeof bVal === "string") {
       aVal = aVal.toLowerCase();
@@ -446,10 +428,10 @@ export default function Logbook() {
     { key: "date", label: "Date", alwaysVisible: true, render: (f) => (
       <div className="flex items-center justify-center gap-2.5">
         {/* Attachment indicator — only shown when the flight has attachments */}
-        {(attachmentCounts.get(f.id) ?? 0) > 0 && (
-          <span className="inline-flex items-center gap-0.5 text-gray-400 dark:text-gray-500" title={`${attachmentCounts.get(f.id)} attachment${attachmentCounts.get(f.id) !== 1 ? "s" : ""}`}>
+        {f.attachment_count > 0 && (
+          <span className="inline-flex items-center gap-0.5 text-gray-400 dark:text-gray-500" title={`${f.attachment_count} attachment${f.attachment_count !== 1 ? "s" : ""}`}>
             <PaperclipIcon className="w-3.5 h-3.5" />
-            <span className="text-xs">{attachmentCounts.get(f.id)}</span>
+            <span className="text-xs">{f.attachment_count}</span>
           </span>
         )}
         <span>{f.date}</span>
@@ -809,12 +791,12 @@ export default function Logbook() {
               <table className="w-full text-center">
                 <thead>
                   {/* Sticky header so column labels stay visible while scrolling vertically */}
-                  <tr className="border-b-2 border-gray-200 bg-gray-50 dark:bg-zinc-900 dark:border-zinc-400 sticky top-0 z-10">
+                  <tr className="border-b-2 border-gray-200 bg-gray-50 dark:bg-zinc-900 dark:border-zinc-400 sticky top-0 z-30">
                     {visibleColumns.map((col) => (
                       <th
                         key={col.key}
                         className={`px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-gray-600 dark:text-white ${
-                          col.key === "date" ? "sticky left-0 z-20 bg-gray-50 dark:bg-zinc-900" : ""
+                          col.key === "date" ? "sticky left-0 z-40 bg-gray-50 dark:bg-zinc-900" : ""
                         }`}
                       >
                         {col.label}
