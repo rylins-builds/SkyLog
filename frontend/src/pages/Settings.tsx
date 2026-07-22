@@ -911,7 +911,7 @@ export default function Settings() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
             Choose which page SkyLog opens to when you launch the app.
           </p>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-3">
+          <div className="flex flex-wrap gap-3">
             {([
               { value: "dashboard", label: "Dashboard", icon: "✈️" },
               { value: "logbook", label: "Logbook", icon: "📖" },
@@ -923,7 +923,7 @@ export default function Settings() {
               <button
                 key={value}
                 onClick={() => handleDefaultPageChange(value)}
-                className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors ${
+                className={`flex-1 min-w-[140px] flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors ${
                   defaultPage === value
                     ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/30"
                     : "border-gray-200 bg-gray-50 hover:bg-gray-100 dark:border-zinc-400 dark:bg-zinc-800 dark:hover:bg-zinc-700"
